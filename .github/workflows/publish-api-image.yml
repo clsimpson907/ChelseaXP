@@ -29,9 +29,9 @@ jobs:
       - name: Smoke-test the API image
         run: |
           container=$(docker run --detach --publish 127.0.0.1::8080 "$IMAGE:$GITHUB_SHA")
-          trap 'docker logs "$container"; docker rm --force "$container"' EXIT
+          trap 'docker inspect --format "{{json .State}}" "$container"; docker logs "$container"; docker rm --force "$container"' EXIT
           address=$(docker port "$container" 8080/tcp)
-          response=$(curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 1 "http://$address/api/health")
+          response=$(curl --fail --silent --show-error --connect-timeout 2 --max-time 3 --retry 10 --retry-all-errors --retry-delay 1 --retry-max-time 20 "http://$address/api/health")
           node -e 'if (JSON.parse(process.argv[1]).status !== "ok") process.exit(1)' "$response"
 
       - name: Push the tested image to GitHub Container Registry
