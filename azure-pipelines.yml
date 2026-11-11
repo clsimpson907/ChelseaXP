@@ -1,19 +1,52 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
-- main
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
 
 pool:
   vmImage: ubuntu-latest
 
 steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+  - task: NodeTool@0
+    inputs:
+      versionSpec: '24.x'
+    displayName: Use Node.js 24
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+  - script: |
+      set -e
+      npm ci
+      npm run lint
+      npm run build
+    workingDirectory: frontend
+    displayName: Check and build the React app
+
+  - task: UseDotNet@2
+    inputs:
+      packageType: sdk
+      version: '11.0.x'
+    displayName: Use .NET 11 SDK
+
+  - script: dotnet publish backend/ChelseaXP.Api/ChelseaXP.Api.csproj --configuration Release --output "$(Build.ArtifactStagingDirectory)/api"
+    displayName: Build and publish the ASP.NET Core API
+
+  - bash: |
+      set -euo pipefail
+      dotnet "$(Build.ArtifactStagingDirectory)/api/ChelseaXP.Api.dll" --urls http://127.0.0.1:5080 &
+      api_pid=$!
+      trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+      response=$(curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:5080/api/health)
+      node -e 'if (JSON.parse(process.argv[1]).status !== "ok") process.exit(1)' "$response"
+    displayName: Smoke test the published API
+
+  - publish: frontend/dist
+    artifact: frontend
+    displayName: Publish frontend build artifact
+
+  - publish: $(Build.ArtifactStagingDirectory)/api
+    artifact: api
+    displayName: Publish API build artifact
