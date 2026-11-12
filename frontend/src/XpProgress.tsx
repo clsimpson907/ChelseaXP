@@ -6,13 +6,15 @@ type ProgressProps = {
   label: string
   icon: string
   messages: readonly [string, ...string[]]
+  reverseMessages: readonly [string, ...string[]]
   complete: boolean
   onCancel: () => void
 }
 
-export default function XpProgress({ label, icon, messages, complete, onCancel }: ProgressProps) {
+export default function XpProgress({ label, icon, messages, reverseMessages, complete, onCancel }: ProgressProps) {
   const [step, setStep] = useState(() => ({
     filled: 0,
+    reverseMessage: '',
     message: Math.floor(Math.random() * messages.length),
   }))
 
@@ -22,13 +24,29 @@ export default function XpProgress({ label, icon, messages, complete, onCancel }
     const timer = globalThis.setTimeout(() => {
       const jump = 2 + Math.floor(Math.random() * 4)
       const messageOffset = 1 + Math.floor(Math.random() * Math.max(0, messages.length - 1))
-      setStep({
+      setStep((current) => current === step ? {
         filled: Math.min(segmentCount - 2, step.filled + jump),
         message: (step.message + messageOffset) % messages.length,
-      })
-    }, 230 + Math.random() * 170)
+        reverseMessage: '',
+      } : current)
+    }, 470 + Math.random() * 140)
     return () => globalThis.clearTimeout(timer)
   }, [complete, messages.length, step])
+
+  useEffect(() => {
+    if (complete) return
+
+    const timer = globalThis.setTimeout(() => {
+      const message = reverseMessages[Math.floor(Math.random() * reverseMessages.length)]
+      const drop = 2 + Math.floor(Math.random() * 3)
+      setStep((current) => current.filled > 0 ? {
+        ...current,
+        filled: Math.max(0, current.filled - drop),
+        reverseMessage: message,
+      } : current)
+    }, 3000)
+    return () => globalThis.clearTimeout(timer)
+  }, [complete, reverseMessages])
 
   const filled = complete ? segmentCount : step.filled
 
@@ -37,7 +55,7 @@ export default function XpProgress({ label, icon, messages, complete, onCancel }
       <div className="xp-progress-row">
         <img src={icon} alt="" width="42" height="42" />
         <div className="xp-progress-details">
-          <p role="status">{complete ? 'Putting everything back where we found it…' : messages[step.message]}</p>
+          <p role="status">{complete ? 'Putting everything back where we found it…' : step.reverseMessage || messages[step.message]}</p>
           <div className="xp-progress-track" role="progressbar" aria-label={label}>
             {Array.from({ length: segmentCount }, (_, index) => (
               <span key={index} aria-hidden="true" data-filled={index < filled} />

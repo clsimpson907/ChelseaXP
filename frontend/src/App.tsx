@@ -45,7 +45,7 @@ function AppContent({ id, open, close, active }: { id: AppId; open: (id: AppId) 
     case 'about':
       return (
         <div className="profile">
-          <div className="profile-sidebar">
+          <div className="window-sidebar profile-sidebar">
             <img className="profile-picture account-picture" src="/chelsea.jpg" alt="Chelsea Simpson" width="130" height="130" />
           </div>
           <div className="profile-main">

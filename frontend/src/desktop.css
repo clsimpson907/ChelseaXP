@@ -123,10 +123,10 @@ a { color: #642989; }
 .window-body p { line-height: 1.5; }
 
 .profile { display: grid; grid-template-columns: 160px minmax(0, 1fr); min-height: 100%; }
-.profile-sidebar {
-  padding: 14px;
-  background: linear-gradient(#eed6ee, #f5e5f5);
-  border-right: 1px solid #e2bde6;
+.window-sidebar {
+  padding: 10px;
+  border-inline-end: 1px solid #d7b5df;
+  background: linear-gradient(120deg, #e1c5ee, #f2e3f4);
 }
 
 .profile-picture {
@@ -460,14 +460,19 @@ a { color: #642989; }
   background: linear-gradient(#fff8ec, #eee1d4);
 }
 .explorer-toolbar > button {
+  display: grid;
   flex-shrink: 0;
+  place-items: center;
+  width: var(--control-height);
+  padding: 0;
   height: var(--control-height);
   border: 1px solid #ac84bc;
   border-radius: 3px;
   background: var(--lavender-gloss);
   color: #381553;
 }
-.explorer-toolbar > button:disabled { opacity: .58; cursor: default; }
+.explorer-toolbar > button:disabled { background: #e8dce8; border-color: #cfbcd1; cursor: default; }
+.explorer-toolbar > button:disabled img { filter: grayscale(1); opacity: .5; }
 .explorer-address {
   display: flex;
   flex: 1;
@@ -484,7 +489,7 @@ a { color: #642989; }
 .explorer-address button { flex-shrink: 0; padding: 0; border: 0; background: transparent; color: inherit; text-decoration: underline; }
 .explorer-address [aria-current] { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .explorer-layout { display: grid; flex: 1; grid-template-columns: clamp(122px, 28%, 155px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); min-height: 0; }
-.explorer-folders { overflow: auto; padding: 8px; border-right: 1px solid #d7b5df; background: #f2e3f4; }
+.explorer-folders { overflow: auto; }
 .explorer-folders button {
   display: block;
   width: 100%;
@@ -718,7 +723,6 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 }
 
 .explorer-address { height: 24px; }
-.explorer-folders { background: linear-gradient(120deg, #e1c5ee, #f2e3f4); }
 .explorer-folders h2 {
   margin: 0 0 6px;
   padding: 5px 7px;
