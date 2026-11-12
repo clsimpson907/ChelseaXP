@@ -1,17 +1,27 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import DesktopWindow from './DesktopWindow'
 import ComplaintsForm from './ComplaintsForm'
+import ControlPanel from './ControlPanel'
 import DocumentExplorer from './DocumentExplorer'
+import type { LocationId } from './explorerLocations'
+import credits from './credits.txt?raw'
 import './desktop.css'
 
-const apps = [
+const shortcuts = [
   { id: 'about', label: 'About Me', icon: '/icons/user-accounts.png' },
+  { id: 'computer', label: 'My Computer', icon: '/icons/my-computer.png' },
   { id: 'documents', label: 'My Documents', icon: '/icons/my-documents.png' },
   { id: 'complaints', label: 'Complaints', icon: '/icons/mail.png' },
+  { id: 'control', label: 'Control Panel', icon: '/icons/control-panel.png' },
+] as const
+
+const apps = [
+  ...shortcuts,
+  { id: 'notepad', label: 'Credits.txt - Notepad', icon: '/icons/document.png' },
 ] as const
 
 type AppId = (typeof apps)[number]['id']
-type WindowEntry = { id: AppId; minimized: boolean }
+type WindowEntry = { id: AppId; minimized: boolean; folder?: LocationId; navigation?: number }
 
 const phoneLayout = '(max-width: 700px)'
 
@@ -40,7 +50,13 @@ function LinkedInShortcut({ onClick }: { onClick?: () => void }) {
   )
 }
 
-function AppContent({ id, open, close, active }: { id: AppId; open: (id: AppId) => void; close: () => void; active: boolean }) {
+function AppContent({ entry, open, close, active }: {
+  entry: WindowEntry
+  open: (id: AppId, folder?: LocationId) => void
+  close: () => void
+  active: boolean
+}) {
+  const { id, folder, navigation } = entry
   switch (id) {
     case 'about':
       return (
@@ -73,8 +89,15 @@ function AppContent({ id, open, close, active }: { id: AppId; open: (id: AppId) 
           </div>
         </div>
       )
+    case 'computer':
     case 'documents':
-      return <DocumentExplorer />
+      return <DocumentExplorer key={navigation} initialFolder={folder ?? id}
+        openCredits={() => open('notepad')} openControlPanel={() => open('control')} />
+    case 'notepad':
+      return <pre className="notepad-text">{credits}</pre>
+    case 'control':
+      return <ControlPanel openComplaints={() => open('complaints')}
+        openFolder={(destination) => open(destination === 'documents' ? 'documents' : 'computer', destination)} />
     case 'complaints':
       return <ComplaintsForm onClose={close} active={active} />
   }
@@ -133,11 +156,15 @@ export default function App() {
     })
   }
 
-  function open(id: AppId) {
-    setWindows((entries) => [
-      ...entries.filter((entry) => entry.id !== id),
-      { id, minimized: false },
-    ])
+  function open(id: AppId, folder?: LocationId) {
+    setWindows((entries) => {
+      const existing = entries.find((entry) => entry.id === id)
+      const entry = { ...existing, id, minimized: false }
+      return [
+        ...entries.filter((item) => item.id !== id),
+        folder ? { ...entry, folder, navigation: (entry.navigation ?? 0) + 1 } : entry,
+      ]
+    })
     setPhoneHome(false)
     setStartOpen(false)
     requestAnimationFrame(() => document.getElementById(`window-${id}`)?.focus())
@@ -172,7 +199,7 @@ export default function App() {
         </header>
         <nav className="shortcuts" aria-label="Portfolio apps">
           <LocalClock showDate />
-          {apps.map(({ id, label, icon }) => (
+          {shortcuts.map(({ id, label, icon }) => (
             <button key={id} data-app={id} onClick={() => open(id)}>
               <img className="shortcut-icon" src={icon} alt="" />
               <span>{label}</span>
@@ -191,7 +218,7 @@ export default function App() {
             <DesktopWindow key={app.id} id={app.id} title={app.label} icon={app.icon}
               desktop={desktop} depth={index + 1} active={foreground} hidden={hidden}
               onActivate={() => activate(app.id)} onMinimize={() => minimize(app.id)} onClose={() => close(app.id)}>
-              <AppContent id={app.id} open={open} close={() => close(app.id)} active={foreground} />
+              <AppContent entry={windows[index]} open={open} close={() => close(app.id)} active={foreground} />
             </DesktopWindow>
           )
         })}
@@ -224,6 +251,10 @@ export default function App() {
                 <button onClick={() => open('documents')}>
                   <img className="start-app-icon" src="/icons/my-documents.png" alt="" />
                   My Documents
+                </button>
+                <button onClick={() => open('control')}>
+                  <img className="start-app-icon" src="/icons/control-panel.png" alt="" />
+                  Control Panel
                 </button>
                 <LinkedInShortcut onClick={dismissStart} />
               </div>

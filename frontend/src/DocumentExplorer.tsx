@@ -1,13 +1,7 @@
-import { useRef, useState } from 'react'
-import credits from './credits.txt?raw'
+import { useId, useRef, useState } from 'react'
+import TaskPane, { TaskSection } from './TaskPane'
 
-const locations = {
-  documents: { name: 'My Documents', parent: null },
-  notes: { name: 'Project Notes', parent: 'documents' },
-  credits: { name: 'Credits.txt', parent: 'documents' },
-} as const
-
-type LocationId = keyof typeof locations
+import { explorerPlaces, locationIds, locations, type LocationId } from './explorerLocations'
 
 function HistoryDropdown({ label, entries, onSelect }: {
   label: string
@@ -29,9 +23,14 @@ function HistoryDropdown({ label, entries, onSelect }: {
   )
 }
 
-export default function DocumentExplorer() {
+export default function DocumentExplorer({ initialFolder, openCredits, openControlPanel }: {
+  initialFolder: LocationId
+  openCredits: () => void
+  openControlPanel: () => void
+}) {
+  const explorerId = useId()
   const [history, setHistory] = useState<{ entries: LocationId[]; index: number }>({
-    entries: ['documents'], index: 0,
+    entries: [initialFolder], index: 0,
   })
   const locationId = history.entries[history.index]
   const historyEntries = history.entries.map((id, index) => ({ id, index }))
@@ -39,6 +38,9 @@ export default function DocumentExplorer() {
   const heading = useRef<HTMLHeadingElement>(null)
   const files = useRef<HTMLElement>(null)
   const location = locations[locationId]
+  const children = locationIds.filter((id) => locations[id].parent === locationId)
+  const otherPlaces = explorerPlaces.filter((id) => id !== locationId)
+  const itemCount = children.length + (locationId === 'documents' ? 2 : 0)
 
   function focusFiles() {
     files.current?.scrollTo(0, 0)
@@ -79,7 +81,7 @@ export default function DocumentExplorer() {
           <HistoryDropdown label="Forward history" entries={historyEntries.slice(history.index + 1)} onSelect={travel} />
         </div>
         <button type="button" aria-label="Up" title="Up one level" disabled={location.parent === null}
-          onClick={() => openLocation('documents')}>
+          onClick={() => { if (location.parent) openLocation(location.parent) }}>
           <img src="/icons/up.png" alt="" width="22" height="22" />
         </button>
         <span className="explorer-toolbar-divider" aria-hidden="true" />
@@ -88,13 +90,15 @@ export default function DocumentExplorer() {
         event.preventDefault()
         openLocation(address ?? locationId)
       }}>
-        <label htmlFor="explorer-address">Address</label>
+        <label htmlFor={`${explorerId}-address`}>Address</label>
         <span className="explorer-address">
-          <select id="explorer-address" value={address ?? locationId}
+          <select id={`${explorerId}-address`} value={address ?? locationId}
             onChange={(event) => setAddress(event.target.value as LocationId)}>
-            <option value="documents">My Documents</option>
-            <option value="notes">My Documents › Project Notes</option>
-            <option value="credits">My Documents › Credits.txt</option>
+            {locationIds.map((id) => (
+              <option key={id} value={id}>
+                {id === 'notes' ? 'My Documents › ' : ''}{locations[id].name}
+              </option>
+            ))}
           </select>
         </span>
         <button className="explorer-go" type="submit">
@@ -102,40 +106,58 @@ export default function DocumentExplorer() {
         </button>
       </form>
       <div className="explorer-layout">
-        <nav className="window-sidebar explorer-folders" aria-label="Folders">
-          <h2>Folders</h2>
-          <button aria-current={locationId === 'documents' ? 'location' : undefined} onClick={() => openLocation('documents')}>
-            <img src="/icons/my-documents.png" alt="" width="32" height="32" /> My Documents
-          </button>
-          <button aria-current={locationId === 'notes' ? 'location' : undefined} onClick={() => openLocation('notes')}>
-            <img src="/icons/folder.png" alt="" width="32" height="32" /> Project Notes
-          </button>
-        </nav>
-        <section className="explorer-files" ref={files} aria-labelledby="folder-heading">
-          <h1 id="folder-heading" ref={heading} tabIndex={-1}>{location.name}</h1>
-          {locationId === 'documents' ? (
+        <div className="explorer-folders">
+          <TaskPane label="Explorer tasks">
+            {locationId === 'documents' && (
+              <TaskSection title="File and Folder Tasks">{null}</TaskSection>
+            )}
+            <TaskSection title="Other Places">
+              {otherPlaces.map((id) => (
+                <button key={id} type="button" onClick={() => openLocation(id)}>
+                  <img src={`/icons/${locations[id].icon}.png`} alt="" width="16" height="16" /> {locations[id].name}
+                </button>
+              ))}
+              <button type="button" onClick={openControlPanel}>
+                <img src="/icons/control-panel.png" alt="" width="16" height="16" /> Control Panel
+              </button>
+            </TaskSection>
+            <TaskSection title="Details">
+              <p className="task-pane-note">
+                <strong>{location.name}</strong><br />
+                {itemCount === 0 ? 'Empty folder' : `${itemCount} items`}
+              </p>
+            </TaskSection>
+          </TaskPane>
+        </div>
+        <section className="explorer-files" ref={files} aria-labelledby={`${explorerId}-heading`}>
+          <h1 id={`${explorerId}-heading`} ref={heading} tabIndex={-1}>{location.name}</h1>
+          {itemCount > 0 ? (
             <ul className="explorer-items">
-              <li>
-                <button className="explorer-item" onClick={() => openLocation('notes')}>
-                  <img src="/icons/folder.png" alt="" width="32" height="32" />
-                  <strong>Project Notes</strong>
-                </button>
-              </li>
-              <li className="explorer-item explorer-item--pending">
-                <img src="/icons/document.png" alt="" width="32" height="32" />
-                <strong>Résumé.pdf</strong>
-                <small>Coming soon</small>
-              </li>
-              <li>
-                <button className="explorer-item" onClick={() => openLocation('credits')}>
-                  <img src="/icons/document.png" alt="" width="32" height="32" />
-                  <strong>Credits.txt</strong>
-                </button>
-              </li>
+              {children.map((id) => (
+                <li key={id}>
+                  <button className="explorer-item" onClick={() => openLocation(id)}>
+                    <img src={`/icons/${locations[id].icon}.png`} alt="" width="32" height="32" />
+                    <strong>{locations[id].name}</strong>
+                  </button>
+                </li>
+              ))}
+              {locationId === 'documents' && (
+                <>
+                  <li className="explorer-item explorer-item--pending">
+                    <img src="/icons/document.png" alt="" width="32" height="32" />
+                    <strong>Résumé.pdf</strong>
+                    <small>Coming soon</small>
+                  </li>
+                  <li>
+                    <button className="explorer-item" onClick={openCredits}>
+                      <img src="/icons/document.png" alt="" width="32" height="32" />
+                      <strong>Credits.txt</strong>
+                    </button>
+                  </li>
+                </>
+              )}
             </ul>
-          ) : locationId === 'credits' ? (
-            <pre className="explorer-text-file">{credits}</pre>
-          ) : <p>No project notes published yet.</p>}
+          ) : <p>{locationId === 'notes' ? 'No project notes published yet.' : 'This folder is empty.'}</p>}
         </section>
       </div>
     </div>

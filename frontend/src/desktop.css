@@ -76,6 +76,7 @@ a { color: #642989; }
   box-shadow: 0 8px 20px #43224766, 0 0 0 1px #f8c9eb;
 }
 
+.app-window[data-window="computer"],
 .app-window[data-window="documents"] { --window-width: 650px; --window-height: 460px; --window-offset: 50px; }
 .app-window[data-window="complaints"] { --window-width: 610px; --window-height: 570px; --window-offset: 100px; }
 .app-window[hidden] { display: none; }
@@ -561,20 +562,14 @@ a { color: #642989; }
   .explorer-address select, .explorer-go { min-height: 44px; }
 }
 
-.explorer-layout { display: grid; flex: 1; grid-template-columns: clamp(122px, 28%, 155px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); min-height: 0; }
-.explorer-folders { overflow: auto; }
-.explorer-folders button {
-  display: block;
+.explorer-layout { display: grid; flex: 1; grid-template-columns: clamp(160px, 30%, 185px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); min-height: 0; }
+.explorer-folders { display: flex; min-height: 0; }
+.explorer-folders > .task-pane {
   width: 100%;
-  padding: 8px 4px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: #381553;
-  font-size: .85rem;
-  text-align: left;
+  padding: 8px;
 }
-.explorer-folders button + button { padding-inline-start: 12px; }
-.explorer-folders button:hover, .explorer-folders [aria-current] { border-color: #d3aedc; background: #e8ceef; }
+.explorer-folders .task-pane-section h2 { font-size: .75rem; }
+.explorer-folders .task-pane-section h2 button { padding: 4px 6px; }
 .explorer-files { overflow: auto; padding: 16px; }
 .explorer-files h1 { font-size: 1.35rem; }
 .explorer-items {
@@ -598,9 +593,9 @@ a { color: #642989; }
   text-align: center;
 }
 button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
-.explorer-folders img { width: 16px; height: 16px; vertical-align: middle; }
 .explorer-item small { color: #634b73; }
-.explorer-text-file {
+.notepad-text {
+  margin: 0;
   font: .875rem/1.55 "Courier New", monospace;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -781,11 +776,142 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
   box-shadow: inset 1px 1px 3px #74428766;
 }
 
-.explorer-folders h2 {
-  margin: 0 0 6px;
-  padding: 5px 7px;
+.task-pane { overflow: auto; }
+.task-pane-section + .task-pane-section { margin-top: 10px; }
+.task-pane-section h2 { margin: 0; font-size: .82rem; }
+.task-pane-section h2 button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  width: 100%;
+  padding: 4px 5px 4px 7px;
   border: 1px solid #caa5d9;
-  background: var(--lavender-gloss);
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(90deg, #fff4fd, #debee9);
+  color: #381553;
+  text-align: left;
+  font-weight: bold;
+}
+.task-pane-section h2 button[aria-expanded="false"] { border-radius: 4px; }
+.task-pane-section h2 button:focus-visible { outline-offset: -2px; }
+.task-pane-toggle {
+  display: grid;
+  flex: 0 0 15px;
+  height: 15px;
+  place-items: center;
+  border: 1px solid #b184c0;
+  border-radius: 50%;
+  background: #fcf2fb;
+  color: #5b326e;
+  line-height: 1;
+}
+.task-pane-actions {
+  padding: 3px;
+  border: 1px solid #d9b9e2;
+  border-top: 0;
+  background: #fff7fa;
+}
+.task-pane-actions :is(button, a) {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  padding: 7px 4px;
+  border: 1px solid transparent;
+  background: transparent;
   color: #381553;
   font-size: .85rem;
+  text-align: left;
+}
+.task-pane-actions :is(button, a):hover, .task-pane-actions [aria-current] { border-color: #d3aedc; background: #e8ceef; }
+.task-pane-actions a { text-decoration: none; }
+.task-pane-actions img { flex: none; }
+.task-pane-note { margin: 2px 4px; font-size: .82rem; overflow-wrap: anywhere; }
+.explorer-folders img { width: 16px; height: 16px; }
+
+.app-window[data-window="control"] { --window-width: 690px; --window-height: 475px; --window-offset: 75px; }
+
+.control-panel-address {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  padding: 5px 8px;
+  border-bottom: 1px solid #cda8d9;
+  background: #f4eadf;
+  color: #381553;
+  font-size: .8rem;
+}
+.control-panel-address nav {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 24px;
+  padding: 3px 6px;
+  border: 1px solid #ba99c7;
+  background: #fff;
+}
+.control-panel-address button { flex-shrink: 0; padding: 0; border: 0; background: transparent; color: inherit; text-decoration: underline; }
+.control-panel-address [aria-current] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.control-panel-layout {
+  display: grid;
+  flex: 1;
+  grid-template-columns: clamp(125px, 31%, 176px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+.control-panel-content { overflow: auto; padding: clamp(14px, 3vw, 24px); }
+.control-panel-content h1 { font-size: clamp(1.25rem, 2.5vw, 1.7rem); }
+.control-panel-content--categories {
+  background: radial-gradient(ellipse at 100% 100%, #9868b3, transparent 68%), linear-gradient(130deg, #653979, #734591);
+  color: white;
+}
+.control-panel-content--categories h1 { color: #fff5fc; }
+.control-panel-content--categories :focus-visible { outline-color: #fff; }
+.control-panel-categories, .control-panel-items {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.control-panel-categories { grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
+.control-panel-items { grid-template-columns: repeat(auto-fit, minmax(108px, 120px)); }
+.control-panel-categories button, .control-panel-items button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 54px;
+  padding: 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font-weight: bold;
+}
+.control-panel-categories button:hover { border-color: #efccf6; background: #fff2; }
+.control-panel-items button { flex-direction: column; text-align: center; font-size: .85rem; }
+.control-panel-items button:hover { border-color: #d3aedc; background: #f3dff6; }
+.control-panel-categories img { flex: none; }
+.department-action {
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid #9867ad;
+  border-radius: 4px;
+  background: var(--lavender-gloss);
+  color: #381553;
+  font-weight: bold;
+}
+
+@media (max-width: 700px) {
+  .control-panel-layout { display: flex; flex-direction: column; }
+  .control-panel .task-pane { flex: none; max-height: 45%; padding: 7px; }
+
+  .control-panel .task-pane-actions :is(button, a) { min-height: 44px; }
+  .control-panel-content { flex: 1; }
 }
