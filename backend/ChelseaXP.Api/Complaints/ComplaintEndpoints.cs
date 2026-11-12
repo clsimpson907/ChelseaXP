@@ -5,6 +5,7 @@ using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChelseaXP.Api.Complaints;
@@ -54,7 +55,13 @@ public static class ComplaintEndpoints
             }
             catch (Exception error) when (error is DbException or DbUpdateException)
             {
-                logger.LogWarning("The complaint quota database is unavailable.");
+                var cause = (error as DbUpdateException)?.InnerException ?? error;
+                var codes = cause is SqlException sqlError
+                    ? string.Join(", ", sqlError.Errors.Cast<SqlError>().Select(item => $"{item.Number}/{item.State}"))
+                    : "none";
+                logger.LogWarning(
+                    "The complaint quota database is unavailable. Error type: {ErrorType}. SQL number/state: {SqlCodes}.",
+                    cause.GetType().Name, codes);
                 return TemporarilyUnavailable();
             }
 
