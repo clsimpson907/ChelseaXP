@@ -527,24 +527,54 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 .complaint-error { color: #8b234a; }
 
 .complaints-blue-screen {
-  min-height: 230px;
-  padding: clamp(20px, 4vw, 32px);
-  background: #09258a;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: clamp(18px, 6vw, 40px);
+  border: 0;
+  background: #0800a0;
   color: #fff;
-  font-family: "Courier New", monospace;
+  font: 600 clamp(.875rem, 2.1vw, 1.125rem) / 1.35 "Courier New", monospace;
+  cursor: pointer;
 }
+
+.complaints-blue-screen[open] {
+  display: grid;
+  place-items: center;
+  overflow: auto;
+}
+
+.crash-content { width: min(100%, 40rem); overflow-wrap: anywhere; }
 
 .complaints-blue-screen h1 {
-  display: inline-block;
-  padding: 3px 8px;
-  background: #e5eaff;
-  color: #09258a;
-  font-size: clamp(1.15rem, 3vw, 1.6rem);
+  display: table;
+  margin: 0 auto 1rem;
+  padding: 0 8px;
+  background: #bfbfbf;
+  color: #0800a0;
+  font: inherit;
 }
-.complaints-blue-screen :focus-visible { outline-color: #fff; }
-.complaints-blue-screen time { font-weight: bold; white-space: nowrap; }
 
-.complaints-blue-screen button, .complaints-unavailable button {
+.complaints-blue-screen p { margin: 0 0 1rem; line-height: inherit; }
+
+.complaints-blue-screen button {
+  display: block;
+  min-height: 44px;
+  margin-inline: auto;
+  padding: 4px 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.complaints-blue-screen :focus-visible { outline-color: #fff; }
+
+.complaints-unavailable button {
   min-height: 44px;
   padding: 6px 12px;
   border: 1px solid currentColor;

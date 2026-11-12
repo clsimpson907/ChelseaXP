@@ -28,7 +28,7 @@ function LinkedInShortcut({ onClick }: { onClick?: () => void }) {
   )
 }
 
-function AppContent({ id, open }: { id: AppId; open: (id: AppId) => void }) {
+function AppContent({ id, open, close }: { id: AppId; open: (id: AppId) => void; close: () => void }) {
   switch (id) {
     case 'about':
       return (
@@ -65,7 +65,7 @@ function AppContent({ id, open }: { id: AppId; open: (id: AppId) => void }) {
     case 'documents':
       return <DocumentExplorer />
     case 'complaints':
-      return <ComplaintsForm />
+      return <ComplaintsForm onClose={close} />
   }
 }
 
@@ -209,7 +209,7 @@ export default function App() {
               </div>
             </div>
             <div className={`window-body${current.id === 'about' ? ' window-body--profile' : current.id === 'documents' ? ' window-body--explorer' : ''}`}>
-              <AppContent id={current.id} open={open} />
+              <AppContent id={current.id} open={open} close={close} />
             </div>
           </article>
         )}

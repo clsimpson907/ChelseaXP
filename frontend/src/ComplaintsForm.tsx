@@ -18,12 +18,14 @@ function blockedState(code: unknown, resetAt: unknown): Blocked | null {
   return null
 }
 
-export default function ComplaintsForm() {
+export default function ComplaintsForm({ onClose }: { onClose: () => void }) {
   const [availability, setAvailability] = useState<Availability>({ state: 'checking' })
   const [check, setCheck] = useState(0)
   const [sending, setSending] = useState(false)
   const [feedback, setFeedback] = useState<{ text: string; error: boolean } | null>(null)
-  const blockedHeading = useRef<HTMLHeadingElement>(null)
+  const crashDialog = useRef<HTMLDialogElement>(null)
+  const hasOpenedForm = useRef(false)
+  const messageInput = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -55,10 +57,31 @@ export default function ComplaintsForm() {
   }, [check])
 
   useEffect(() => {
-    if (availability.state === 'paused' || availability.state === 'daily-limit') {
-      blockedHeading.current?.focus()
+    if (availability.state === 'available') {
+      hasOpenedForm.current = true
+      return
+    }
+
+    const dialog = crashDialog.current
+    if (!dialog || (availability.state !== 'paused' && availability.state !== 'daily-limit')) return
+
+    dialog.showModal()
+    return () => {
+      if (dialog.open) dialog.close()
     }
   }, [availability.state])
+
+  function dismissCrash() {
+    if (!crashDialog.current?.open) return
+    crashDialog.current.close()
+    if (hasOpenedForm.current) {
+      setFeedback({ text: explanation, error: true })
+      setAvailability({ state: 'available' })
+      requestAnimationFrame(() => messageInput.current?.focus())
+    } else {
+      onClose()
+    }
+  }
 
   function retryAvailability() {
     setAvailability({ state: 'checking' })
@@ -115,29 +138,41 @@ export default function ComplaintsForm() {
   }
 
   const blocked = availability.state === 'paused' || availability.state === 'daily-limit'
-
+  const explanation = availability.state === 'paused'
+    ? 'Complaints is temporarily disabled. Please check back later.'
+    : availability.state === 'daily-limit'
+      ? `Today’s complaint quota has been reached. Try again after ${new Date(availability.resetAt).toLocaleString(undefined, {
+          dateStyle: 'medium', timeStyle: 'short',
+        })} (local time).`
+      : ''
   return (
     <>
-      {blocked && (
-        <section className="complaints-blue-screen" aria-labelledby="complaints-blocked-heading">
-          <h1 id="complaints-blocked-heading" ref={blockedHeading} tabIndex={-1}>
-            {availability.state === 'paused' ? 'Complaints paused' : 'Complaint inbox full'}
-          </h1>
-          {availability.state === 'paused' ? (
-            <p>Complaints is temporarily disabled. Please check back later.</p>
-          ) : (
-            <p>
-              Today’s complaint quota has been reached. Try again after{' '}
-              <time dateTime={availability.resetAt}>
-                {new Date(availability.resetAt).toLocaleString(undefined, {
-                  dateStyle: 'medium', timeStyle: 'short',
-                })}
-              </time>{' '}your local time.
-            </p>
-          )}
-          <button type="button" onClick={retryAvailability}>Check again</button>
-        </section>
-      )}
+      <dialog
+        className="complaints-blue-screen"
+        ref={crashDialog}
+        aria-labelledby="complaints-crash-title"
+        aria-describedby="complaints-crash-message"
+        onClick={dismissCrash}
+        onKeyDown={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          dismissCrash()
+        }}
+        onCancel={(event) => {
+          event.preventDefault()
+          dismissCrash()
+        }}
+      >
+        {blocked && (
+          <div className="crash-content">
+            <h1 id="complaints-crash-title">ChelseaXP</h1>
+            <p>An error has occurred. Complaints could not continue.</p>
+            <p id="complaints-crash-message">{explanation}</p>
+            <p>Error: CXP : {availability.state === 'paused' ? '0001 : COMPLAINTS_PAUSED' : '0002 : DAILY_QUOTA_FULL'}</p>
+            <button type="button">Press any key or click to continue <span aria-hidden="true">_</span></button>
+          </div>
+        )}
+      </dialog>
 
       {availability.state === 'checking' && <p role="status">Checking Complaints availability…</p>}
       {availability.state === 'unavailable' && (
@@ -157,7 +192,7 @@ export default function ComplaintsForm() {
           <label htmlFor="complaint-email">Email address</label>
           <input id="complaint-email" name="email" type="email" autoComplete="email" maxLength={254} required readOnly={sending} />
           <label htmlFor="complaint-message">Message</label>
-          <textarea id="complaint-message" name="message" rows={6} maxLength={maxMessageLength} required readOnly={sending} />
+          <textarea ref={messageInput} id="complaint-message" name="message" rows={6} maxLength={maxMessageLength} required readOnly={sending} />
           <button type="submit" disabled={sending}>{sending ? 'Sending…' : 'Send complaint'}</button>
         </form>
         <p className="complaint-feedback" role="status">
