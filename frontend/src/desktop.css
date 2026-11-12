@@ -120,16 +120,14 @@ a { color: #642989; }
 }
 
 .profile-picture {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1;
+  display: block;
+  width: 100%;
+  height: auto;
   margin-bottom: 14px;
-  border: 1px solid #ba8aca;
-  border-radius: 9px;
-  background: #d4a6cf url('/sunset.jpg') center / cover;
-  box-shadow: inset 0 0 0 2px #fff5;
-  font-size: 3.2rem;
+  aspect-ratio: 1;
 }
+
+.shortcut-picture { display: block; }
 
 .profile-sidebar button, .profile-actions button, .task-button {
   border: 1px solid #9867ad;
@@ -181,6 +179,16 @@ a { color: #642989; }
   background: linear-gradient(#d3a2e4, #ad78c7 52%, #9b65b9);
 }
 
+.taskbar-clock {
+  margin-inline-start: auto;
+  padding-inline: 14px;
+  color: #291338;
+  font-size: .85rem;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .start-button {
   align-self: stretch;
   min-width: 104px;
@@ -203,31 +211,68 @@ a { color: #642989; }
   z-index: 2;
   bottom: var(--taskbar-height);
   left: 0;
-  width: 220px;
-  padding: 4px;
-  border: 2px solid #7f488f;
-  border-radius: 10px 10px 0 0;
-  background: #fff2fa;
+  width: min(360px, 100%);
+  max-height: calc(100dvh - var(--taskbar-height));
+  overflow: auto;
+  border: 2px solid #783b85;
+  border-radius: 9px 9px 0 0;
+  background: var(--pink-gloss);
   box-shadow: 3px 4px 12px #43224766;
 }
 .start-header {
-  padding: 11px 12px;
-  border-radius: 6px 6px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-top: 1px solid #fff9;
+  border-bottom: 2px solid #ecaa76;
   background: var(--pink-gloss);
   color: white;
   font-weight: bold;
+  text-align: left;
   text-shadow: 0 1px 2px #62236a;
 }
-.start-menu button {
-  display: block;
+.start-header:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -4px;
+}
+.start-header:hover span { text-decoration: underline; }
+.account-picture {
+  object-fit: cover;
+  border: 2px solid #fff7ed;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px #43224788;
+}
+.start-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 126px;
+  border-bottom: 7px solid #a960aa;
+  background: #fffaf6;
+}
+.start-column { padding: 6px; }
+.start-column + .start-column {
+  border-left: 1px solid #c395d4;
+  background: #eedaf4;
+}
+.start-column button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
-  padding: 9px 12px;
+  min-height: 44px;
+  padding: 6px;
   border: 0;
+  border-radius: 2px;
   background: transparent;
   color: #32194c;
   text-align: left;
+  font-size: .87rem;
 }
-.start-menu button:hover, .start-menu button:focus-visible { background: #eed3f3; }
+.start-column button:hover, .start-column button:focus-visible { background: #e9c2eb; }
+.start-app-icon { font-size: 1.35rem; }
 .phone-status, .phone-back { display: none; }
 
 @media (max-width: 700px) {
