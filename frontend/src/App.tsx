@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent } from 'react'
+import ComplaintsForm from './ComplaintsForm'
 import DocumentExplorer from './DocumentExplorer'
 import './desktop.css'
 
@@ -64,7 +65,7 @@ function AppContent({ id, open }: { id: AppId; open: (id: AppId) => void }) {
     case 'documents':
       return <DocumentExplorer />
     case 'complaints':
-      return <><h1>Complaints</h1><p>Complaints is offline for now.</p></>
+      return <ComplaintsForm />
   }
 }
 
