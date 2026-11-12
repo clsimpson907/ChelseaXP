@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import InsertDiskDialog from './InsertDiskDialog'
-import ConfirmFolderDelete from './ConfirmFolderDelete'
+import ExplorerItemDialog from './ExplorerItemDialog'
 import SearchCompanion, { type SearchCriteria } from './SearchCompanion'
 import TaskPane, { TaskSection } from './TaskPane'
 import { explorerPlaces, locationIds, locations, type FolderId, type SessionFolder } from './explorerLocations'
@@ -59,7 +59,7 @@ export default function DocumentExplorer({
   })
   const [address, setAddress] = useState<FolderId | null>(null)
   const [emptyDrive, setEmptyDrive] = useState<string | null>(null)
-  const [pendingDelete, setPendingDelete] = useState<{ folder: FolderId } | { deniedName: string } | null>(null)
+  const [itemDialog, setItemDialog] = useState<{ folder: FolderId } | { deniedName: string; operation: 'rename' | 'delete' } | null>(null)
   const [selection, setSelection] = useState<string | null>(null)
   const [editing, setEditing] = useState<FolderId | null>(null)
   useEffect(() => {
@@ -87,9 +87,9 @@ export default function DocumentExplorer({
   const view = isDesktop ? desktopView : folderView
   const setView = isDesktop ? setDesktopView : setFolderView
   const addressId = address && folders[address] ? address : locationId
-  const deleteTarget = pendingDelete && 'folder' in pendingDelete
-    ? sessionFolders.find((folder) => folder.id === pendingDelete.folder) : undefined
-  const deniedName = pendingDelete && 'deniedName' in pendingDelete ? pendingDelete.deniedName : undefined
+  const deleteTarget = itemDialog && 'folder' in itemDialog
+    ? sessionFolders.find((folder) => folder.id === itemDialog.folder) : undefined
+  const denied = itemDialog && 'deniedName' in itemDialog ? itemDialog : null
   const historyEntries = history.entries.flatMap(([id], index) =>
     folders[id] ? [{ name: folders[id].name, index }] : [])
   const back = historyEntries.filter(({ index }) => index < history.index).reverse()
@@ -161,6 +161,14 @@ export default function DocumentExplorer({
 
   const selected = entries.find((entry) => entry.id === selection)
   const editable = sessionFolders.find((folder) => folder.id === selected?.id)
+  const canManageSelection = selected && selected.type !== 'Removable Drive' && selected.id !== 'disk'
+  const itemKind = selected?.type === 'Shortcut' ? 'shortcut' : selected?.folder ? 'folder' : 'file'
+
+  function renameSelection() {
+    if (!selected || !canManageSelection) return
+    if (editable) setEditing(editable.id)
+    else setItemDialog({ deniedName: selected.name, operation: 'rename' })
+  }
 
   function resetFolderState() {
     setAddress(null)
@@ -223,7 +231,7 @@ export default function DocumentExplorer({
       { label: 'Make a new folder', action: createFolder, disabled: !canCreate },
     ],
     Edit: [
-      { label: 'Rename', action: () => { if (editable) setEditing(editable.id) }, disabled: !editable },
+      { label: 'Rename', action: renameSelection, disabled: !canManageSelection },
       { label: 'Clear selection', action: () => setSelection(null), disabled: !selected },
     ],
     View: views.map((option) => ({ label: option, action: () => setView(option), disabled: isProtectedDisk && !activeSearch })),
@@ -271,12 +279,12 @@ export default function DocumentExplorer({
       if (event.key === 'Escape') setMenu(null)
     }}>
       {emptyDrive && <InsertDiskDialog drive={emptyDrive} onClose={() => setEmptyDrive(null)} />}
-      {deniedName && <ConfirmFolderDelete name={deniedName} onCancel={() => setPendingDelete(null)} />}
-      {deleteTarget && <ConfirmFolderDelete name={deleteTarget.name}
-        onCancel={() => setPendingDelete(null)}
+      {denied && <ExplorerItemDialog name={denied.deniedName} operation={denied.operation} onCancel={() => setItemDialog(null)} />}
+      {deleteTarget && <ExplorerItemDialog name={deleteTarget.name}
+        onCancel={() => setItemDialog(null)}
         onConfirm={() => {
           deleteFolder(deleteTarget.id)
-          setPendingDelete(null)
+          setItemDialog(null)
           setSelection(null)
           requestAnimationFrame(() => files.current?.focus({ preventScroll: true }))
         }} />}
@@ -367,11 +375,15 @@ export default function DocumentExplorer({
                   {selected.id !== 'resume' && <button type="button" onClick={() => openEntry(selected)}>
                     <Icon icon={selected.icon} /> {selected.type === 'Shortcut' ? 'Open shortcut' : selected.type === 'Removable Drive' || selected.id === 'disk' ? 'Open drive' : selected.folder ? 'Open this folder' : 'Open in Notepad'}
                   </button>}
-                  {editable && <button type="button" onClick={() => setEditing(editable.id)}>Rename this folder</button>}
-                  {selected.type !== 'Removable Drive' && selected.id !== 'disk' && <button type="button" onClick={() => setPendingDelete(editable
-                    ? { folder: editable.id } : { deniedName: selected.name })}>
-                    Delete this {selected.type === 'Shortcut' ? 'shortcut' : selected.folder ? 'folder' : 'file'}
-                  </button>}
+                  {canManageSelection && <>
+                    <button type="button" onClick={renameSelection}>
+                      <Icon icon="rename" /> Rename this {itemKind}
+                    </button>
+                    <button type="button" onClick={() => setItemDialog(editable
+                      ? { folder: editable.id } : { deniedName: selected.name, operation: 'delete' })}>
+                      <Icon icon="delete" /> Delete this {itemKind}
+                    </button>
+                  </>}
                   {selected.id === 'resume' && <p className="task-pane-note">Coming soon</p>}
                 </> : <button type="button" onClick={createFolder}><Icon icon="new-folder" /> Make a new folder</button>}
               </TaskSection>}
