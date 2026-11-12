@@ -1,4 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import ConfirmFolderDelete from './ConfirmFolderDelete'
+import SearchCompanion, { type SearchCriteria } from './SearchCompanion'
 import TaskPane, { TaskSection } from './TaskPane'
 import { explorerPlaces, locationIds, locations, type FolderId, type SessionFolder } from './explorerLocations'
 
@@ -31,7 +33,7 @@ function HistoryDropdown({ label, entries, onSelect }: {
 }
 
 export default function DocumentExplorer({
-  initialFolder, openCredits, openControlPanel, sessionFolders, addFolder, renameFolder,
+  initialFolder, openCredits, openControlPanel, sessionFolders, addFolder, renameFolder, deleteFolder,
 }: {
   initialFolder: FolderId
   openCredits: () => void
@@ -39,12 +41,14 @@ export default function DocumentExplorer({
   sessionFolders: SessionFolder[]
   addFolder: (parent: FolderId) => SessionFolder
   renameFolder: (id: FolderId, name: string) => string | undefined
+  deleteFolder: (id: FolderId) => void
 }) {
   const explorerId = useId()
-  const [history, setHistory] = useState<{ entries: FolderId[]; index: number }>({
-    entries: [initialFolder], index: 0,
+  const [history, setHistory] = useState<{ entries: FolderId[][]; index: number }>({
+    entries: [[initialFolder]], index: 0,
   })
   const [address, setAddress] = useState<FolderId | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<{ folder: FolderId } | { deniedName: string } | null>(null)
   const [selection, setSelection] = useState<string | null>(null)
   const [editing, setEditing] = useState<FolderId | null>(null)
   useEffect(() => {
@@ -54,18 +58,30 @@ export default function DocumentExplorer({
   }, [editing])
   const [nameError, setNameError] = useState('')
   const [sidebar, setSidebar] = useState<'tasks' | 'folders' | 'search'>('tasks')
-  const [query, setQuery] = useState('')
+  const [search, setSearch] = useState<SearchCriteria | null>(null)
   const [view, setView] = useState<View>('Tiles')
   const [menu, setMenu] = useState<string | null>(null)
   const files = useRef<HTMLElement>(null)
   const lastPointer = useRef('')
   const renameInput = useRef<HTMLInputElement>(null)
-  const locationId = history.entries[history.index]
-  useEffect(() => { files.current?.scrollTo(0, 0) }, [locationId])
   const folders: Record<FolderId, { name: string; parent: FolderId | null; icon: string }> = { ...locations, ...Object.fromEntries(sessionFolders.map((folder) => [folder.id, folder])) }
   const folderIds: FolderId[] = [...locationIds, ...sessionFolders.map((folder) => folder.id)]
+  const locationId = history.entries[history.index].find((id) => folders[id]) ?? initialFolder
+  useEffect(() => { files.current?.scrollTo(0, 0) }, [locationId])
   const location = folders[locationId]
-  const historyEntries = history.entries.map((id, index) => ({ name: folders[id].name, index }))
+  const addressId = address && folders[address] ? address : locationId
+  const deleteTarget = pendingDelete && 'folder' in pendingDelete
+    ? sessionFolders.find((folder) => folder.id === pendingDelete.folder) : undefined
+  const deniedName = pendingDelete && 'deniedName' in pendingDelete ? pendingDelete.deniedName : undefined
+  const historyEntries = history.entries.flatMap(([id], index) =>
+    folders[id] ? [{ name: folders[id].name, index }] : [])
+  const back = historyEntries.filter(({ index }) => index < history.index).reverse()
+  const forward = historyEntries.filter(({ index }) => index > history.index)
+
+  function ancestors(id: FolderId): FolderId[] {
+    const parent = folders[id].parent
+    return parent ? [id, ...ancestors(parent)] : [id]
+  }
   const otherPlaces = locationId === 'documents' ? ['desktop', 'computer', 'network'] as const
     : explorerPlaces.filter((id) => id !== locationId)
   const canCreate = locationId !== 'computer' && locationId !== 'network'
@@ -82,10 +98,34 @@ export default function DocumentExplorer({
 
   const folderEntries = (locationId === 'desktop' ? (['computer', 'documents', ...sessionFolders.filter((folder) => folder.parent === 'desktop').map((folder) => folder.id)] as const)
     : folderIds.filter((id) => folders[id].parent === locationId)).map(folderEntry)
-  const searchText = sidebar === 'search' ? query.trim().toLowerCase() : ''
-  const entries = searchText
-    ? [...folderIds.map(folderEntry), ...documentEntries].filter((entry) => entry.name.toLowerCase().includes(searchText))
+  const activeSearch = sidebar === 'search' ? search : null
+  const entries = activeSearch ? searchEntries(activeSearch)
     : [...folderEntries, ...(locationId === 'documents' ? documentEntries : [])]
+
+  function searchEntries({ name, scope, category, media }: SearchCriteria) {
+    function isWithin(parent: FolderId | null): boolean {
+      return !scope || (parent !== null && (parent === scope || isWithin(folders[parent].parent)))
+    }
+
+    const candidates = [
+      ...folderIds.filter((id) => isWithin(folders[id].parent)).map(folderEntry),
+      ...(isWithin('documents') ? documentEntries : []),
+    ]
+    const query = name.trim().toLowerCase()
+    return candidates.filter((entry) => {
+      if (!entry.name.toLowerCase().includes(query)) return false
+      if (category === 'all') return true
+      if (category === 'documents') return !entry.folder && /\.(txt|pdf)$/i.test(entry.name)
+      if (entry.folder) return false
+      const types = [
+        ['Pictures and photos', /\.(png|jpe?g|gif|webp)$/i],
+        ['Music', /\.(mp3|wav|ogg)$/i],
+        ['Video', /\.(mp4|webm|mov)$/i],
+      ] as const
+      return types.some(([label, extension]) => (!media.length || media.includes(label)) && extension.test(entry.name))
+    })
+  }
+
   const selected = entries.find((entry) => entry.id === selection)
   const editable = sessionFolders.find((folder) => folder.id === selected?.id)
 
@@ -94,14 +134,14 @@ export default function DocumentExplorer({
     setSelection(null)
     setEditing(null)
     setNameError('')
-    setQuery('')
+    setSearch(null)
   }
 
   function openLocation(id: FolderId) {
     resetFolderState()
     if (id === locationId) return
     setHistory(({ entries, index }) => ({
-      entries: [...entries.slice(0, index + 1), id], index: index + 1,
+      entries: [...entries.slice(0, index + 1), ancestors(id)], index: index + 1,
     }))
   }
 
@@ -122,7 +162,7 @@ export default function DocumentExplorer({
 
   function createFolder() {
     setSidebar('tasks')
-    setQuery('')
+    setSearch(null)
     const folder = addFolder(locationId)
     setSelection(folder.id)
     setEditing(folder.id)
@@ -139,7 +179,7 @@ export default function DocumentExplorer({
 
   function toggleSidebar(next: typeof sidebar) {
     setSidebar(sidebar === next ? 'tasks' : next)
-    setQuery('')
+    setSearch(null)
     setSelection(null)
   }
 
@@ -165,6 +205,15 @@ export default function DocumentExplorer({
     <div className="explorer xp-file-explorer" onKeyDown={(event) => {
       if (event.key === 'Escape') setMenu(null)
     }}>
+      {deniedName && <ConfirmFolderDelete name={deniedName} onCancel={() => setPendingDelete(null)} />}
+      {deleteTarget && <ConfirmFolderDelete name={deleteTarget.name}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          deleteFolder(deleteTarget.id)
+          setPendingDelete(null)
+          setSelection(null)
+          requestAnimationFrame(() => files.current?.focus({ preventScroll: true }))
+        }} />}
       <div className="explorer-menu-bar" aria-label="Explorer menus" onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setMenu(null)
       }}>
@@ -183,15 +232,15 @@ export default function DocumentExplorer({
       </div>
       <div className="explorer-toolbar" role="group" aria-label="Explorer navigation">
         <div className="explorer-history-group">
-          <button type="button" aria-label="Back" disabled={history.index === 0} onClick={() => travel(history.index - 1)}>
+          <button type="button" aria-label="Back" disabled={!back.length} onClick={() => travel(back[0].index)}>
             <Icon icon="back" size={22} /> Back
           </button>
-          <HistoryDropdown label="Back history" entries={historyEntries.slice(0, history.index).reverse()} onSelect={travel} />
+          <HistoryDropdown label="Back history" entries={back} onSelect={travel} />
         </div>
         <div className="explorer-history-group">
-          <button type="button" aria-label="Forward" disabled={history.index >= history.entries.length - 1}
-            onClick={() => travel(history.index + 1)}><Icon icon="forward" size={22} /></button>
-          <HistoryDropdown label="Forward history" entries={historyEntries.slice(history.index + 1)} onSelect={travel} />
+          <button type="button" aria-label="Forward" disabled={!forward.length}
+            onClick={() => travel(forward[0].index)}><Icon icon="forward" size={22} /></button>
+          <HistoryDropdown label="Forward history" entries={forward} onSelect={travel} />
         </div>
         <button type="button" aria-label="Up" title="Up one level" disabled={!location.parent}
           onClick={() => { if (location.parent) openLocation(location.parent) }}><Icon icon="up" size={22} /></button>
@@ -212,12 +261,12 @@ export default function DocumentExplorer({
       </div>
       <form className="explorer-address-row" onSubmit={(event) => {
         event.preventDefault()
-        openLocation(address ?? locationId)
+        openLocation(addressId)
       }}>
         <label htmlFor={explorerId + '-address'}>Address</label>
         <span className="explorer-address explorer-address--icon">
-          <Icon icon={folders[address ?? locationId].icon} />
-          <select id={explorerId + '-address'} value={address ?? locationId}
+          <Icon icon={folders[addressId].icon} />
+          <select id={explorerId + '-address'} value={addressId}
             onChange={(event) => setAddress(event.target.value as FolderId)}>
             {folderIds.map((id) => <option key={id} value={id}>{folderPath(id)}</option>)}
           </select>
@@ -226,7 +275,13 @@ export default function DocumentExplorer({
       </form>
       <div className="explorer-layout" data-sidebar={sidebar}>
         <div className="explorer-folders">
-          <TaskPane label="Explorer tasks">
+          {sidebar === 'search' ? <SearchCompanion
+            folders={folderIds.map((id) => ({ id, name: folderPath(id) }))}
+            current={locationId}
+            onClose={() => toggleSidebar('search')}
+            onReset={() => { setSearch(null); setSelection(null) }}
+            onSearch={(criteria) => { setSearch(criteria); setSelection(null); files.current?.scrollTo(0, 0) }}
+          /> : <TaskPane label="Explorer tasks">
             {sidebar === 'tasks' && <>
               {(canCreate || selected) && <TaskSection title="File and Folder Tasks">
                 {selected ? <>
@@ -234,6 +289,10 @@ export default function DocumentExplorer({
                     <Icon icon={selected.icon} /> {selected.folder ? 'Open this folder' : 'Open in Notepad'}
                   </button>}
                   {editable && <button type="button" onClick={() => setEditing(editable.id)}>Rename this folder</button>}
+                  <button type="button" onClick={() => setPendingDelete(editable
+                    ? { folder: editable.id } : { deniedName: selected.name })}>
+                    Delete this {selected.folder ? 'folder' : 'file'}
+                  </button>
                   {selected.id === 'resume' && <p className="task-pane-note">Coming soon</p>}
                 </> : <button type="button" onClick={createFolder}><Icon icon="new-folder" /> Make a new folder</button>}
               </TaskSection>}
@@ -261,15 +320,7 @@ export default function DocumentExplorer({
                 </button>
               ))}
             </TaskSection>}
-            {sidebar === 'search' && <TaskSection title="Search">
-              <label className="explorer-search-field">Files and folders
-                <input type="search" value={query} onChange={(event) => {
-                  setQuery(event.target.value)
-                  setSelection(null)
-                }} />
-              </label>
-            </TaskSection>}
-          </TaskPane>
+          </TaskPane>}
         </div>
         <section className="explorer-files" ref={files} tabIndex={-1} aria-label={location.name}
           onClick={(event) => {
@@ -279,6 +330,7 @@ export default function DocumentExplorer({
               setNameError('')
             }
           }}>
+          {activeSearch && <p className="explorer-empty" role="status">{entries.length} search results</p>}
           {entries.length ? <ul className="explorer-items" data-view={view}>
             {entries.map((entry) => <li key={entry.id}>
               {editing === entry.id && entry.folder ? <form className="explorer-rename" onSubmit={(event) => {
@@ -306,7 +358,7 @@ export default function DocumentExplorer({
                 {view === 'Details' ? <small>{entry.type}</small> : entry.id === 'resume' && <small>Coming soon</small>}
               </button>}
             </li>)}
-          </ul> : <p className="explorer-empty">{searchText ? 'No matching files or folders.'
+          </ul> : <p className="explorer-empty">{activeSearch ? 'No matching files or folders.'
             : locationId === 'notes' ? 'No project notes published yet.' : 'This folder is empty.'}</p>}
           {nameError && <p className="explorer-empty" role="status">{nameError}</p>}
         </section>

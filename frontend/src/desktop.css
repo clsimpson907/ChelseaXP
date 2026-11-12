@@ -1000,3 +1000,145 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
   .xp-file-explorer .explorer-folders { display: flex; max-height: 130px; }
   .xp-file-explorer .explorer-folders .task-pane { overflow: auto; }
 }
+
+.search-companion {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  background: linear-gradient(#e3c4eb, #b781cb);
+  color: #30193d;
+  border-inline-end: 1px solid #c29aca;
+  font-size: .78rem;
+}
+.search-companion header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  padding-inline: 6px;
+  background: #fbf1ec;
+  border-bottom: 1px solid #c29aca;
+}
+.search-companion header button {
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font-size: 1rem;
+}
+.search-companion-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: auto;
+  padding: 8px;
+}
+.search-companion-bubble {
+  position: relative;
+  flex: none;
+  margin-block-start: auto;
+  padding: 9px;
+  border: 1px solid #fff;
+  border-radius: 8px;
+  background: #f4e5f7;
+}
+.search-companion-bubble::after {
+  position: absolute;
+  inset: 100% auto auto 12px;
+  width: 14px;
+  height: 11px;
+  background: #f4e5f7;
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+  content: '';
+}
+.search-companion-choice {
+  display: flex;
+  align-items: start;
+  gap: 5px;
+  width: 100%;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+}
+.search-companion-choice:hover { text-decoration: underline; }
+.search-companion-choice img { flex: none; }
+.search-companion form { display: grid; gap: 7px; }
+.search-companion fieldset { min-width: 0; padding: 3px; border: 0; margin: 0; }
+.search-companion fieldset label { display: block; }
+.search-companion :is(input, select) { font: inherit; }
+.search-companion select { width: 100%; }
+.search-companion-buttons { display: flex; gap: 5px; }
+.search-companion-buttons button {
+  flex: 1;
+  padding: 3px;
+  border: 1px solid #9867ad;
+  border-radius: 3px;
+  background: var(--lavender-gloss);
+  color: inherit;
+  font: inherit;
+}
+.search-companion-birby {
+  flex: none;
+  align-self: center;
+  width: 88px;
+  height: 88px;
+  margin-block-start: 10px;
+  background: url('/birby-search.png') 0 0 / 200% 200% no-repeat;
+}
+.search-companion-birby[data-pose="media"] { background-position: right top; }
+.search-companion-birby[data-pose="documents"] { background-position: left bottom; }
+.search-companion-birby[data-pose="all"] { background-position: right bottom; }
+
+@media (max-width: 700px) {
+  .xp-file-explorer [data-sidebar="search"] .explorer-folders { max-height: 43vh; }
+  .search-companion-body { flex-direction: row; align-items: end; gap: 8px; }
+  .search-companion-bubble { flex: 1; min-width: 0; }
+  .search-companion-birby { align-self: end; width: 68px; height: 68px; }
+}
+
+.folder-delete-dialog {
+  width: min(400px, calc(100% - 24px));
+  padding: 0;
+  border: 2px solid #965799;
+  border-radius: 6px 6px 2px 2px;
+  background: #fff5ee;
+  color: #39194d;
+  box-shadow: 0 8px 24px #37193d55;
+}
+.folder-delete-dialog::backdrop { background: #2f143c38; }
+.folder-delete-dialog header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 6px 4px 9px;
+  background: linear-gradient(#dc98cb, #a54592);
+  color: white;
+  font-size: .86rem;
+  font-weight: bold;
+}
+.folder-delete-dialog header button {
+  border: 1px solid #fff9;
+  border-radius: 3px;
+  background: linear-gradient(#ed9b8b, #b44c4c);
+  color: white;
+  font: inherit;
+}
+.folder-delete-content { padding: 12px; font-size: .85rem; }
+.folder-delete-content p { margin: 0; overflow-wrap: anywhere; }
+.folder-delete-actions { display: flex; justify-content: end; gap: 8px; margin-top: 22px; }
+.folder-delete-actions button {
+  min-width: 70px;
+  padding: 4px 10px;
+  border: 1px solid #9867ad;
+  border-radius: 3px;
+  background: var(--lavender-gloss);
+  color: inherit;
+  font: inherit;
+}
+
+.folder-delete-error { display: flex; align-items: center; gap: 12px; }
+.folder-delete-error img { flex: none; }
+.folder-delete-actions[data-denied="true"] { justify-content: center; }
