@@ -3,7 +3,7 @@ import InsertDiskDialog from './InsertDiskDialog'
 import ExplorerItemDialog from './ExplorerItemDialog'
 import SearchCompanion, { type SearchCriteria } from './SearchCompanion'
 import TaskPane, { TaskSection } from './TaskPane'
-import { explorerPlaces, locationIds, locations, type FolderId, type SessionFolder } from './explorerLocations'
+import { locationIds, locations, type FolderId, type SessionFolder } from './explorerLocations'
 
 export type DesktopShortcut = { id: string; name: string; icon: string; folder?: FolderId; open: () => void }
 type Entry = { id: string; name: string; icon: string; type: string; folder?: FolderId; open?: () => void }
@@ -104,11 +104,24 @@ export default function DocumentExplorer({
   }
   const addressParts = ancestors(addressId).reverse().filter((id) =>
     id === addressId || (id !== 'computer' && addressId !== 'disk'))
-  const otherPlaces = locationId === 'documents' ? ['desktop', 'computer', 'network'] as const
-    : isDesktop ? ['documents', 'network'] as const
-      : isComputer ? ['network', 'documents'] as const
-        : isProtectedDisk ? ['computer', 'documents', 'network'] as const
-          : isMusic || isPictures ? ['documents', 'computer', 'network'] as const : explorerPlaces.filter((id) => id !== locationId)
+  function getOtherPlaces(): FolderId[] {
+    switch (locationId) {
+      case 'documents': return ['desktop', 'computer', 'network']
+      case 'desktop': return ['documents', 'network']
+      case 'computer': return ['network', 'documents']
+      case 'disk': return ['computer', 'documents', 'network']
+      case 'network': return ['desktop', 'documents', 'computer']
+    }
+
+    const parent = location.parent
+    const places: FolderId[] = []
+    if (parent) places.push(parent)
+    if (!parent || folders[parent].parent !== 'documents') places.push('documents')
+    places.push('computer', 'network')
+    return [...new Set(places)]
+  }
+  const otherPlaces = getOtherPlaces()
+
   const canCreate = !isComputer && !isProtectedDisk && locationId !== 'network'
 
   function folderEntry(id: FolderId): Entry {
@@ -408,7 +421,7 @@ export default function DocumentExplorer({
                     <Icon icon={folders[id].icon} /> {folders[id].name}
                   </button>
                 ))}
-                {locationId !== 'documents' && !isDesktop && !isProtectedDisk && !isMusic && !isPictures && <button type="button" onClick={openControlPanel}>
+                {isComputer && <button type="button" onClick={openControlPanel}>
                   <Icon icon="control-panel" /> Control Panel
                 </button>}
               </TaskSection>
