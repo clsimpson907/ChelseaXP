@@ -525,3 +525,30 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 .complaints-form button:disabled { opacity: .65; cursor: wait; }
 .complaint-feedback { min-height: 1.5em; }
 .complaint-error { color: #8b234a; }
+
+.complaints-blue-screen {
+  min-height: 230px;
+  padding: clamp(20px, 4vw, 32px);
+  background: #09258a;
+  color: #fff;
+  font-family: "Courier New", monospace;
+}
+
+.complaints-blue-screen h1 {
+  display: inline-block;
+  padding: 3px 8px;
+  background: #e5eaff;
+  color: #09258a;
+  font-size: clamp(1.15rem, 3vw, 1.6rem);
+}
+.complaints-blue-screen :focus-visible { outline-color: #fff; }
+.complaints-blue-screen time { font-weight: bold; white-space: nowrap; }
+
+.complaints-blue-screen button, .complaints-unavailable button {
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}

@@ -17,19 +17,48 @@ public static class ComplaintEndpoints
     public static void MapComplaints(this WebApplication app, bool databaseConfigured)
     {
         var logger = app.Logger;
+        app.MapGet("/api/complaints/status", async (
+            HttpContext context, ComplaintSettings settings, ComplaintDb database, CancellationToken cancellationToken) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+
+            if (!settings.Enabled)
+            {
+                return Results.Ok(new { state = "paused" });
+            }
+
+            if (!IsConfigured(settings, databaseConfigured))
+            {
+                return TemporarilyUnavailable();
+            }
+
+            var dayStart = DateTime.UtcNow.Date;
+            try
+            {
+                if (await database.IsDailyLimitReachedAsync(settings.DailyLimit, dayStart, cancellationToken))
+                {
+                    return Results.Ok(new { state = "daily-limit", resetAt = dayStart.AddDays(1) });
+                }
+
+                return Results.Ok(new { state = "available" });
+            }
+            catch (Exception error) when (error is DbException or DbUpdateException)
+            {
+                LogDatabaseFailure(logger, error);
+                return TemporarilyUnavailable();
+            }
+        }).RequireRateLimiting("complaints-status");
+
         app.MapPost("/api/complaints", async (
             ComplaintSubmission submission, HttpContext context, ComplaintSettings settings,
             ComplaintDb database, IHttpClientFactory clients, CancellationToken cancellationToken) =>
         {
             if (!settings.Enabled)
             {
-                return Error(503, "Complaints is offline for now.");
+                return Results.Json(new { code = "paused", message = "Complaints is offline for now." }, statusCode: 503);
             }
 
-            if (!databaseConfigured || string.IsNullOrWhiteSpace(settings.ResendApiKey) ||
-                string.IsNullOrWhiteSpace(settings.Sender) || string.IsNullOrWhiteSpace(settings.Recipient) ||
-                settings.ClientHashKey is not { Length: >= 32 } ||
-                settings.PerClientHourlyLimit < 1 || settings.DailyLimit < 1)
+            if (!IsConfigured(settings, databaseConfigured))
             {
                 logger.LogWarning("Complaints is enabled but its configuration is incomplete.");
                 return TemporarilyUnavailable();
@@ -48,20 +77,25 @@ public static class ComplaintEndpoints
             var clientHash = HashClient(context, settings);
             try
             {
-                if (!await database.TryReserveAsync(clientHash, settings, cancellationToken))
+                var quota = await database.TryReserveAsync(clientHash, settings, cancellationToken);
+                if (quota.DailyResetAt is { } resetAt)
+                {
+                    return Results.Json(new
+                    {
+                        code = "daily-limit",
+                        message = "Today's complaint inbox is full.",
+                        resetAt,
+                    }, statusCode: 429);
+                }
+
+                if (!quota.Reserved)
                 {
                     return Error(429, "The submission limit has been reached. Please try again later.");
                 }
             }
             catch (Exception error) when (error is DbException or DbUpdateException)
             {
-                var cause = (error as DbUpdateException)?.InnerException ?? error;
-                var codes = cause is SqlException sqlError
-                    ? string.Join(", ", sqlError.Errors.Cast<SqlError>().Select(item => $"{item.Number}/{item.State}"))
-                    : "none";
-                logger.LogWarning(
-                    "The complaint quota database is unavailable. Error type: {ErrorType}. SQL number/state: {SqlCodes}.",
-                    cause.GetType().Name, codes);
+                LogDatabaseFailure(logger, error);
                 return TemporarilyUnavailable();
             }
 
@@ -97,6 +131,23 @@ public static class ComplaintEndpoints
         })
         .WithMetadata(new RequestSizeLimitAttribute(24 * 1024))
         .RequireRateLimiting("complaints");
+    }
+
+    private static bool IsConfigured(ComplaintSettings settings, bool databaseConfigured) =>
+        databaseConfigured && !string.IsNullOrWhiteSpace(settings.ResendApiKey) &&
+        !string.IsNullOrWhiteSpace(settings.Sender) && !string.IsNullOrWhiteSpace(settings.Recipient) &&
+        settings.ClientHashKey is { Length: >= 32 } &&
+        settings.PerClientHourlyLimit > 0 && settings.DailyLimit > 0;
+
+    private static void LogDatabaseFailure(ILogger logger, Exception error)
+    {
+        var cause = (error as DbUpdateException)?.InnerException ?? error;
+        var codes = cause is SqlException sqlError
+            ? string.Join(", ", sqlError.Errors.Cast<SqlError>().Select(item => $"{item.Number}/{item.State}"))
+            : "none";
+        logger.LogWarning(
+            "The complaint quota database is unavailable. Error type: {ErrorType}. SQL number/state: {SqlCodes}.",
+            cause.GetType().Name, codes);
     }
 
     private static string HashClient(HttpContext context, ComplaintSettings settings)

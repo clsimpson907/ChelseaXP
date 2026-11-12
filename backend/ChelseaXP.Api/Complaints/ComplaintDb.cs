@@ -15,7 +15,13 @@ public sealed class ComplaintDb(DbContextOptions<ComplaintDb> options) : DbConte
         reservation.HasIndex(row => new { row.ClientHash, row.CreatedUtc });
     }
 
-    public async Task<bool> TryReserveAsync(string clientHash, ComplaintSettings settings, CancellationToken cancellationToken)
+    public async Task<bool> IsDailyLimitReachedAsync(int limit, DateTime dayStart, CancellationToken cancellationToken)
+    {
+        var count = await Reservations.CountAsync(row => row.CreatedUtc >= dayStart, cancellationToken);
+        return count >= limit;
+    }
+
+    public async Task<(bool Reserved, DateTime? DailyResetAt)> TryReserveAsync(string clientHash, ComplaintSettings settings, CancellationToken cancellationToken)
     {
         await using var transaction = await Database.BeginTransactionAsync(cancellationToken);
         // Serialize quota decisions across replicas and release the lock at commit or rollback.
@@ -30,13 +36,17 @@ public sealed class ComplaintDb(DbContextOptions<ComplaintDb> options) : DbConte
             """, cancellationToken);
 
         var now = DateTime.UtcNow;
-        var dailyCount = await Reservations.CountAsync(row => row.CreatedUtc >= now.Date, cancellationToken);
+        if (await IsDailyLimitReachedAsync(settings.DailyLimit, now.Date, cancellationToken))
+        {
+            return (false, now.Date.AddDays(1));
+        }
+
         var hourStart = now.AddHours(-1);
         var hourlyCount = await Reservations.CountAsync(
             row => row.ClientHash == clientHash && row.CreatedUtc >= hourStart, cancellationToken);
-        if (dailyCount >= settings.DailyLimit || hourlyCount >= settings.PerClientHourlyLimit)
+        if (hourlyCount >= settings.PerClientHourlyLimit)
         {
-            return false;
+            return (false, null);
         }
 
         var retentionCutoff = now.AddDays(-2);
@@ -44,7 +54,7 @@ public sealed class ComplaintDb(DbContextOptions<ComplaintDb> options) : DbConte
         Reservations.Add(new ComplaintReservation { ClientHash = clientHash, CreatedUtc = now });
         await SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        return true;
+        return (true, null);
     }
 }
 
