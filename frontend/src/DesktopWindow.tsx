@@ -64,7 +64,7 @@ export default function DesktopWindow({
 
   function begin(event: PointerEvent<HTMLElement>, kind: Interaction['kind']) {
     if (event.button !== 0 || (kind === 'move' && (event.target as HTMLElement).closest('button'))) return
-    if (interaction.current) return
+    if (interaction.current || panel.current?.querySelector('.xp-progress')) return
     const start = measure()
     if (!start) return
 
