@@ -1,5 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import XpProgress from './XpProgress'
+import { showProgressUntil } from './progressTiming'
+
+const checkingMessages = [
+  'Looking for the Complaints Department…',
+  'Checking whether the inbox has room for drama…',
+  'Asking the quota goblin for a head count…',
+  'Waiting for the Complaints Department to pick up…',
+  'Checking the inbox for signs of life…',
+] as const
+
+const sendingMessages = [
+  'Filing your grievance under Extremely Important…',
+  'Teaching the envelope how to find Chelsea…',
+  'Applying one ceremonial postage stamp…',
+  'Handing the complaint to a very small courier…',
+  'Trying to make the inbox look busy…',
+] as const
 
 const apiOrigin = import.meta.env.VITE_API_ORIGIN || 'http://localhost:5080'
 const maxMessageLength = 2000
@@ -22,6 +40,7 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
   const [availability, setAvailability] = useState<Availability>({ state: 'checking' })
   const [check, setCheck] = useState(0)
   const [sending, setSending] = useState(false)
+  const [progressComplete, setProgressComplete] = useState(false)
   const [feedback, setFeedback] = useState<{ text: string; error: boolean } | null>(null)
   const crashDialog = useRef<HTMLDialogElement>(null)
   const hasOpenedForm = useRef(false)
@@ -32,10 +51,13 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
 
     async function checkAvailability() {
       try {
-        const response = await fetch(new URL('/api/complaints/status', apiOrigin), {
+        const response = await showProgressUntil(fetch(new URL('/api/complaints/status', apiOrigin), {
           cache: 'no-store',
           signal: AbortSignal.any([controller.signal, AbortSignal.timeout(25000)]),
+        }), () => {
+          if (!controller.signal.aborted) setProgressComplete(true)
         })
+        if (controller.signal.aborted) return
         // The previous API revision has no availability route during rollout.
         if (response.status === 404) {
           setAvailability({ state: 'available' })
@@ -44,6 +66,7 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
         if (!response.ok) throw new Error('Availability request failed')
 
         const result = await response.json()
+        if (controller.signal.aborted) return
         const state = result.state === 'available' ? { state: 'available' as const }
           : blockedState(result.state, result.resetAt)
         setAvailability(state ?? { state: 'unavailable' })
@@ -84,6 +107,7 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
   }
 
   function retryAvailability() {
+    setProgressComplete(false)
     setAvailability({ state: 'checking' })
     setCheck((previous) => previous + 1)
   }
@@ -103,15 +127,16 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
       return
     }
 
+    setProgressComplete(false)
     setSending(true)
     setFeedback(null)
     try {
-      const response = await fetch(new URL('/api/complaints', apiOrigin), {
+      const response = await showProgressUntil(fetch(new URL('/api/complaints', apiOrigin), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, message }),
         signal: AbortSignal.timeout(45000),
-      })
+      }), () => setProgressComplete(true))
 
       if (response.status === 202) {
         form.reset()
@@ -174,7 +199,14 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
         )}
       </dialog>
 
-      {availability.state === 'checking' && <p role="status">Checking Complaints availability…</p>}
+      {availability.state === 'checking' && (
+        <XpProgress key={`check-${check}`} label="Checking Complaints availability" icon="/icons/connection-status.png"
+          messages={checkingMessages} complete={progressComplete} onCancel={onClose} />
+      )}
+      {sending && (
+        <XpProgress label="Sending complaint" icon="/icons/mail.png"
+          messages={sendingMessages} complete={progressComplete} onCancel={onClose} />
+      )}
       {availability.state === 'unavailable' && (
         <div className="complaints-unavailable">
           <h1>Complaints unavailable</h1>
@@ -183,7 +215,7 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
         </div>
       )}
 
-      <div hidden={availability.state !== 'available'}>
+      <div hidden={availability.state !== 'available' || sending}>
         <h1>Complaints</h1>
         <p>Your message goes to Chelsea by email. She’ll use your email address to reply if needed.</p>
         <form className="complaints-form" onSubmit={submit} aria-busy={sending}>
