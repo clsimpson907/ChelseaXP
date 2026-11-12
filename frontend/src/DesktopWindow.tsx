@@ -29,6 +29,7 @@ export default function DesktopWindow({
   const panel = useRef<HTMLElement>(null)
   const interaction = useRef<Interaction | null>(null)
   const [bounds, setBounds] = useState<WindowBounds | null>(null)
+  const [maximized, setMaximized] = useState(false)
 
   function measure(): WindowBounds | undefined {
     const workspace = desktop.current?.getBoundingClientRect()
@@ -64,7 +65,7 @@ export default function DesktopWindow({
 
   function begin(event: PointerEvent<HTMLElement>, kind: Interaction['kind']) {
     if (event.button !== 0 || (kind === 'move' && (event.target as HTMLElement).closest('button'))) return
-    if (interaction.current || panel.current?.querySelector('.xp-progress')) return
+    if (maximized || interaction.current || panel.current?.querySelector('.xp-progress')) return
     const start = measure()
     if (!start) return
 
@@ -110,7 +111,7 @@ export default function DesktopWindow({
   return (
     <article
       id={`window-${id}`}
-      className={`app-window${active ? '' : ' app-window--inactive'}`}
+      className={`app-window${active ? '' : ' app-window--inactive'}${maximized ? ' app-window--maximized' : ''}`}
       data-window={id}
       aria-labelledby={`window-title-${id}`}
       ref={panel}
@@ -133,6 +134,8 @@ export default function DesktopWindow({
         <span id={`window-title-${id}`}><img className="window-icon" src={icon} alt="" />{title}</span>
         <div className="window-controls">
           <button aria-label={`Minimize ${title}`} onClick={onMinimize}>−</button>
+          <button className="window-maximize" aria-label={`${maximized ? 'Restore' : 'Maximize'} ${title}`}
+            onClick={() => setMaximized(!maximized)}>{maximized ? '❐' : '□'}</button>
           <button aria-label={`Close ${title}`} onClick={onClose}>×</button>
         </div>
       </div>

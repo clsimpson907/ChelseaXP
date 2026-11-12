@@ -10,21 +10,42 @@ const locations = {
 type LocationId = keyof typeof locations
 
 export default function DocumentExplorer() {
-  const [locationId, setLocationId] = useState<LocationId>('documents')
+  const [history, setHistory] = useState<{ entries: LocationId[]; index: number }>({
+    entries: ['documents'], index: 0,
+  })
+  const locationId = history.entries[history.index]
   const heading = useRef<HTMLHeadingElement>(null)
   const files = useRef<HTMLElement>(null)
   const location = locations[locationId]
 
-  function openLocation(id: LocationId) {
-    setLocationId(id)
+  function focusFiles() {
     files.current?.scrollTo(0, 0)
     heading.current?.focus({ preventScroll: true })
   }
 
+  function openLocation(id: LocationId) {
+    if (id === locationId) return
+    setHistory(({ entries, index }) => ({
+      entries: [...entries.slice(0, index + 1), id],
+      index: index + 1,
+    }))
+    focusFiles()
+  }
+
+  function travel(offset: -1 | 1) {
+    setHistory((current) => ({ ...current, index: current.index + offset }))
+    focusFiles()
+  }
+
   return (
     <div className="explorer">
-      <div className="explorer-toolbar">
+      <div className="explorer-toolbar" role="group" aria-label="Explorer navigation">
+        <button disabled={history.index === 0} onClick={() => travel(-1)}>← Back</button>
+        <button disabled={history.index >= history.entries.length - 1} onClick={() => travel(1)}>→ Forward</button>
         <button disabled={location.parent === null} onClick={() => openLocation('documents')}>↑ Up</button>
+      </div>
+      <div className="explorer-address-row">
+        <span aria-hidden="true">Address</span>
         <nav className="explorer-address" aria-label="Folder path">
           {location.parent ? (
             <>
@@ -37,6 +58,7 @@ export default function DocumentExplorer() {
       </div>
       <div className="explorer-layout">
         <nav className="explorer-folders" aria-label="Folders">
+          <h2>Folders</h2>
           <button aria-current={locationId === 'documents' ? 'location' : undefined} onClick={() => openLocation('documents')}>
             <img src="/icons/my-documents.png" alt="" width="32" height="32" /> My Documents
           </button>
