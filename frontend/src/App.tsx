@@ -2,8 +2,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import DesktopWindow from './DesktopWindow'
 import ComplaintsForm from './ComplaintsForm'
 import ControlPanel from './ControlPanel'
-import DocumentExplorer from './DocumentExplorer'
-import { locations, type FolderId, type LocationId, type SessionFolder } from './explorerLocations'
+import DocumentExplorer, { type DesktopShortcut } from './DocumentExplorer'
+import { locations, type FolderId, type SessionFolder } from './explorerLocations'
 import credits from './credits.txt?raw'
 import './desktop.css'
 
@@ -21,7 +21,15 @@ const apps = [
 ] as const
 
 type AppId = (typeof apps)[number]['id']
-type WindowEntry = { id: AppId; minimized: boolean; folder?: LocationId; navigation?: number }
+type WindowEntry = { id: AppId; minimized: boolean; folder?: FolderId; navigation?: number }
+
+const linkedInUrl = 'https://www.linkedin.com/in/chelsea-simpson-54437215a/'
+const desktopShortcuts = [
+  ...shortcuts,
+  { id: 'network', label: locations.network.name, icon: '/icons/my-network-places.png' },
+  { id: 'linkedin', label: 'LinkedIn', icon: '/icons/linkedin.png' },
+] as const
+type DesktopShortcutId = (typeof desktopShortcuts)[number]['id']
 
 const phoneLayout = '(max-width: 700px)'
 
@@ -38,7 +46,7 @@ function isPhoneLayout() {
 function LinkedInShortcut({ onClick }: { onClick?: () => void }) {
   return (
     <a
-      href="https://www.linkedin.com/in/chelsea-simpson-54437215a/"
+      href={linkedInUrl}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="LinkedIn (opens in a new tab)"
@@ -56,11 +64,25 @@ function AppContent({ entry, open, close, active, sessionFolders, addFolder, ren
   addFolder: (parent: FolderId) => SessionFolder
   renameFolder: (id: FolderId, name: string) => string | undefined
   deleteFolder: (id: FolderId) => void
-  open: (id: AppId, folder?: LocationId) => void
+  open: (id: AppId, folder?: FolderId) => void
   close: () => void
   active: boolean
 }) {
   const { id, folder, navigation } = entry
+  function launchShortcut(shortcutId: DesktopShortcutId) {
+    if (shortcutId === 'linkedin') window.open(linkedInUrl, '_blank', 'noopener,noreferrer')
+    else if (shortcutId === 'network') open('computer', 'network')
+    else open(shortcutId)
+  }
+
+  const explorerShortcuts: DesktopShortcut[] = desktopShortcuts.map(({ id: shortcutId, label, icon }) => ({
+    id: shortcutId,
+    name: label,
+    icon,
+    folder: shortcutId === 'computer' || shortcutId === 'documents' || shortcutId === 'network' ? shortcutId : undefined,
+    open: () => launchShortcut(shortcutId),
+  }))
+
   switch (id) {
     case 'about':
       return (
@@ -95,7 +117,7 @@ function AppContent({ entry, open, close, active, sessionFolders, addFolder, ren
       )
     case 'computer':
     case 'documents':
-      return <DocumentExplorer key={navigation} initialFolder={folder ?? id}
+      return <DocumentExplorer key={navigation} initialFolder={folder ?? id} desktopShortcuts={explorerShortcuts}
         sessionFolders={sessionFolders} addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder}
         openCredits={() => open('notepad')} openControlPanel={() => open('control')} />
     case 'notepad':
@@ -163,6 +185,8 @@ export default function App() {
   }
 
   function folderNameExists(parent: FolderId, name: string, except?: FolderId) {
+    const normalized = name.toLowerCase()
+    if (parent === 'desktop' && desktopShortcuts.some(({ label }) => label.toLowerCase() === normalized)) return true
     return [...Object.entries(locations), ...sessionFolders.map((folder) => [folder.id, folder] as const)]
       .some(([id, folder]) => id !== except && folder.parent === parent && folder.name.toLowerCase() === name.toLowerCase())
       || (parent === 'documents' && ['résumé.pdf', 'credits.txt'].includes(name.toLowerCase()))
@@ -199,7 +223,7 @@ export default function App() {
     })
   }
 
-  function open(id: AppId, folder?: LocationId) {
+  function open(id: AppId, folder?: FolderId) {
     setWindows((entries) => {
       const existing = entries.find((entry) => entry.id === id)
       const entry = { ...existing, id, minimized: false }
@@ -242,13 +266,22 @@ export default function App() {
         </header>
         <nav className="shortcuts" aria-label="Portfolio apps">
           <LocalClock showDate />
-          {shortcuts.map(({ id, label, icon }) => (
-            <button key={id} data-app={id} onClick={() => open(id)}>
+          {desktopShortcuts.map(({ id, label, icon }) => id === 'linkedin' ? <LinkedInShortcut key={id} /> : (
+            <button key={id} data-app={id} onClick={() => {
+              if (id === 'network') open('computer', 'network')
+              else if (id === 'computer' || id === 'documents') open(id, id)
+              else open(id)
+            }}>
               <img className="shortcut-icon" src={icon} alt="" />
               <span>{label}</span>
             </button>
           ))}
-          <LinkedInShortcut />
+          {sessionFolders.filter(({ parent }) => parent === 'desktop').map(({ id, name, icon }) => (
+            <button key={id} onClick={() => open('computer', id)}>
+              <img className="shortcut-icon" src={'/icons/' + icon + '.png'} alt="" />
+              <span>{name}</span>
+            </button>
+          ))}
         </nav>
 
         {apps.map((app) => {

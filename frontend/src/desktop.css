@@ -436,8 +436,30 @@ a { color: #642989; }
   .profile-actions button { min-height: 44px; }
 }
 
-@media (max-height: 490px) and (min-width: 701px) {
-  .shortcuts { max-height: 100%; overflow: auto; }
+@media (min-width: 701px) {
+  .shortcuts {
+    width: 100%;
+    height: 100%;
+    grid-template-rows: repeat(auto-fill, 76px);
+    grid-auto-columns: 98px;
+    grid-auto-flow: column;
+    align-content: start;
+    justify-content: start;
+    overflow: auto;
+  }
+  .shortcuts :is(button, a) {
+    align-content: start;
+    min-width: 0;
+    padding: 3px 2px;
+    line-height: 14px;
+  }
+  .shortcuts :is(button, a) span {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+  }
 }
 
 .shortcuts a, .start-column a { text-decoration: none; }
@@ -1142,3 +1164,11 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 .folder-delete-error { display: flex; align-items: center; gap: 12px; }
 .folder-delete-error img { flex: none; }
 .folder-delete-actions[data-denied="true"] { justify-content: center; }
+
+.xp-file-explorer .explorer-items[data-desktop="true"][data-view="Icons"] {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 76px), 76px));
+  align-items: start;
+}
+.xp-file-explorer .explorer-items[data-desktop="true"] .explorer-item {
+  overflow-wrap: anywhere;
+}
