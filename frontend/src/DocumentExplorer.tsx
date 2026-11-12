@@ -102,6 +102,8 @@ export default function DocumentExplorer({
     const parent = folders[id].parent
     return parent ? [id, ...ancestors(parent)] : [id]
   }
+  const addressParts = ancestors(addressId).reverse().filter((id) =>
+    id === addressId || (id !== 'computer' && addressId !== 'disk'))
   const otherPlaces = locationId === 'documents' ? ['desktop', 'computer', 'network'] as const
     : isDesktop ? ['documents', 'network'] as const
       : isComputer ? ['network', 'documents'] as const
@@ -343,7 +345,16 @@ export default function DocumentExplorer({
       }}>
         <label htmlFor={explorerId + '-address'}>Address</label>
         <span className="explorer-address explorer-address--icon">
-          <Icon icon={folders[addressId].icon} />
+          <span className="explorer-address-parts">
+            <Icon icon={folders[addressId].icon} />
+            {addressParts.map((id, index) => (
+              <span className="explorer-address-part" key={id}>
+                {index > 0 && <span aria-hidden="true">›</span>}
+                {id === addressId ? <span>{id === 'disk' ? folderPath(id) : folders[id].name}</span>
+                  : <button type="button" onClick={() => openLocation(id)}>{folders[id].name}</button>}
+              </span>
+            ))}
+          </span>
           <select id={explorerId + '-address'} value={addressId}
             onChange={(event) => setAddress(event.target.value as FolderId)}>
             {folderIds.map((id) => <option key={id} value={id}>{folderPath(id)}</option>)}
