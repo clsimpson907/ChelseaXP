@@ -10,10 +10,15 @@ var allowedOrigins = complaintSettings.AllowedOrigins;
 builder.Services.AddSingleton(complaintSettings);
 builder.Services.AddDbContext<ComplaintDb>(options => options.UseSqlServer(connectionString));
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
-    policy.WithOrigins(allowedOrigins).WithMethods("POST").WithHeaders("Content-Type")));
+    policy.WithOrigins(allowedOrigins).WithMethods("GET", "POST").WithHeaders("Content-Type")));
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter("complaints-status", limiter =>
+    {
+        limiter.PermitLimit = 20;
+        limiter.Window = TimeSpan.FromMinutes(1);
+    });
     options.AddFixedWindowLimiter("complaints", limiter =>
     {
         limiter.PermitLimit = 60;
