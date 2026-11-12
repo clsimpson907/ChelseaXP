@@ -1,4 +1,4 @@
-const minimumDuration = 1700
+const minimumDuration = 2000
 const completedDuration = 240
 
 function wait(milliseconds: number) {

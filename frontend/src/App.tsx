@@ -5,7 +5,7 @@ import DocumentExplorer from './DocumentExplorer'
 import './desktop.css'
 
 const apps = [
-  { id: 'about', label: 'About Me', icon: '/chelsea.jpg' },
+  { id: 'about', label: 'About Me', icon: '/icons/user-accounts.png' },
   { id: 'documents', label: 'My Documents', icon: '/icons/my-documents.png' },
   { id: 'complaints', label: 'Complaints', icon: '/icons/mail.png' },
 ] as const
@@ -174,11 +174,7 @@ export default function App() {
           <LocalClock showDate />
           {apps.map(({ id, label, icon }) => (
             <button key={id} data-app={id} onClick={() => open(id)}>
-              {id === 'about' ? (
-                <img className="shortcut-picture account-picture" src="/chelsea.jpg" alt="" width="38" height="38" />
-              ) : (
-                <img className="shortcut-icon" src={icon} alt="" />
-              )}
+              <img className="shortcut-icon" src={icon} alt="" />
               <span>{label}</span>
             </button>
           ))}
