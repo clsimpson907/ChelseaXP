@@ -3,7 +3,7 @@ import DesktopWindow from './DesktopWindow'
 import ComplaintsForm from './ComplaintsForm'
 import ControlPanel from './ControlPanel'
 import DocumentExplorer from './DocumentExplorer'
-import type { LocationId } from './explorerLocations'
+import { locations, type FolderId, type LocationId, type SessionFolder } from './explorerLocations'
 import credits from './credits.txt?raw'
 import './desktop.css'
 
@@ -50,8 +50,11 @@ function LinkedInShortcut({ onClick }: { onClick?: () => void }) {
   )
 }
 
-function AppContent({ entry, open, close, active }: {
+function AppContent({ entry, open, close, active, sessionFolders, addFolder, renameFolder }: {
   entry: WindowEntry
+  sessionFolders: SessionFolder[]
+  addFolder: (parent: FolderId) => SessionFolder
+  renameFolder: (id: FolderId, name: string) => string | undefined
   open: (id: AppId, folder?: LocationId) => void
   close: () => void
   active: boolean
@@ -92,6 +95,7 @@ function AppContent({ entry, open, close, active }: {
     case 'computer':
     case 'documents':
       return <DocumentExplorer key={navigation} initialFolder={folder ?? id}
+        sessionFolders={sessionFolders} addFolder={addFolder} renameFolder={renameFolder}
         openCredits={() => open('notepad')} openControlPanel={() => open('control')} />
     case 'notepad':
       return <pre className="notepad-text">{credits}</pre>
@@ -125,6 +129,7 @@ function LocalClock({ showDate = false }: { showDate?: boolean }) {
 
 export default function App() {
   const [windows, setWindows] = useState<WindowEntry[]>([{ id: 'about', minimized: false }])
+  const [sessionFolders, setSessionFolders] = useState<SessionFolder[]>([])
   const [phoneHome, setPhoneHome] = useState(false)
   const [startOpen, setStartOpen] = useState(false)
   const desktop = useRef<HTMLElement>(null)
@@ -154,6 +159,29 @@ export default function App() {
       if (!entry || entry.minimized || entries.at(-1)?.id === id) return entries
       return [...entries.filter((item) => item.id !== id), entry]
     })
+  }
+
+  function folderNameExists(parent: FolderId, name: string, except?: FolderId) {
+    return [...Object.entries(locations), ...sessionFolders.map((folder) => [folder.id, folder] as const)]
+      .some(([id, folder]) => id !== except && folder.parent === parent && folder.name.toLowerCase() === name.toLowerCase())
+      || (parent === 'documents' && ['résumé.pdf', 'credits.txt'].includes(name.toLowerCase()))
+  }
+
+  function addFolder(parent: FolderId): SessionFolder {
+    let name = 'New Folder'
+    for (let number = 2; folderNameExists(parent, name); number += 1) name = 'New Folder (' + number + ')'
+    const folder: SessionFolder = { id: ('folder-' + crypto.randomUUID()) as FolderId, name, parent, icon: 'folder' }
+    setSessionFolders((current) => [...current, folder])
+    return folder
+  }
+
+  function renameFolder(id: FolderId, input: string) {
+    const folder = sessionFolders.find((entry) => entry.id === id)
+    if (!folder) return
+    const name = input.trim()
+    if (!name || name === '.' || name === '..' || /[\\/:*?"<>|]/.test(name)) return 'Enter a valid folder name.'
+    if (folderNameExists(folder.parent, name, id)) return 'A file or folder already has that name.'
+    setSessionFolders((current) => current.map((entry) => entry.id === id ? { ...entry, name } : entry))
   }
 
   function open(id: AppId, folder?: LocationId) {
@@ -218,7 +246,8 @@ export default function App() {
             <DesktopWindow key={app.id} id={app.id} title={app.label} icon={app.icon}
               desktop={desktop} depth={index + 1} active={foreground} hidden={hidden}
               onActivate={() => activate(app.id)} onMinimize={() => minimize(app.id)} onClose={() => close(app.id)}>
-              <AppContent entry={windows[index]} open={open} close={() => close(app.id)} active={foreground} />
+              <AppContent entry={windows[index]} sessionFolders={sessionFolders}
+                addFolder={addFolder} renameFolder={renameFolder} open={open} close={() => close(app.id)} active={foreground} />
             </DesktopWindow>
           )
         })}

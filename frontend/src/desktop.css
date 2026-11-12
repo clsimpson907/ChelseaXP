@@ -915,3 +915,88 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
   .control-panel .task-pane-actions :is(button, a) { min-height: 44px; }
   .control-panel-content { flex: 1; }
 }
+
+.explorer-menu-bar {
+  display: flex;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+  padding-inline: 4px;
+  border-bottom: 1px solid #dcc4da;
+  background: #f8eef4;
+}
+.explorer-menu { position: relative; }
+.explorer-menu button {
+  padding: 3px 7px;
+  border: 0;
+  background: transparent;
+  color: #39194d;
+  font-size: .78rem;
+  text-align: left;
+}
+.explorer-menu button:not(:disabled):hover,
+.explorer-menu button[aria-expanded="true"] { background: #eacdf1; }
+.explorer-menu button:disabled { color: #7f7182; }
+.explorer-menu-options {
+  position: absolute;
+  inset-inline-start: 0;
+  min-width: max-content;
+  padding: 3px;
+  background: #fffafd;
+  border: 1px solid #a77bb1;
+  box-shadow: 2px 3px 5px #42254d44;
+}
+.explorer-menu-options button { display: block; width: 100%; }
+.explorer-view-picker { position: relative; display: flex; align-items: center; gap: 2px; }
+.explorer-view-picker select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
+.explorer-view-picker:focus-within { outline: 2px solid #7d4c90; }
+.explorer-address--icon { position: relative; }
+.explorer-address--icon > img { position: absolute; inset-inline-start: 4px; top: 50%; translate: 0 -50%; pointer-events: none; }
+.explorer-address--icon select { padding-inline-start: 23px; }
+.xp-file-explorer .explorer-folders > .task-pane {
+  background: linear-gradient(#dfbbea, #b885cd);
+}
+.xp-file-explorer .task-pane-section { border-color: #fff8; background: #f2e3f6; }
+.xp-file-explorer .task-pane-section h2 button { background: linear-gradient(100deg, #fff, #e5c9ec); }
+.xp-file-explorer .task-pane-toggle { font-size: 0; }
+.xp-file-explorer .task-pane-toggle::before { content: '»'; display: block; rotate: -90deg; font-size: .85rem; line-height: 1; }
+.xp-file-explorer [aria-expanded="false"] .task-pane-toggle::before { rotate: 90deg; }
+.xp-file-explorer .task-pane-actions button { font-size: .78rem; }
+.explorer-search-field { display: grid; gap: 4px; font-size: .8rem; }
+.explorer-search-field input { width: 100%; }
+.xp-file-explorer .explorer-files { padding: 6px; background: #fffdfd; }
+.xp-file-explorer .explorer-items {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 154px), 1fr));
+  gap: 3px;
+  margin: 0;
+}
+.xp-file-explorer .explorer-item,
+.explorer-rename {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  text-align: left;
+  font-size: .78rem;
+  font-weight: normal;
+}
+.xp-file-explorer .explorer-item > img, .explorer-rename > img { flex: none; }
+.explorer-item-label { overflow-wrap: anywhere; }
+.xp-file-explorer .explorer-item[aria-pressed="true"] .explorer-item-label {
+  color: white;
+  background: #76428c;
+}
+.xp-file-explorer .explorer-item[aria-pressed="true"] img { filter: brightness(.75); }
+.xp-file-explorer .explorer-items[data-view="Icons"] { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
+.xp-file-explorer [data-view="Icons"] .explorer-item { flex-direction: column; text-align: center; }
+.xp-file-explorer .explorer-items:is([data-view="List"], [data-view="Details"]) { grid-template-columns: 1fr; }
+.xp-file-explorer [data-view="Details"] .explorer-item { display: grid; grid-template-columns: 16px minmax(0, 1fr) minmax(0, 1fr); }
+.explorer-rename input { min-width: 0; width: 100%; font: inherit; }
+.explorer-empty { margin: 8px; font-size: .85rem; }
+
+@media (max-width: 700px) {
+  .xp-file-explorer .explorer-toolbar { flex-wrap: wrap; }
+  .xp-file-explorer .explorer-layout { grid-template-rows: minmax(0, auto) minmax(0, 1fr); }
+  .xp-file-explorer .explorer-folders { display: flex; max-height: 130px; }
+  .xp-file-explorer .explorer-folders .task-pane { overflow: auto; }
+}

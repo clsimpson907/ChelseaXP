@@ -5,8 +5,8 @@ export default function TaskPane({ label, children }: { label: string; children:
   return <aside className="window-sidebar task-pane" aria-label={label}>{children}</aside>
 }
 
-export function TaskSection({ title, children }: { title: string; children: ReactNode }) {
-  const [expanded, setExpanded] = useState(true)
+export function TaskSection({ title, children, defaultExpanded = true }: { title: string; children: ReactNode; defaultExpanded?: boolean }) {
+  const [expanded, setExpanded] = useState(defaultExpanded)
   const sectionId = useId()
 
   return (
