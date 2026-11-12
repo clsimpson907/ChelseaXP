@@ -34,7 +34,7 @@ a { color: #642989; }
   padding: 12px 8px;
 }
 
-.shortcuts button {
+.shortcuts :is(button, a) {
   display: grid;
   justify-items: center;
   gap: 4px;
@@ -48,7 +48,7 @@ a { color: #642989; }
   text-shadow: 0 1px 2px #271436, 1px 0 #271436, -1px 0 #271436;
 }
 
-.shortcuts button:hover, .shortcuts button:focus-visible {
+.shortcuts :is(button, a):hover, .shortcuts :is(button, a):focus-visible {
   background: #46265380;
   border-color: #fff8;
 }
@@ -257,7 +257,7 @@ a { color: #642989; }
   border-left: 1px solid #c395d4;
   background: #eedaf4;
 }
-.start-column button {
+.start-column :is(button, a) {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -271,7 +271,7 @@ a { color: #642989; }
   text-align: left;
   font-size: .87rem;
 }
-.start-column button:hover, .start-column button:focus-visible { background: #e9c2eb; }
+.start-column :is(button, a):hover, .start-column :is(button, a):focus-visible { background: #e9c2eb; }
 .start-app-icon { font-size: 1.35rem; }
 .phone-status, .phone-back { display: none; }
 
@@ -293,7 +293,7 @@ a { color: #642989; }
     margin: 24px auto;
     padding: 0 16px;
   }
-  .shortcuts button {
+  .shortcuts :is(button, a) {
     gap: 8px;
     min-height: 86px;
     padding: 10px 4px;
@@ -303,7 +303,7 @@ a { color: #642989; }
     font-size: .9rem;
     text-shadow: none;
   }
-  .shortcuts button:hover, .shortcuts button:focus-visible { background: #f8def5; }
+  .shortcuts :is(button, a):hover, .shortcuts :is(button, a):focus-visible { background: #f8def5; }
   .shell--app-open .shortcuts, .shell--app-open .phone-status,
   .taskbar, .start-menu, .menu-dismiss, .window-controls, .profile-sidebar { display: none; }
   .app-window {
@@ -333,3 +333,48 @@ a { color: #642989; }
 @media (max-height: 490px) and (min-width: 701px) {
   .shortcuts { max-height: 100%; overflow: auto; }
 }
+
+.shortcuts a, .start-column a { text-decoration: none; }
+
+.linkedin-icon {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 1px solid #004a83;
+  border-radius: 5px;
+  background: #0a66c2;
+  color: white;
+  font: bold 1.45rem Arial, sans-serif;
+  text-shadow: none;
+}
+
+.start-column .linkedin-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 3px;
+  font-size: .92rem;
+}
+
+.document-list {
+  margin-top: 18px;
+  border: 1px solid #d9b0de;
+  border-radius: 8px;
+  background: #fffaf6;
+}
+
+.document-entry {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 14px;
+}
+
+.document-status { color: #634b73; font-size: .85rem; }
+.document-list details { border-top: 1px solid #e5c8e7; }
+.document-list summary { cursor: pointer; font-weight: bold; }
+.document-list summary::after { content: "▸"; margin-inline-start: auto; }
+.document-list details[open] summary::after { content: "▾"; }
+.document-empty { margin: 0; padding: 0 14px 12px; }

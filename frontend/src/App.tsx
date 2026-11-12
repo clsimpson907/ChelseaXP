@@ -4,14 +4,27 @@ import './desktop.css'
 
 const apps = [
   { id: 'about', label: 'About Me', icon: '👤' },
-  { id: 'projects', label: 'Projects', icon: '📁' },
-  { id: 'resume', label: 'Résumé', icon: '📄' },
-  { id: 'contact', label: 'Contact', icon: '✉️' },
+  { id: 'documents', label: 'My Documents', icon: '📁' },
   { id: 'complaints', label: 'Complaints', icon: '💌' },
 ] as const
 
 type AppId = (typeof apps)[number]['id']
 type Point = { x: number; y: number }
+
+function LinkedInShortcut({ onClick }: { onClick?: () => void }) {
+  return (
+    <a
+      href="https://www.linkedin.com/in/chelsea-simpson-54437215a/"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="LinkedIn (opens in a new tab)"
+      onClick={onClick}
+    >
+      <span className="linkedin-icon" aria-hidden="true">in</span>
+      <span>LinkedIn</span>
+    </a>
+  )
+}
 
 function AppContent({ id, open }: { id: AppId; open: (id: AppId) => void }) {
   switch (id) {
@@ -20,8 +33,7 @@ function AppContent({ id, open }: { id: AppId; open: (id: AppId) => void }) {
         <div className="profile">
           <aside className="profile-sidebar" aria-label="Portfolio shortcuts">
             <img className="profile-picture account-picture" src="/chelsea.jpg" alt="Chelsea Simpson" width="130" height="130" />
-            <button onClick={() => open('projects')}>📁 <span>Projects</span></button>
-            <button onClick={() => open('resume')}>📄 <span>Résumé</span></button>
+            <button onClick={() => open('documents')}>📁 <span>My Documents</span></button>
           </aside>
           <div className="profile-main">
             <h1>Hi, I’m Chelsea Simpson!</h1>
@@ -43,20 +55,30 @@ function AppContent({ id, open }: { id: AppId; open: (id: AppId) => void }) {
               </section>
             </div>
             <div className="profile-actions">
-              <button onClick={() => open('projects')}>View Projects →</button>
-              <button onClick={() => open('resume')}>View Résumé →</button>
+              <button onClick={() => open('documents')}>Open My Documents →</button>
             </div>
           </div>
         </div>
       )
-    case 'projects':
-      return <><h1>Projects</h1><h2>ChelseaXP</h2><p>ChelseaXP is my Windows XP-inspired developer portfolio, built with React, TypeScript, and .NET.</p></>
-    case 'resume':
-      return <><h1>Résumé</h1><p>A public copy of my résumé is coming soon.</p></>
-    case 'contact':
-      return <><h1>Contact</h1><p><a href="https://www.linkedin.com/in/chelsea-simpson-54437215a/">Connect with me on LinkedIn</a></p></>
+    case 'documents':
+      return (
+        <>
+          <h1>My Documents</h1>
+          <div className="document-list">
+            <div className="document-entry">
+              <span aria-hidden="true">📄</span>
+              <strong>Résumé</strong>
+              <span className="document-status">Public PDF coming soon</span>
+            </div>
+            <details>
+              <summary className="document-entry"><span aria-hidden="true">📁</span> Project Notes</summary>
+              <p className="document-empty">No project notes published yet.</p>
+            </details>
+          </div>
+        </>
+      )
     case 'complaints':
-      return <><h1>Complaints.exe</h1><p>Complaints.exe is offline for now.</p></>
+      return <><h1>Complaints</h1><p>Complaints is offline for now.</p></>
   }
 }
 
@@ -179,6 +201,7 @@ export default function App() {
               <span>{label}</span>
             </button>
           ))}
+          <LinkedInShortcut />
         </nav>
 
         {visible && current && (
@@ -214,16 +237,22 @@ export default function App() {
               <span>Chelsea Simpson</span>
             </button>
             <div className="start-columns">
-              {[apps.slice(1, 3), apps.slice(3)].map((column) => (
-                <div className="start-column" key={column[0].id}>
-                  {column.map(({ id, label, icon }) => (
-                    <button key={id} onClick={() => open(id)}>
-                      <span className="start-app-icon" aria-hidden="true">{icon}</span>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              ))}
+              <div className="start-column">
+                <button onClick={() => open('complaints')}>
+                  <span className="start-app-icon" aria-hidden="true">💌</span>
+                  Complaints
+                </button>
+              </div>
+              <div className="start-column">
+                <button onClick={() => open('documents')}>
+                  <span className="start-app-icon" aria-hidden="true">📁</span>
+                  My Documents
+                </button>
+                <LinkedInShortcut onClick={() => {
+                  setStartOpen(false)
+                  startButton.current?.focus()
+                }} />
+              </div>
             </div>
           </nav>
         </>
