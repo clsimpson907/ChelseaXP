@@ -1,5 +1,5 @@
-const minimumDuration = 1200
-const completedDuration = 140
+const minimumDuration = 1700
+const completedDuration = 240
 
 function wait(milliseconds: number) {
   return new Promise<void>((resolve) => globalThis.setTimeout(resolve, milliseconds))

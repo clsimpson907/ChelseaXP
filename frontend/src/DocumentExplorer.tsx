@@ -40,9 +40,15 @@ export default function DocumentExplorer() {
   return (
     <div className="explorer">
       <div className="explorer-toolbar" role="group" aria-label="Explorer navigation">
-        <button disabled={history.index === 0} onClick={() => travel(-1)}>← Back</button>
-        <button disabled={history.index >= history.entries.length - 1} onClick={() => travel(1)}>→ Forward</button>
-        <button disabled={location.parent === null} onClick={() => openLocation('documents')}>↑ Up</button>
+        <button type="button" aria-label="Back" title="Back" disabled={history.index === 0} onClick={() => travel(-1)}>
+          <img src="/icons/back.png" alt="" width="23" height="23" />
+        </button>
+        <button type="button" aria-label="Forward" title="Forward" disabled={history.index >= history.entries.length - 1} onClick={() => travel(1)}>
+          <img src="/icons/forward.png" alt="" width="23" height="23" />
+        </button>
+        <button type="button" aria-label="Up" title="Up one level" disabled={location.parent === null} onClick={() => openLocation('documents')}>
+          <img src="/icons/up.png" alt="" width="23" height="23" />
+        </button>
       </div>
       <div className="explorer-address-row">
         <span aria-hidden="true">Address</span>
@@ -57,7 +63,7 @@ export default function DocumentExplorer() {
         </nav>
       </div>
       <div className="explorer-layout">
-        <nav className="explorer-folders" aria-label="Folders">
+        <nav className="window-sidebar explorer-folders" aria-label="Folders">
           <h2>Folders</h2>
           <button aria-current={locationId === 'documents' ? 'location' : undefined} onClick={() => openLocation('documents')}>
             <img src="/icons/my-documents.png" alt="" width="32" height="32" /> My Documents

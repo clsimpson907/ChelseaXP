@@ -19,6 +19,18 @@ const sendingMessages = [
   'Trying to make the inbox look busy…',
 ] as const
 
+const checkingReverseMessages = [
+  'The quota goblin asked for a recount…',
+  'That drawer was labeled wrong…',
+  'The inbox answered on the other line…',
+] as const
+
+const sendingReverseMessages = [
+  'Oops. Put that stamp on backwards…',
+  'The courier went back for their tiny hat…',
+  'Refolding the complaint with more conviction…',
+] as const
+
 const apiOrigin = import.meta.env.VITE_API_ORIGIN || 'http://localhost:5080'
 const maxMessageLength = 2000
 
@@ -201,11 +213,11 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
 
       {availability.state === 'checking' && (
         <XpProgress key={`check-${check}`} label="Checking Complaints availability" icon="/icons/connection-status.png"
-          messages={checkingMessages} complete={progressComplete} onCancel={onClose} />
+          messages={checkingMessages} reverseMessages={checkingReverseMessages} complete={progressComplete} onCancel={onClose} />
       )}
       {sending && (
         <XpProgress label="Sending complaint" icon="/icons/mail.png"
-          messages={sendingMessages} complete={progressComplete} onCancel={onClose} />
+          messages={sendingMessages} reverseMessages={sendingReverseMessages} complete={progressComplete} onCancel={onClose} />
       )}
       {availability.state === 'unavailable' && (
         <div className="complaints-unavailable">
