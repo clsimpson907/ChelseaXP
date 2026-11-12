@@ -12,11 +12,13 @@ type LocationId = keyof typeof locations
 export default function DocumentExplorer() {
   const [locationId, setLocationId] = useState<LocationId>('documents')
   const heading = useRef<HTMLHeadingElement>(null)
+  const files = useRef<HTMLElement>(null)
   const location = locations[locationId]
 
   function openLocation(id: LocationId) {
     setLocationId(id)
-    heading.current?.focus()
+    files.current?.scrollTo(0, 0)
+    heading.current?.focus({ preventScroll: true })
   }
 
   return (
@@ -42,7 +44,7 @@ export default function DocumentExplorer() {
             <img src="/icons/folder.png" alt="" width="32" height="32" /> Project Notes
           </button>
         </nav>
-        <section className="explorer-files" aria-labelledby="folder-heading">
+        <section className="explorer-files" ref={files} aria-labelledby="folder-heading">
           <h1 id="folder-heading" ref={heading} tabIndex={-1}>{location.name}</h1>
           {locationId === 'documents' ? (
             <ul className="explorer-items">

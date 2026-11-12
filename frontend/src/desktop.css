@@ -122,7 +122,7 @@ a { color: #642989; }
 .window-body h1 { margin: 0; color: #55267b; font-size: clamp(1.45rem, 3vw, 2.15rem); }
 .window-body p { line-height: 1.5; }
 
-.profile { display: grid; grid-template-columns: 160px minmax(0, 1fr); }
+.profile { display: grid; grid-template-columns: 160px minmax(0, 1fr); min-height: 100%; }
 .profile-sidebar {
   padding: 14px;
   background: linear-gradient(#eed6ee, #f5e5f5);
@@ -174,8 +174,21 @@ a { color: #642989; }
   .profile-sidebar { display: none; }
 }
 
+.window-resize-edge { position: absolute; z-index: 1; touch-action: none; }
+.window-resize-edge:is([data-edge="n"], [data-edge="s"]) { inset-inline: 10px; height: 6px; cursor: ns-resize; }
+.window-resize-edge[data-edge="n"] { top: 0; }
+.window-resize-edge[data-edge="s"] { bottom: 0; right: 20px; }
+.window-resize-edge:is([data-edge="w"], [data-edge="e"]) { inset-block: 10px; width: 6px; cursor: ew-resize; }
+.window-resize-edge[data-edge="w"] { left: 0; }
+.window-resize-edge[data-edge="e"] { right: 0; bottom: 20px; }
+.window-resize-edge:is([data-edge="nw"], [data-edge="ne"], [data-edge="sw"]) { width: 10px; height: 10px; }
+.window-resize-edge[data-edge="nw"] { top: 0; left: 0; cursor: nwse-resize; }
+.window-resize-edge[data-edge="ne"] { top: 0; right: 0; cursor: nesw-resize; }
+.window-resize-edge[data-edge="sw"] { bottom: 0; left: 0; cursor: nesw-resize; }
+
 .window-resize {
   position: absolute;
+  z-index: 1;
   right: 0;
   bottom: 0;
   width: 20px;
@@ -388,7 +401,7 @@ a { color: #642989; }
     outline-offset: -3px;
   }
   .shortcuts :is(.shortcut-picture, .shortcut-icon, .linkedin-icon) { width: 28px; height: 28px; }
-  .shell--app-open .shortcuts, .taskbar, .window-controls, .window-resize { display: none; }
+  .shell--app-open .shortcuts, .taskbar, .window-controls, .window-resize, .window-resize-edge { display: none; }
   .profile-sidebar { display: none; }
 
   .start-menu {
@@ -434,18 +447,21 @@ a { color: #642989; }
 .start-column .linkedin-icon { width: 21px; height: 21px; }
 .window-icon { width: 18px; height: 18px; vertical-align: middle; margin-inline-end: 4px; }
 
-.window-body--explorer { padding: 0; }
-.explorer { background: #fffaf6; }
+.window-body--explorer { display: flex; padding: 0; overflow: hidden; }
+.explorer { display: flex; flex: 1; flex-direction: column; min-width: 0; background: #fffaf6; }
 .explorer-toolbar {
+  --control-height: 36px;
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 8px;
   padding: 8px;
   border-bottom: 1px solid #cda8d9;
   background: linear-gradient(#fff8ec, #eee1d4);
 }
-.explorer-toolbar > button, .explorer-address button {
-  min-height: 36px;
+.explorer-toolbar > button {
+  flex-shrink: 0;
+  height: var(--control-height);
   border: 1px solid #ac84bc;
   border-radius: 3px;
   background: var(--lavender-gloss);
@@ -455,19 +471,20 @@ a { color: #642989; }
 .explorer-address {
   display: flex;
   flex: 1;
-  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  min-height: 36px;
+  height: var(--control-height);
+  white-space: nowrap;
   padding: 0 8px;
   border: 1px solid #ba99c7;
   background: #fff;
   font-size: .85rem;
 }
-.explorer-address button { border: 0; background: transparent; text-decoration: underline; }
-.explorer-layout { display: grid; grid-template-columns: 155px minmax(0, 1fr); min-height: 240px; }
-.explorer-folders { padding: 8px; border-right: 1px solid #d7b5df; background: #f2e3f4; }
+.explorer-address button { flex-shrink: 0; padding: 0; border: 0; background: transparent; color: inherit; text-decoration: underline; }
+.explorer-address [aria-current] { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.explorer-layout { display: grid; flex: 1; grid-template-columns: clamp(122px, 28%, 155px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); min-height: 0; }
+.explorer-folders { overflow: auto; padding: 8px; border-right: 1px solid #d7b5df; background: #f2e3f4; }
 .explorer-folders button {
   display: block;
   width: 100%;
@@ -480,7 +497,7 @@ a { color: #642989; }
 }
 .explorer-folders button + button { padding-inline-start: 12px; }
 .explorer-folders button:hover, .explorer-folders [aria-current] { border-color: #d3aedc; background: #e8ceef; }
-.explorer-files { padding: 16px; }
+.explorer-files { overflow: auto; padding: 16px; }
 .explorer-files h1 { font-size: 1.35rem; }
 .explorer-items {
   display: grid;
@@ -514,8 +531,7 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 @media (max-width: 700px) {
   .explorer-layout { grid-template-columns: minmax(0, 1fr); }
   .explorer-folders { display: none; }
-  .explorer-toolbar button { min-height: 44px; }
-  .explorer-address { min-height: 44px; }
+  .explorer-toolbar { --control-height: 44px; }
 }
 
 .complaints-form {
