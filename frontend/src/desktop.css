@@ -276,34 +276,92 @@ a { color: #642989; }
 .phone-status, .phone-back { display: none; }
 
 @media (max-width: 700px) {
-  .desktop { height: 100dvh; overflow: auto; }
-  .phone-status {
-    display: block;
-    padding: 10px 14px;
-    border-bottom: 1px solid #6b347c;
-    background: var(--pink-gloss);
-    color: #fff;
-    font-weight: bold;
-    text-shadow: 0 1px 2px #62236a;
+  .desktop {
+    height: 100dvh;
+    overflow: auto;
+    background: #211429;
   }
+
+  .phone-status {
+    display: flex;
+    justify-content: flex-end;
+    width: min(100%, 460px);
+    min-height: 28px;
+    margin-inline: auto;
+    padding: 6px 14px 2px;
+    color: #f9e7fb;
+  }
+  .phone-status .taskbar-clock { padding: 0; color: inherit; font-weight: normal; }
+
   .shortcuts {
+    --tile-size: clamp(96px, 37vw, 158px);
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    width: min(100%, 420px);
-    margin: 24px auto;
-    padding: 0 16px;
+    grid-auto-rows: var(--tile-size);
+    gap: 6px;
+    width: min(100%, 460px);
+    margin: 0 auto;
+    padding: 0 12px 18px;
   }
   .shortcuts :is(button, a) {
-    gap: 8px;
-    min-height: 86px;
-    padding: 10px 4px;
-    border: 1px solid #b584c3;
-    background: var(--lavender-gloss);
-    color: #381553;
-    font-size: .9rem;
+    position: relative;
+    display: grid;
+    place-items: center;
+    padding: 8px 10px 27px;
+    border: 0;
+    border-radius: 0;
+    background: var(--tile-color, #6e4484);
+    color: var(--tile-text, #fff);
+    font-size: .92rem;
+    font-weight: 600;
     text-shadow: none;
   }
-  .shortcuts :is(button, a):hover, .shortcuts :is(button, a):focus-visible { background: #f8def5; }
+  .shortcuts :is(button, a):hover, .shortcuts :is(button, a):focus-visible {
+    border: 0;
+    background: var(--tile-color, #6e4484);
+    filter: brightness(1.1);
+    outline: 2px solid #fff4fb;
+    outline-offset: -4px;
+  }
+  .shortcuts button > span:last-child, .shortcuts a > span:last-child {
+    position: absolute;
+    inset: auto 10px 8px;
+    text-align: left;
+  }
+  .shortcuts [data-app="about"] {
+    grid-column: span 2;
+    --tile-color: #9c397b;
+  }
+  .shortcuts [data-app="documents"] {
+    --tile-color: #ddbee9;
+    --tile-text: #311a42;
+  }
+  .shortcuts [data-app="complaints"] {
+    --tile-color: #edc3ce;
+    --tile-text: #401d34;
+  }
+  .shortcuts a {
+    grid-column: span 2;
+    --tile-color: #684080;
+  }
+  .shortcuts .shortcut-picture {
+    width: clamp(56px, 20vw, 100px);
+    height: clamp(56px, 20vw, 100px);
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .shortcuts .shortcut-icon {
+    font-size: clamp(2.1rem, 9vw, 3.35rem);
+    filter: grayscale(1) brightness(.35);
+  }
+  .shortcuts .linkedin-icon {
+    width: auto;
+    height: auto;
+    border: 0;
+    background: transparent;
+    font-size: 2.8rem;
+  }
+
   .shell--app-open .shortcuts, .shell--app-open .phone-status,
   .taskbar, .start-menu, .menu-dismiss, .window-controls, .profile-sidebar { display: none; }
   .app-window {
@@ -314,14 +372,14 @@ a { color: #642989; }
     border: 0;
     border-radius: 0;
   }
-  .title-bar { min-height: 54px; padding: 4px 12px; cursor: default; }
+  .title-bar { min-height: 54px; padding: 4px 12px; cursor: default; background: #6e4484; border: 0; text-shadow: none; }
   .phone-back {
     display: block;
     min-height: 44px;
     padding: 0 8px;
     border: 1px solid #a66ab6;
-    border-radius: 5px;
-    background: var(--lavender-gloss);
+    border-radius: 0;
+    background: #eed4ed;
     color: #381553;
     font-weight: bold;
   }
@@ -356,25 +414,81 @@ a { color: #642989; }
   font-size: .92rem;
 }
 
-.document-list {
-  margin-top: 18px;
-  border: 1px solid #d9b0de;
-  border-radius: 8px;
-  background: #fffaf6;
-}
-
-.document-entry {
+.window-body--explorer { padding: 0; }
+.explorer { background: #fffaf6; }
+.explorer-toolbar {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 8px;
-  min-height: 44px;
-  padding: 10px 14px;
+  padding: 8px;
+  border-bottom: 1px solid #cda8d9;
+  background: #f2e3f4;
 }
+.explorer-toolbar > button, .explorer-address button {
+  min-height: 36px;
+  border: 1px solid #ac84bc;
+  border-radius: 3px;
+  background: var(--lavender-gloss);
+  color: #381553;
+}
+.explorer-toolbar > button:disabled { opacity: .58; cursor: default; }
+.explorer-address {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid #ba99c7;
+  background: #fff;
+  font-size: .85rem;
+}
+.explorer-address button { border: 0; background: transparent; text-decoration: underline; }
+.explorer-layout { display: grid; grid-template-columns: 155px minmax(0, 1fr); min-height: 240px; }
+.explorer-folders { padding: 8px; border-right: 1px solid #d7b5df; background: #f2e3f4; }
+.explorer-folders button {
+  display: block;
+  width: 100%;
+  padding: 8px 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #381553;
+  font-size: .85rem;
+  text-align: left;
+}
+.explorer-folders button + button { padding-inline-start: 12px; }
+.explorer-folders button:hover, .explorer-folders [aria-current] { border-color: #d3aedc; background: #e8ceef; }
+.explorer-files { padding: 16px; }
+.explorer-files h1 { font-size: 1.35rem; }
+.explorer-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 120px));
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.explorer-item {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 8px 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #381553;
+  font-size: .85rem;
+  text-align: center;
+}
+button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
+.explorer-item > span { font-size: 2rem; }
+.explorer-item small { color: #634b73; }
 
-.document-status { color: #634b73; font-size: .85rem; }
-.document-list details { border-top: 1px solid #e5c8e7; }
-.document-list summary { cursor: pointer; font-weight: bold; }
-.document-list summary::after { content: "▸"; margin-inline-start: auto; }
-.document-list details[open] summary::after { content: "▾"; }
-.document-empty { margin: 0; padding: 0 14px 12px; }
+@media (max-width: 700px) {
+  .explorer-layout { grid-template-columns: minmax(0, 1fr); }
+  .explorer-folders { display: none; }
+  .explorer-toolbar button { min-height: 44px; }
+  .explorer-address { min-height: 44px; }
+}

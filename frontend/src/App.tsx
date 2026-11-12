@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent } from 'react'
+import DocumentExplorer from './DocumentExplorer'
 import './desktop.css'
 
 const apps = [
@@ -61,22 +62,7 @@ function AppContent({ id, open }: { id: AppId; open: (id: AppId) => void }) {
         </div>
       )
     case 'documents':
-      return (
-        <>
-          <h1>My Documents</h1>
-          <div className="document-list">
-            <div className="document-entry">
-              <span aria-hidden="true">📄</span>
-              <strong>Résumé</strong>
-              <span className="document-status">Public PDF coming soon</span>
-            </div>
-            <details>
-              <summary className="document-entry"><span aria-hidden="true">📁</span> Project Notes</summary>
-              <p className="document-empty">No project notes published yet.</p>
-            </details>
-          </div>
-        </>
-      )
+      return <DocumentExplorer />
     case 'complaints':
       return <><h1>Complaints</h1><p>Complaints is offline for now.</p></>
   }
@@ -189,7 +175,7 @@ export default function App() {
       }
     }}>
       <main className="desktop" ref={desktop}>
-        <div className="phone-status">ChelseaXP</div>
+        <div className="phone-status"><TaskbarClock /></div>
         <nav className="shortcuts" aria-label="Portfolio apps">
           {apps.map(({ id, label, icon }) => (
             <button key={id} data-app={id} onClick={() => open(id)}>
@@ -221,7 +207,7 @@ export default function App() {
                 <button aria-label={`Close ${current.label}`} onClick={close}>×</button>
               </div>
             </div>
-            <div className={`window-body${current.id === 'about' ? ' window-body--profile' : ''}`}>
+            <div className={`window-body${current.id === 'about' ? ' window-body--profile' : current.id === 'documents' ? ' window-body--explorer' : ''}`}>
               <AppContent id={current.id} open={open} />
             </div>
           </article>
