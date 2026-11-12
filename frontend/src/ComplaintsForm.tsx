@@ -18,7 +18,7 @@ function blockedState(code: unknown, resetAt: unknown): Blocked | null {
   return null
 }
 
-export default function ComplaintsForm({ onClose }: { onClose: () => void }) {
+export default function ComplaintsForm({ onClose, active }: { onClose: () => void; active: boolean }) {
   const [availability, setAvailability] = useState<Availability>({ state: 'checking' })
   const [check, setCheck] = useState(0)
   const [sending, setSending] = useState(false)
@@ -63,13 +63,13 @@ export default function ComplaintsForm({ onClose }: { onClose: () => void }) {
     }
 
     const dialog = crashDialog.current
-    if (!dialog || (availability.state !== 'paused' && availability.state !== 'daily-limit')) return
+    if (!active || !dialog || (availability.state !== 'paused' && availability.state !== 'daily-limit')) return
 
     dialog.showModal()
     return () => {
       if (dialog.open) dialog.close()
     }
-  }, [availability.state])
+  }, [active, availability.state])
 
   function dismissCrash() {
     if (!crashDialog.current?.open) return

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import type { PointerEvent } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import DesktopWindow from './DesktopWindow'
 import ComplaintsForm from './ComplaintsForm'
 import DocumentExplorer from './DocumentExplorer'
 import './desktop.css'
@@ -11,7 +11,19 @@ const apps = [
 ] as const
 
 type AppId = (typeof apps)[number]['id']
-type Point = { x: number; y: number }
+type WindowEntry = { id: AppId; minimized: boolean }
+
+const phoneLayout = '(max-width: 700px)'
+
+function subscribeToPhoneLayout(onChange: () => void) {
+  const media = globalThis.matchMedia(phoneLayout)
+  media.addEventListener('change', onChange)
+  return () => media.removeEventListener('change', onChange)
+}
+
+function isPhoneLayout() {
+  return globalThis.matchMedia(phoneLayout).matches
+}
 
 function LinkedInShortcut({ onClick }: { onClick?: () => void }) {
   return (
@@ -28,7 +40,7 @@ function LinkedInShortcut({ onClick }: { onClick?: () => void }) {
   )
 }
 
-function AppContent({ id, open, close }: { id: AppId; open: (id: AppId) => void; close: () => void }) {
+function AppContent({ id, open, close, active }: { id: AppId; open: (id: AppId) => void; close: () => void; active: boolean }) {
   switch (id) {
     case 'about':
       return (
@@ -64,7 +76,7 @@ function AppContent({ id, open, close }: { id: AppId; open: (id: AppId) => void;
     case 'documents':
       return <DocumentExplorer />
     case 'complaints':
-      return <ComplaintsForm onClose={close} />
+      return <ComplaintsForm onClose={close} active={active} />
   }
 }
 
@@ -89,38 +101,21 @@ function LocalClock({ showDate = false }: { showDate?: boolean }) {
 }
 
 export default function App() {
-  const [selected, setSelected] = useState<AppId | null>('about')
-  const [minimized, setMinimized] = useState(false)
+  const [windows, setWindows] = useState<WindowEntry[]>([{ id: 'about', minimized: false }])
+  const [phoneHome, setPhoneHome] = useState(false)
   const [startOpen, setStartOpen] = useState(false)
-  const [position, setPosition] = useState<Point | null>(null)
   const desktop = useRef<HTMLElement>(null)
-  const window = useRef<HTMLElement>(null)
   const startButton = useRef<HTMLButtonElement>(null)
   const phoneStartButton = useRef<HTMLButtonElement>(null)
   const startProfileButton = useRef<HTMLButtonElement>(null)
-  const taskButton = useRef<HTMLButtonElement>(null)
-  const pendingFocus = useRef(false)
-  const drag = useRef<{ pointer: number; offset: Point } | null>(null)
+  const isPhone = useSyncExternalStore(subscribeToPhoneLayout, isPhoneLayout)
 
-  const current = apps.find((app) => app.id === selected)
-  const visible = current !== undefined && !minimized
-
-  useEffect(() => {
-    if (visible && pendingFocus.current) {
-      window.current?.focus()
-      pendingFocus.current = false
-    }
-  }, [selected, visible])
+  const active = windows.findLast((entry) => !entry.minimized)?.id
+  const phoneApp = phoneHome ? undefined : active
 
   useEffect(() => {
     if (startOpen) startProfileButton.current?.focus()
   }, [startOpen])
-
-  useEffect(() => {
-    const resetPosition = () => setPosition(null)
-    globalThis.addEventListener('resize', resetPosition)
-    return () => globalThis.removeEventListener('resize', resetPosition)
-  }, [])
 
   function dismissStart() {
     setStartOpen(false)
@@ -130,57 +125,39 @@ export default function App() {
     button?.focus()
   }
 
+  function activate(id: AppId) {
+    setWindows((entries) => {
+      const entry = entries.find((item) => item.id === id)
+      if (!entry || entry.minimized || entries.at(-1)?.id === id) return entries
+      return [...entries.filter((item) => item.id !== id), entry]
+    })
+  }
+
   function open(id: AppId) {
-    if (id === selected && visible) {
-      window.current?.focus()
-    } else {
-      pendingFocus.current = true
-      if (id !== selected) setPosition(null)
-      setSelected(id)
-      setMinimized(false)
-    }
+    setWindows((entries) => [
+      ...entries.filter((entry) => entry.id !== id),
+      { id, minimized: false },
+    ])
+    setPhoneHome(false)
     setStartOpen(false)
+    requestAnimationFrame(() => document.getElementById(`window-${id}`)?.focus())
   }
 
-  function close() {
-    setSelected(null)
-    setPosition(null)
+  function close(id: AppId) {
+    setWindows((entries) => entries.filter((entry) => entry.id !== id))
+    if (isPhone) setPhoneHome(true)
     requestAnimationFrame(() => {
-      const shell = desktop.current
-      const shortcut = shell?.querySelector<HTMLButtonElement>(`[data-app="${selected}"]`)
-      shortcut?.focus()
+      desktop.current?.querySelector<HTMLButtonElement>(`[data-app="${id}"]`)?.focus()
     })
   }
 
-  function minimize() {
-    setMinimized(true)
-    taskButton.current?.focus()
-  }
-
-  function beginDrag(event: PointerEvent<HTMLDivElement>) {
-    const bounds = window.current?.getBoundingClientRect()
-    if (!bounds || event.button !== 0 || event.pointerType === 'touch') return
-    if ((event.target as HTMLElement).closest('button')) return
-    drag.current = {
-      pointer: event.pointerId,
-      offset: { x: event.clientX - bounds.left, y: event.clientY - bounds.top },
-    }
-    event.currentTarget.setPointerCapture(event.pointerId)
-  }
-
-  function moveWindow(event: PointerEvent<HTMLDivElement>) {
-    const active = drag.current
-    const bounds = desktop.current?.getBoundingClientRect()
-    const panel = window.current
-    if (!active || active.pointer !== event.pointerId || !bounds || !panel) return
-    setPosition({
-      x: Math.max(0, Math.min(bounds.width - panel.offsetWidth, event.clientX - bounds.left - active.offset.x)),
-      y: Math.max(0, Math.min(bounds.height - panel.offsetHeight, event.clientY - bounds.top - active.offset.y)),
-    })
+  function minimize(id: AppId) {
+    setWindows((entries) => entries.map((entry) => entry.id === id ? { ...entry, minimized: true } : entry))
+    document.getElementById(`task-${id}`)?.focus()
   }
 
   return (
-    <div className={`shell${visible ? ' shell--app-open' : ''}`} onKeyDown={(event) => {
+    <div className={`shell${phoneApp ? ' shell--app-open' : ''}`} onKeyDown={(event) => {
       if (event.key === 'Escape' && startOpen) {
         dismissStart()
       }
@@ -208,30 +185,23 @@ export default function App() {
           <LinkedInShortcut />
         </nav>
 
-        {visible && current && (
-          <article
-            className={`app-window${position ? ' app-window--moved' : ''}`}
-            aria-labelledby="window-title"
-            ref={window}
-            tabIndex={-1}
-            style={position ? { left: position.x, top: position.y } : undefined}
-          >
-            <div className="title-bar" onPointerDown={beginDrag} onPointerMove={moveWindow}
-              onLostPointerCapture={() => { drag.current = null }}>
-              <span id="window-title"><img className="window-icon" src={current.icon} alt="" />{current.label}</span>
-              <div className="window-controls">
-                <button aria-label={`Minimize ${current.label}`} onClick={minimize}>−</button>
-                <button aria-label={`Close ${current.label}`} onClick={close}>×</button>
-              </div>
-            </div>
-            <div className={`window-body${current.id === 'about' ? ' window-body--profile' : current.id === 'documents' ? ' window-body--explorer' : ''}`}>
-              <AppContent id={current.id} open={open} close={close} />
-            </div>
-          </article>
-        )}
+        {apps.map((app) => {
+          const index = windows.findIndex((entry) => entry.id === app.id)
+          if (index === -1) return null
+          const hidden = windows[index].minimized || (isPhone && phoneApp !== app.id)
+          const foreground = !hidden && active === app.id
+
+          return (
+            <DesktopWindow key={app.id} id={app.id} title={app.label} icon={app.icon}
+              desktop={desktop} depth={index + 1} active={foreground} hidden={hidden}
+              onActivate={() => activate(app.id)} onMinimize={() => minimize(app.id)} onClose={() => close(app.id)}>
+              <AppContent id={app.id} open={open} close={() => close(app.id)} active={foreground} />
+            </DesktopWindow>
+          )
+        })}
         <footer className="phone-softkeys">
-          {visible ? (
-            <button onClick={close}>Today</button>
+          {phoneApp ? (
+            <button onClick={() => close(phoneApp)}>Today</button>
           ) : (
             <button onClick={() => open('documents')}>My Documents</button>
           )}
@@ -270,12 +240,13 @@ export default function App() {
           ref={startButton} onClick={() => setStartOpen(!startOpen)}>
           <span className="start-logo" aria-hidden="true">✿</span> Start
         </button>
-        {current && (
-          <button className="task-button" aria-pressed={!minimized} ref={taskButton}
-            onClick={() => minimized ? open(current.id) : minimize()}>
-            <img className="window-icon" src={current.icon} alt="" />{current.label}
+        {apps.filter((app) => windows.some((entry) => entry.id === app.id)).map((app) => (
+          <button key={app.id} id={`task-${app.id}`} className="task-button"
+            aria-pressed={active === app.id} aria-controls={`window-${app.id}`}
+            onClick={() => active === app.id ? minimize(app.id) : open(app.id)}>
+            <img className="window-icon" src={app.icon} alt="" /><span>{app.label}</span>
           </button>
-        )}
+        ))}
         <LocalClock />
       </footer>
     </div>
