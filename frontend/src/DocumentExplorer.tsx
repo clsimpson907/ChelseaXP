@@ -83,6 +83,7 @@ export default function DocumentExplorer({
   const location = folders[locationId]
   const isDesktop = locationId === 'desktop'
   const isComputer = locationId === 'computer'
+  const isMusic = locationId === 'music'
   const isProtectedDisk = locationId === 'disk'
   const view = isDesktop ? desktopView : folderView
   const setView = isDesktop ? setDesktopView : setFolderView
@@ -102,7 +103,8 @@ export default function DocumentExplorer({
   const otherPlaces = locationId === 'documents' ? ['desktop', 'computer', 'network'] as const
     : isDesktop ? ['documents', 'network'] as const
       : isComputer ? ['network', 'documents'] as const
-        : isProtectedDisk ? ['computer', 'documents', 'network'] as const : explorerPlaces.filter((id) => id !== locationId)
+        : isProtectedDisk ? ['computer', 'documents', 'network'] as const
+          : isMusic ? ['documents', 'computer', 'network'] as const : explorerPlaces.filter((id) => id !== locationId)
   const canCreate = !isComputer && !isProtectedDisk && locationId !== 'network'
 
   function folderEntry(id: FolderId): Entry {
@@ -393,7 +395,7 @@ export default function DocumentExplorer({
                     <Icon icon={folders[id].icon} /> {folders[id].name}
                   </button>
                 ))}
-                {locationId !== 'documents' && !isDesktop && !isProtectedDisk && <button type="button" onClick={openControlPanel}>
+                {locationId !== 'documents' && !isDesktop && !isProtectedDisk && !isMusic && <button type="button" onClick={openControlPanel}>
                   <Icon icon="control-panel" /> Control Panel
                 </button>}
               </TaskSection>
@@ -413,7 +415,7 @@ export default function DocumentExplorer({
             </TaskSection>}
           </TaskPane>}
         </div>
-        <section className="explorer-files" data-protected={isProtectedDisk && !activeSearch} ref={files} tabIndex={-1} aria-label={location.name}
+        <section className="explorer-files" data-music={isMusic && !activeSearch} data-protected={isProtectedDisk && !activeSearch} ref={files} tabIndex={-1} aria-label={location.name}
           onClick={(event) => {
             if (!(event.target as HTMLElement).closest('li')) {
               setSelection(null)

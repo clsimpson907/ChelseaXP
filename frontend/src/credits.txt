@@ -29,3 +29,5 @@ Critical error icon: Windows XP High Resolution Icon Pack by GUI Archive.
 My Computer drive icons (Local Disk, Floppy Disk, and Optical Drive): Windows XP High Resolution Icon Pack by GUI Archive.
 
 Rename and Delete task icons: Windows XP High Resolution Icon Pack by GUI Archive.
+
+My Music watermark: Audio CD icon from the Windows XP High Resolution Icon Pack by GUI Archive.

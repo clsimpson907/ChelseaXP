@@ -1214,3 +1214,19 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
   cursor: default;
 }
 .xp-file-explorer .task-pane-actions button:disabled { opacity: .65; cursor: default; }
+
+.xp-file-explorer .explorer-files[data-music="true"] {
+  position: relative;
+  isolation: isolate;
+}
+.explorer-files[data-music="true"]::before {
+  position: absolute;
+  z-index: -1;
+  inset: auto 5px 5px auto;
+  width: min(34%, 145px);
+  aspect-ratio: 1;
+  background: url('/icons/audio-cd.png') center / contain no-repeat;
+  opacity: .12;
+  pointer-events: none;
+  content: '';
+}
