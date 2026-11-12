@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import InsertDiskDialog from './InsertDiskDialog'
 import ExplorerItemDialog from './ExplorerItemDialog'
 import SearchCompanion, { type SearchCriteria } from './SearchCompanion'
+import ChromeOverflow from './ChromeOverflow'
 import TaskPane, { TaskSection } from './TaskPane'
 import { locationIds, locations, type FolderId, type SessionFolder } from './explorerLocations'
 
@@ -68,6 +69,7 @@ export default function DocumentExplorer({
     renameInput.current?.select()
   }, [editing])
   const [nameError, setNameError] = useState('')
+  const [showTasks, setShowTasks] = useState(true)
   const [sidebar, setSidebar] = useState<'tasks' | 'folders' | 'search'>('tasks')
   const [search, setSearch] = useState<SearchCriteria | null>(null)
   const [folderView, setFolderView] = useState<View>('Tiles')
@@ -253,7 +255,19 @@ export default function DocumentExplorer({
       { label: 'Rename', action: renameSelection, disabled: !canManageSelection },
       { label: 'Clear selection', action: () => setSelection(null), disabled: !selected },
     ],
-    View: views.map((option) => ({ label: option, action: () => setView(option), disabled: isProtectedDisk && !activeSearch })),
+    View: [
+      ...views.map((option) => ({ label: option, action: () => setView(option), disabled: isProtectedDisk && !activeSearch })),
+      {
+        label: showTasks || sidebar !== 'tasks' ? 'Hide task pane' : 'Show task pane',
+        action: () => {
+          setShowTasks(!(showTasks || sidebar !== 'tasks'))
+          setSidebar('tasks')
+          setSearch(null)
+          setSelection(null)
+        },
+        disabled: false,
+      },
+    ],
     Favorites: [{ label: 'My Documents', action: () => openLocation('documents') }],
     Tools: [
       { label: 'Search', action: () => toggleSidebar('search') },
@@ -311,7 +325,7 @@ export default function DocumentExplorer({
         if (!event.currentTarget.contains(event.relatedTarget)) setMenu(null)
       }}>
         {Object.entries(menuActions).map(([label, actions]) => (
-          <div className="explorer-menu" key={label}>
+          <div className="explorer-menu" key={label} data-menu={label}>
             <button type="button" aria-expanded={menu === label}
               onClick={() => setMenu(menu === label ? null : label)}>{label}</button>
             {menu === label && <div className="explorer-menu-options">
@@ -322,6 +336,9 @@ export default function DocumentExplorer({
             </div>}
           </div>
         ))}
+        <ChromeOverflow kind="menu" commands={Object.entries(menuActions).slice(2).map(([label, actions]) => ({
+          label, children: actions,
+        }))} />
       </div>
       <div className="explorer-toolbar" role="group" aria-label="Explorer navigation">
         <div className="explorer-history-group">
@@ -351,6 +368,13 @@ export default function DocumentExplorer({
             {views.map((option) => <option key={option}>{option}</option>)}
           </select>
         </label>
+        <ChromeOverflow kind="toolbar" commands={[
+          { label: 'Forward', icon: 'forward', disabled: !forward.length, action: () => travel(forward[0].index) },
+          { label: 'Up', icon: 'up', disabled: !location.parent, action: () => { if (location.parent) openLocation(location.parent) } },
+          { label: 'Search', icon: 'explorer-search', action: () => toggleSidebar('search') },
+          { label: 'Folders', icon: 'explorer-folders', action: () => toggleSidebar('folders') },
+          { label: 'Views', icon: 'explorer-view', children: menuActions.View },
+        ]} />
       </div>
       <form className="explorer-address-row" onSubmit={(event) => {
         event.preventDefault()
@@ -375,8 +399,8 @@ export default function DocumentExplorer({
         </span>
         <button className="explorer-go" type="submit"><Icon icon="go" size={18} /> Go</button>
       </form>
-      <div className="explorer-layout" data-sidebar={sidebar}>
-        <div className="explorer-folders">
+      <div className="explorer-layout" data-sidebar={sidebar === 'tasks' && !showTasks ? 'hidden' : sidebar}>
+        {(showTasks || sidebar !== 'tasks') && <div className="explorer-folders">
           {sidebar === 'search' ? <SearchCompanion
             folders={folderIds.map((id) => ({ id, name: folderPath(id) }))}
             current={locationId}
@@ -418,7 +442,8 @@ export default function DocumentExplorer({
               <TaskSection title="Other Places">
                 {otherPlaces.map((id) => (
                   <button key={id} type="button" onClick={() => openLocation(id)}>
-                    <Icon icon={folders[id].icon} /> {folders[id].name}
+                    <Icon icon={folders[id].icon} />
+                    <span className="task-pane-name" title={folders[id].name}>{folders[id].name}</span>
                   </button>
                 ))}
                 {isComputer && <button type="button" onClick={openControlPanel}>
@@ -426,7 +451,7 @@ export default function DocumentExplorer({
                 </button>}
               </TaskSection>
               <TaskSection key={isProtectedDisk ? "disk-details" : "folder-details"} title="Details" defaultExpanded={isProtectedDisk}>
-                <p className="task-pane-note"><strong>{selected?.name ?? location.name}</strong><br />
+                <p className="task-pane-note"><strong className="task-pane-name" title={selected?.name ?? location.name}>{selected?.name ?? location.name}</strong>
                   {selected?.type ?? (isProtectedDisk ? 'Local Disk' : sessionFolders.some(({ id }) => id === locationId) ? 'File Folder' : 'System Folder')}
                 </p>
               </TaskSection>
@@ -435,12 +460,13 @@ export default function DocumentExplorer({
               {folderTree(null).map(({ id, depth }) => (
                 <button key={id} type="button" aria-current={id === locationId ? 'location' : undefined}
                   onClick={() => openLocation(id)} title={folderPath(id)} style={{ paddingInlineStart: 4 + depth * 12 }}>
-                  <Icon icon={folders[id].icon} /> {folders[id].name}
+                  <Icon icon={folders[id].icon} />
+                  <span className="task-pane-name" title={folders[id].name}>{folders[id].name}</span>
                 </button>
               ))}
             </TaskSection>}
           </TaskPane>}
-        </div>
+        </div>}
         <div className="explorer-file-pane" data-music={isMusic && !activeSearch} data-pictures={isPictures && !activeSearch}>
         <section className="explorer-files" data-protected={isProtectedDisk && !activeSearch} ref={files} tabIndex={-1} aria-label={location.name}
           onClick={(event) => {

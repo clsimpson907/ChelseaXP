@@ -68,6 +68,7 @@ function AppContent({ entry, open, close, active, sessionFolders, addFolder, ren
   close: () => void
   active: boolean
 }) {
+  const [showProfileSidebar, setShowProfileSidebar] = useState(true)
   const { id, folder, navigation } = entry
   function launchShortcut(shortcutId: DesktopShortcutId) {
     if (shortcutId === 'linkedin') window.open(linkedInUrl, '_blank', 'noopener,noreferrer')
@@ -86,10 +87,10 @@ function AppContent({ entry, open, close, active, sessionFolders, addFolder, ren
   switch (id) {
     case 'about':
       return (
-        <div className="profile">
-          <div className="window-sidebar profile-sidebar">
+        <div className="profile" data-sidebar={showProfileSidebar}>
+          {showProfileSidebar && <div className="window-sidebar profile-sidebar" id="about-photo-sidebar">
             <img className="profile-picture account-picture" src="/chelsea.jpg" alt="Chelsea Simpson" width="130" height="130" />
-          </div>
+          </div>}
           <div className="profile-main">
             <h1>Hi, I’m Chelsea Simpson!</h1>
             <p className="profile-role">Software Developer</p>
@@ -110,6 +111,11 @@ function AppContent({ entry, open, close, active, sessionFolders, addFolder, ren
               </section>
             </div>
             <div className="profile-actions">
+              <button type="button" className="profile-sidebar-toggle" aria-expanded={showProfileSidebar}
+                aria-controls={showProfileSidebar ? 'about-photo-sidebar' : undefined}
+                onClick={() => setShowProfileSidebar(!showProfileSidebar)}>
+                {showProfileSidebar ? 'Hide sidebar' : 'Show sidebar'}
+              </button>
               <button onClick={() => open('documents')}>Open My Documents →</button>
             </div>
           </div>

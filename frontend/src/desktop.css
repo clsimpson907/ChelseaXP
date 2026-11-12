@@ -127,7 +127,7 @@ a { color: #642989; }
 .window-sidebar {
   padding: 10px;
   border-inline-end: 1px solid #d7b5df;
-  background: linear-gradient(120deg, #e1c5ee, #f2e3f4);
+  background: linear-gradient(#dfbbea, #b885cd);
 }
 
 .profile-picture {
@@ -576,7 +576,7 @@ a { color: #642989; }
   .explorer-address select, .explorer-go { min-height: 44px; }
 }
 
-.explorer-layout { display: grid; flex: 1; grid-template-columns: clamp(160px, 30%, 185px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); min-height: 0; }
+.explorer-layout { display: grid; flex: 1; grid-template-columns: 208px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); min-height: 0; }
 .explorer-folders { display: flex; min-height: 0; }
 .explorer-folders > .task-pane {
   width: 100%;
@@ -846,38 +846,22 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 
 .app-window[data-window="control"] { --window-width: 690px; --window-height: 475px; --window-offset: 75px; }
 
-.control-panel-address {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  flex: none;
-  padding: 5px 8px;
-  border-bottom: 1px solid #cda8d9;
-  background: #f4eadf;
-  color: #381553;
-  font-size: .8rem;
-}
-.control-panel-address nav {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
-  min-height: 24px;
-  padding: 3px 6px;
-  border: 1px solid #ba99c7;
-  background: #fff;
-}
-.control-panel-address button { flex-shrink: 0; padding: 0; border: 0; background: transparent; color: inherit; text-decoration: underline; }
-.control-panel-address [aria-current] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .control-panel-layout {
   display: grid;
   flex: 1;
-  grid-template-columns: clamp(125px, 31%, 176px) minmax(0, 1fr);
+  grid-template-columns: 208px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   min-height: 0;
 }
-.control-panel-content { overflow: auto; padding: clamp(14px, 3vw, 24px); }
+.control-panel-layout[data-sidebar="false"] { grid-template-columns: minmax(0, 1fr); }
+.control-panel-content {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  container-type: inline-size;
+  padding: 12px;
+}
+.control-panel-content--categories { padding: 14px; }
 .control-panel-content h1 { font-size: clamp(1.25rem, 2.5vw, 1.7rem); }
 .control-panel-content--categories {
   background: radial-gradient(ellipse at 100% 100%, #9868b3, transparent 68%), linear-gradient(130deg, #653979, #734591);
@@ -892,7 +876,7 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
   padding: 0;
   list-style: none;
 }
-.control-panel-categories { grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
+.control-panel-categories { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .control-panel-items { grid-template-columns: repeat(auto-fit, minmax(108px, 120px)); }
 .control-panel-categories button, .control-panel-items button {
   display: flex;
@@ -912,6 +896,10 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 .control-panel-items button { flex-direction: column; text-align: center; font-size: .85rem; }
 .control-panel-items button:hover { border-color: #d3aedc; background: #f3dff6; }
 .control-panel-categories img { flex: none; }
+.control-panel-categories button { overflow-wrap: anywhere; }
+@container (max-width: 275px) {
+  .control-panel-categories { grid-template-columns: minmax(0, 1fr); }
+}
 .department-action {
   min-height: 44px;
   padding: 6px 12px;
@@ -964,9 +952,6 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 .explorer-view-picker { position: relative; display: flex; align-items: center; gap: 2px; }
 .explorer-view-picker select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
 .explorer-view-picker:focus-within { outline: 2px solid #7d4c90; }
-.xp-file-explorer .explorer-folders > .task-pane {
-  background: linear-gradient(#dfbbea, #b885cd);
-}
 .xp-file-explorer .task-pane-section { border-color: #fff8; background: #f2e3f6; }
 .xp-file-explorer .task-pane-section h2 button { background: linear-gradient(100deg, #fff, #e5c9ec); }
 .xp-file-explorer .task-pane-toggle { font-size: 0; }
@@ -1291,3 +1276,183 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 }
 .explorer-address-part button:hover { background: #f0dcf4; text-decoration: underline; }
 .explorer-address-part button:focus-visible { outline-offset: -2px; }
+
+.control-panel-toolbar { flex-wrap: wrap; }
+.control-panel .task-pane-section[data-featured="true"] h2 button {
+  background: linear-gradient(100deg, #73428c, #8951a1);
+  color: white;
+}
+.task-pane-title { display: flex; align-items: center; gap: 5px; }
+.control-panel-content--categories { position: relative; isolation: isolate; }
+.control-panel-content--categories::before {
+  position: absolute;
+  z-index: -1;
+  inset: auto 0 0 auto;
+  width: min(50%, 230px);
+  aspect-ratio: 1;
+  background: url('/icons/control-panel.png') center / contain no-repeat;
+  opacity: .11;
+  pointer-events: none;
+  content: '';
+}
+.control-panel-content--classic { padding: 5px; background: #fffdfd; }
+.control-panel-hidden-heading {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.control-panel-content--classic .control-panel-items {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 74px), 74px));
+  gap: 4px;
+  margin: 0;
+}
+.control-panel-content--classic .control-panel-items button {
+  gap: 4px;
+  padding: 4px;
+  font-size: .75rem;
+  font-weight: normal;
+}
+.control-panel-content--classic .control-panel-items img { width: 32px; height: 32px; }
+
+.explorer-layout[data-sidebar="hidden"],
+.profile[data-sidebar="false"] { grid-template-columns: minmax(0, 1fr); }
+
+@container (max-width: 540px) {
+  .profile-sidebar-toggle { display: none; }
+}
+@media (max-width: 700px) {
+  .xp-file-explorer .explorer-layout[data-sidebar="hidden"] { grid-template-rows: minmax(0, 1fr); }
+  .profile-sidebar-toggle { display: none; }
+}
+
+.window-body--explorer { container-type: inline-size; }
+
+@media (min-width: 701px) {
+  @container (max-width: 420px) {
+    .explorer-layout[data-sidebar="tasks"],
+    .control-panel-layout[data-sidebar="true"] {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .explorer-layout[data-sidebar="tasks"] > .explorer-folders,
+    .control-panel-layout > .task-pane { display: none; }
+    .xp-file-explorer .explorer-toolbar { flex-wrap: wrap; }
+  }
+}
+
+.chrome-overflow { display: none; position: relative; margin-inline-start: auto; flex: none; }
+.title-bar > :first-child { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.window-controls { flex-shrink: 0; }
+
+@media (min-width: 701px) {
+  @container (max-width: 440px) {
+    .xp-file-explorer .explorer-toolbar, .control-panel-toolbar, .explorer-menu-bar { flex-wrap: nowrap; }
+    .toolbar-overflow { display: block; }
+    .explorer-toolbar > .explorer-view-picker,
+    .explorer-toolbar > .explorer-toolbar-divider:last-of-type { display: none; }
+    .explorer-toolbar { gap: 1px; padding-inline: 3px; }
+  }
+  @container (max-width: 365px) {
+    .explorer-toolbar > button:has(img[src$="/explorer-folders.png"]) { display: none; }
+  }
+  @container (max-width: 282px) {
+    .explorer-toolbar > button:has(img[src$="/explorer-search.png"]),
+    .explorer-toolbar > .explorer-toolbar-divider { display: none; }
+  }
+  @container (max-width: 270px) {
+    .explorer-menu-bar > [data-menu="Help"] { display: none; }
+    .menu-overflow { display: block; }
+  }
+  @container (max-width: 240px) {
+    .explorer-menu-bar > [data-menu="Tools"] { display: none; }
+  }
+  @container (max-width: 205px) {
+    .explorer-menu-bar > [data-menu="Favorites"] { display: none; }
+  }
+  @container (max-width: 175px) {
+    .explorer-toolbar > [aria-label="Up"] { display: none; }
+    .explorer-menu-bar > [data-menu="View"] { display: none; }
+    .explorer-address-row { gap: 3px; padding-inline: 3px; }
+    .explorer-address { min-width: 22px; }
+    .explorer-address-parts { display: none; }
+  }
+  @container (max-width: 150px) {
+    .explorer-toolbar > [aria-label="Forward"],
+    .explorer-toolbar .explorer-history-group:has([aria-label="Forward"]) { display: none; }
+  }
+}
+
+.chrome-overflow > .overflow-trigger {
+  display: block;
+  min-width: 16px;
+  min-height: 20px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #332733;
+  font-size: .8rem;
+  line-height: 1;
+}
+.chrome-overflow > .overflow-trigger:hover,
+.chrome-overflow:has(:popover-open) > .overflow-trigger {
+  border-color: #b9aa9d;
+  background: #eee4d6;
+}
+.xp-overflow-popup, .xp-overflow-submenu {
+  width: max-content;
+  min-width: 104px;
+  max-width: 210px;
+  padding: 2px;
+  border: 1px solid #aaa093;
+  background: #fffdf5;
+  color: #251e25;
+  box-shadow: 2px 2px 3px #0005;
+  font: .75rem Tahoma, sans-serif;
+}
+.xp-overflow-popup { position: fixed; inset: auto; margin: 0; overflow: visible; }
+.xp-overflow-entry { position: relative; }
+.xp-overflow-popup button {
+  display: flex;
+  align-items: center;
+  justify-content: start;
+  gap: 7px;
+  width: 100%;
+  min-width: 0;
+  min-height: 21px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+}
+.toolbar-overflow .xp-overflow-popup button { min-height: 26px; }
+.xp-overflow-popup button:not(:disabled):is(:hover, :focus-visible, [aria-expanded="true"]) {
+  background: #a86bbd;
+  color: white;
+  outline: none;
+}
+.xp-overflow-popup button:disabled { color: #817b77; }
+.xp-overflow-icon { display: grid; place-items: center; width: 20px; flex: none; }
+.xp-overflow-icon img { display: block; }
+.xp-overflow-arrow { margin-inline-start: auto; padding-inline-start: 8px; }
+.xp-overflow-submenu { position: absolute; inset: -3px auto auto 100%; z-index: 1; }
+.xp-overflow-popup[data-left="true"] .xp-overflow-submenu { inset-inline: auto 100%; }
+@container (width > 365px) { .toolbar-overflow [data-menu="Folders"] { display: none; } }
+@container (width > 282px) { .toolbar-overflow [data-menu="Search"] { display: none; } }
+@container (width > 175px) {
+  .toolbar-overflow [data-menu="Up"], .menu-overflow [data-menu="View"] { display: none; }
+}
+@container (width > 150px) { .toolbar-overflow [data-menu="Forward"] { display: none; } }
+@container (width > 205px) { .menu-overflow [data-menu="Favorites"] { display: none; } }
+@container (width > 240px) { .menu-overflow [data-menu="Tools"] { display: none; } }
+
+.task-pane-name {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

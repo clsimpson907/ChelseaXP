@@ -5,16 +5,16 @@ export default function TaskPane({ label, children }: { label: string; children:
   return <aside className="window-sidebar task-pane" aria-label={label}>{children}</aside>
 }
 
-export function TaskSection({ title, children, defaultExpanded = true }: { title: string; children: ReactNode; defaultExpanded?: boolean }) {
+export function TaskSection({ title, children, icon, defaultExpanded = true }: { title: string; children: ReactNode; icon?: string; defaultExpanded?: boolean }) {
   const [expanded, setExpanded] = useState(defaultExpanded)
   const sectionId = useId()
 
   return (
-    <section className="task-pane-section">
+    <section className="task-pane-section" data-featured={Boolean(icon)}>
       <h2>
         <button type="button" aria-expanded={expanded} aria-controls={sectionId}
           onClick={() => setExpanded((previous) => !previous)}>
-          <span>{title}</span>
+          <span className="task-pane-title">{icon && <img src={icon} alt="" width="22" height="22" />}{title}</span>
           <span className="task-pane-toggle" aria-hidden="true">{expanded ? '⌃' : '⌄'}</span>
         </button>
       </h2>
