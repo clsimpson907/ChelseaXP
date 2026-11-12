@@ -680,3 +680,55 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
   .xp-progress { max-width: 460px; margin-inline: auto; }
   .xp-progress > button { min-height: 44px; }
 }
+
+@media (min-width: 701px) {
+  .app-window--maximized:not(:has(.xp-progress)) {
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0;
+  }
+
+  .app-window--maximized .title-bar { cursor: default; }
+  .app-window--maximized :is(.window-resize, .window-resize-edge),
+  .app-window:has(.xp-progress) .window-maximize { display: none; }
+}
+
+.taskbar > .taskbar-clock {
+  display: grid;
+  align-self: stretch;
+  place-items: center;
+  min-width: 94px;
+  border-inline-start: 1px solid #794590;
+  background: linear-gradient(#ac7bc4, #c8a2db);
+  box-shadow: inset 1px 1px 3px #74428766;
+}
+
+.explorer-toolbar { padding: 5px 8px; }
+.explorer-address-row {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px 8px;
+  border-bottom: 1px solid #cda8d9;
+  background: #f4eadf;
+  font-size: .78rem;
+}
+
+.explorer-address { height: 24px; }
+.explorer-folders { background: linear-gradient(120deg, #e1c5ee, #f2e3f4); }
+.explorer-folders h2 {
+  margin: 0 0 6px;
+  padding: 5px 7px;
+  border: 1px solid #caa5d9;
+  background: var(--lavender-gloss);
+  color: #381553;
+  font-size: .85rem;
+}
+
+@media (max-width: 700px) {
+  .explorer-address-row { min-height: 44px; }
+  .explorer-address { height: 36px; }
+}
