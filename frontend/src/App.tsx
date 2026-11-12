@@ -3,7 +3,7 @@ import type { PointerEvent } from 'react'
 import './desktop.css'
 
 const apps = [
-  { id: 'about', label: 'About Me', icon: '🖥️' },
+  { id: 'about', label: 'About Me', icon: '👤' },
   { id: 'projects', label: 'Projects', icon: '📁' },
   { id: 'resume', label: 'Résumé', icon: '📄' },
   { id: 'contact', label: 'Contact', icon: '✉️' },
@@ -19,7 +19,7 @@ function AppContent({ id, open }: { id: AppId; open: (id: AppId) => void }) {
       return (
         <div className="profile">
           <aside className="profile-sidebar" aria-label="Portfolio shortcuts">
-            <div className="profile-picture" aria-hidden="true"><span>🖥️</span></div>
+            <img className="profile-picture account-picture" src="/chelsea.jpg" alt="Chelsea Simpson" width="130" height="130" />
             <button onClick={() => open('projects')}>📁 <span>Projects</span></button>
             <button onClick={() => open('resume')}>📄 <span>Résumé</span></button>
           </aside>
@@ -85,7 +85,7 @@ export default function App() {
   const desktop = useRef<HTMLElement>(null)
   const window = useRef<HTMLElement>(null)
   const startButton = useRef<HTMLButtonElement>(null)
-  const firstStartItem = useRef<HTMLButtonElement>(null)
+  const startProfileButton = useRef<HTMLButtonElement>(null)
   const taskButton = useRef<HTMLButtonElement>(null)
   const pendingFocus = useRef(false)
   const drag = useRef<{ pointer: number; offset: Point } | null>(null)
@@ -101,7 +101,7 @@ export default function App() {
   }, [selected, visible])
 
   useEffect(() => {
-    if (startOpen) firstStartItem.current?.focus()
+    if (startOpen) startProfileButton.current?.focus()
   }, [startOpen])
 
   useEffect(() => {
@@ -171,7 +171,11 @@ export default function App() {
         <nav className="shortcuts" aria-label="Portfolio apps">
           {apps.map(({ id, label, icon }) => (
             <button key={id} data-app={id} onClick={() => open(id)}>
-              <span className="shortcut-icon" aria-hidden="true">{icon}</span>
+              {id === 'about' ? (
+                <img className="shortcut-picture account-picture" src="/chelsea.jpg" alt="" width="38" height="38" />
+              ) : (
+                <span className="shortcut-icon" aria-hidden="true">{icon}</span>
+              )}
               <span>{label}</span>
             </button>
           ))}
@@ -205,12 +209,22 @@ export default function App() {
         <>
           <div className="menu-dismiss" onClick={() => setStartOpen(false)} aria-hidden="true" />
           <nav className="start-menu" id="start-menu" aria-label="Start menu">
-            <div className="start-header">ChelseaXP</div>
-            {apps.map(({ id, label, icon }, index) => (
-              <button key={id} ref={index === 0 ? firstStartItem : undefined} onClick={() => open(id)}>
-                <span aria-hidden="true">{icon}</span> {label}
-              </button>
-            ))}
+            <button className="start-header" ref={startProfileButton} onClick={() => open('about')}>
+              <img className="account-picture" src="/chelsea.jpg" alt="" width="44" height="44" />
+              <span>Chelsea Simpson</span>
+            </button>
+            <div className="start-columns">
+              {[apps.slice(1, 3), apps.slice(3)].map((column) => (
+                <div className="start-column" key={column[0].id}>
+                  {column.map(({ id, label, icon }) => (
+                    <button key={id} onClick={() => open(id)}>
+                      <span className="start-app-icon" aria-hidden="true">{icon}</span>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
           </nav>
         </>
       )}
