@@ -5,9 +5,9 @@ import DocumentExplorer from './DocumentExplorer'
 import './desktop.css'
 
 const apps = [
-  { id: 'about', label: 'About Me', icon: '👤' },
-  { id: 'documents', label: 'My Documents', icon: '📁' },
-  { id: 'complaints', label: 'Complaints', icon: '💌' },
+  { id: 'about', label: 'About Me', icon: '/chelsea.jpg' },
+  { id: 'documents', label: 'My Documents', icon: '/icons/my-documents.png' },
+  { id: 'complaints', label: 'Complaints', icon: '/icons/mail.png' },
 ] as const
 
 type AppId = (typeof apps)[number]['id']
@@ -22,7 +22,7 @@ function LinkedInShortcut({ onClick }: { onClick?: () => void }) {
       aria-label="LinkedIn (opens in a new tab)"
       onClick={onClick}
     >
-      <span className="linkedin-icon" aria-hidden="true">in</span>
+      <img className="linkedin-icon" src="/icons/linkedin.png" alt="" />
       <span>LinkedIn</span>
     </a>
   )
@@ -33,10 +33,9 @@ function AppContent({ id, open, close }: { id: AppId; open: (id: AppId) => void;
     case 'about':
       return (
         <div className="profile">
-          <aside className="profile-sidebar" aria-label="Portfolio shortcuts">
+          <div className="profile-sidebar">
             <img className="profile-picture account-picture" src="/chelsea.jpg" alt="Chelsea Simpson" width="130" height="130" />
-            <button onClick={() => open('documents')}>📁 <span>My Documents</span></button>
-          </aside>
+          </div>
           <div className="profile-main">
             <h1>Hi, I’m Chelsea Simpson!</h1>
             <p className="profile-role">Software Developer</p>
@@ -74,16 +73,19 @@ const taskbarTimeFormat = new Intl.DateTimeFormat(undefined, {
   minute: '2-digit',
 })
 
-function TaskbarClock() {
-  const [time, setTime] = useState(() => taskbarTimeFormat.format(new Date()))
+const todayFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'full' })
+
+function LocalClock({ showDate = false }: { showDate?: boolean }) {
+  const format = showDate ? todayFormat : taskbarTimeFormat
+  const [time, setTime] = useState(() => format.format(new Date()))
 
   useEffect(() => {
-    const update = () => setTime(taskbarTimeFormat.format(new Date()))
+    const update = () => setTime(format.format(new Date()))
     const timer = globalThis.setInterval(update, 1000)
     return () => globalThis.clearInterval(timer)
-  }, [])
+  }, [format])
 
-  return <span className="taskbar-clock">{time}</span>
+  return <span className={showDate ? 'phone-date' : 'taskbar-clock'}>{time}</span>
 }
 
 export default function App() {
@@ -94,6 +96,7 @@ export default function App() {
   const desktop = useRef<HTMLElement>(null)
   const window = useRef<HTMLElement>(null)
   const startButton = useRef<HTMLButtonElement>(null)
+  const phoneStartButton = useRef<HTMLButtonElement>(null)
   const startProfileButton = useRef<HTMLButtonElement>(null)
   const taskButton = useRef<HTMLButtonElement>(null)
   const pendingFocus = useRef(false)
@@ -118,6 +121,14 @@ export default function App() {
     globalThis.addEventListener('resize', resetPosition)
     return () => globalThis.removeEventListener('resize', resetPosition)
   }, [])
+
+  function dismissStart() {
+    setStartOpen(false)
+    const button = phoneStartButton.current?.getClientRects().length
+      ? phoneStartButton.current
+      : startButton.current
+    button?.focus()
+  }
 
   function open(id: AppId) {
     if (id === selected && visible) {
@@ -171,19 +182,25 @@ export default function App() {
   return (
     <div className={`shell${visible ? ' shell--app-open' : ''}`} onKeyDown={(event) => {
       if (event.key === 'Escape' && startOpen) {
-        setStartOpen(false)
-        startButton.current?.focus()
+        dismissStart()
       }
     }}>
       <main className="desktop" ref={desktop}>
-        <div className="phone-status"><TaskbarClock /></div>
+        <header className="phone-status">
+          <button ref={phoneStartButton} aria-expanded={startOpen} aria-controls={startOpen ? 'start-menu' : undefined}
+            onClick={() => setStartOpen(!startOpen)}>
+            <span className="start-logo" aria-hidden="true">✿</span> Start
+          </button>
+          <LocalClock />
+        </header>
         <nav className="shortcuts" aria-label="Portfolio apps">
+          <LocalClock showDate />
           {apps.map(({ id, label, icon }) => (
             <button key={id} data-app={id} onClick={() => open(id)}>
               {id === 'about' ? (
                 <img className="shortcut-picture account-picture" src="/chelsea.jpg" alt="" width="38" height="38" />
               ) : (
-                <span className="shortcut-icon" aria-hidden="true">{icon}</span>
+                <img className="shortcut-icon" src={icon} alt="" />
               )}
               <span>{label}</span>
             </button>
@@ -201,8 +218,7 @@ export default function App() {
           >
             <div className="title-bar" onPointerDown={beginDrag} onPointerMove={moveWindow}
               onLostPointerCapture={() => { drag.current = null }}>
-              <button className="phone-back" onClick={close}>‹ Back to menu</button>
-              <span id="window-title"><span aria-hidden="true">{current.icon} </span>{current.label}</span>
+              <span id="window-title"><img className="window-icon" src={current.icon} alt="" />{current.label}</span>
               <div className="window-controls">
                 <button aria-label={`Minimize ${current.label}`} onClick={minimize}>−</button>
                 <button aria-label={`Close ${current.label}`} onClick={close}>×</button>
@@ -213,6 +229,14 @@ export default function App() {
             </div>
           </article>
         )}
+        <footer className="phone-softkeys">
+          {visible ? (
+            <button onClick={close}>Today</button>
+          ) : (
+            <button onClick={() => open('documents')}>My Documents</button>
+          )}
+          <LinkedInShortcut />
+        </footer>
       </main>
 
       {startOpen && (
@@ -226,19 +250,16 @@ export default function App() {
             <div className="start-columns">
               <div className="start-column">
                 <button onClick={() => open('complaints')}>
-                  <span className="start-app-icon" aria-hidden="true">💌</span>
+                  <img className="start-app-icon" src="/icons/mail.png" alt="" />
                   Complaints
                 </button>
               </div>
               <div className="start-column">
                 <button onClick={() => open('documents')}>
-                  <span className="start-app-icon" aria-hidden="true">📁</span>
+                  <img className="start-app-icon" src="/icons/my-documents.png" alt="" />
                   My Documents
                 </button>
-                <LinkedInShortcut onClick={() => {
-                  setStartOpen(false)
-                  startButton.current?.focus()
-                }} />
+                <LinkedInShortcut onClick={dismissStart} />
               </div>
             </div>
           </nav>
@@ -252,10 +273,10 @@ export default function App() {
         {current && (
           <button className="task-button" aria-pressed={!minimized} ref={taskButton}
             onClick={() => minimized ? open(current.id) : minimize()}>
-            <span aria-hidden="true">{current.icon} </span>{current.label}
+            <img className="window-icon" src={current.icon} alt="" />{current.label}
           </button>
         )}
-        <TaskbarClock />
+        <LocalClock />
       </footer>
     </div>
   )

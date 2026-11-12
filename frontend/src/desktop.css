@@ -53,7 +53,7 @@ a { color: #642989; }
   border-color: #fff8;
 }
 
-.shortcut-icon { font-size: 2.1rem; line-height: 1.15; }
+.shortcut-icon { width: 36px; height: 36px; }
 
 .app-window {
   position: absolute;
@@ -66,7 +66,7 @@ a { color: #642989; }
   max-height: calc(100% - 24px);
   overflow: hidden;
   border: 2px solid #783b85;
-  border-radius: 13px 13px 8px 8px;
+  border-radius: 9px 9px 3px 3px;
   background: var(--paper);
   box-shadow: 0 8px 20px #43224766, 0 0 0 1px #f8c9eb;
 }
@@ -129,22 +129,13 @@ a { color: #642989; }
 
 .shortcut-picture { display: block; }
 
-.profile-sidebar button, .profile-actions button, .task-button {
+.profile-actions button, .task-button {
   border: 1px solid #9867ad;
   border-radius: 6px;
   background: var(--lavender-gloss);
   box-shadow: inset 0 1px #fff9;
   color: #381553;
   font-weight: bold;
-}
-
-.profile-sidebar button {
-  display: flex;
-  gap: 8px;
-  width: 100%;
-  margin-bottom: 7px;
-  padding: 8px;
-  text-align: left;
 }
 
 .profile-main { padding: clamp(16px, 3vw, 30px); }
@@ -272,116 +263,122 @@ a { color: #642989; }
   font-size: .87rem;
 }
 .start-column :is(button, a):hover, .start-column :is(button, a):focus-visible { background: #e9c2eb; }
-.start-app-icon { font-size: 1.35rem; }
-.phone-status, .phone-back { display: none; }
+.start-app-icon { width: 22px; height: 22px; flex: 0 0 auto; }
+.phone-status, .phone-date, .phone-softkeys { display: none; }
 
 @media (max-width: 700px) {
-  .desktop {
-    height: 100dvh;
-    overflow: auto;
-    background: #211429;
-  }
+  .shell { --handheld-bar: 46px; }
+  .desktop { height: 100dvh; overflow: hidden; }
 
-  .phone-status {
+  .phone-status, .phone-softkeys {
+    position: absolute;
+    z-index: 4;
+    inset-inline: 0;
     display: flex;
-    justify-content: flex-end;
-    width: min(100%, 460px);
-    min-height: 28px;
-    margin-inline: auto;
-    padding: 6px 14px 2px;
-    color: #f9e7fb;
+    align-items: center;
+    justify-content: space-between;
+    height: var(--handheld-bar);
+    background: linear-gradient(#a55094, #752f75 52%, #67306e 54%, #85397f);
+    color: #fff;
+    text-shadow: 0 1px #411745;
   }
-  .phone-status .taskbar-clock { padding: 0; color: inherit; font-weight: normal; }
+  .phone-status { top: 0; border-bottom: 1px solid #f1bbe9; }
+  .phone-softkeys { bottom: 0; border-top: 1px solid #f1bbe9; }
+  .phone-status .taskbar-clock { color: inherit; font-weight: normal; }
+  .phone-softkeys .linkedin-icon { display: none; }
+  .phone-status button, .phone-softkeys :is(button, a) {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-weight: bold;
+    text-decoration: none;
+  }
+  .phone-status button[aria-expanded="true"], .phone-softkeys :is(button, a):hover {
+    background: #512354;
+  }
+  .phone-status :focus-visible, .phone-softkeys :focus-visible {
+    outline-color: white;
+    outline-offset: -3px;
+  }
 
   .shortcuts {
-    --tile-size: clamp(96px, 37vw, 158px);
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: var(--tile-size);
-    gap: 6px;
-    width: min(100%, 460px);
-    margin: 0 auto;
-    padding: 0 12px 18px;
+    position: absolute;
+    inset: var(--handheld-bar) 0;
+    display: block;
+    width: 100%;
+    overflow: auto;
+    padding: 0;
+    background: linear-gradient(#60285c32, #32184154);
+  }
+  .phone-date {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 40px;
+    padding: 6px 12px;
+    border-bottom: 1px solid #af78bb;
+    background: linear-gradient(90deg, #f2d4eb, #d8b4e5dd);
+    color: #381553;
+    font-size: .85rem;
+    font-weight: bold;
   }
   .shortcuts :is(button, a) {
-    position: relative;
-    display: grid;
-    place-items: center;
-    padding: 8px 10px 27px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    width: 100%;
+    min-height: 48px;
+    padding: 6px 12px;
     border: 0;
+    border-bottom: 1px solid #a56eae;
     border-radius: 0;
-    background: var(--tile-color, #6e4484);
-    color: var(--tile-text, #fff);
-    font-size: .92rem;
-    font-weight: 600;
+    background: linear-gradient(90deg, #fff2f8f2, #edcfedd9);
+    color: #381553;
+    font-size: .94rem;
+    text-align: left;
     text-shadow: none;
   }
   .shortcuts :is(button, a):hover, .shortcuts :is(button, a):focus-visible {
-    border: 0;
-    background: var(--tile-color, #6e4484);
-    filter: brightness(1.1);
-    outline: 2px solid #fff4fb;
-    outline-offset: -4px;
+    border-bottom-color: #a56eae;
+    background: #f9e5f7;
+    outline-offset: -3px;
   }
-  .shortcuts button > span:last-child, .shortcuts a > span:last-child {
-    position: absolute;
-    inset: auto 10px 8px;
-    text-align: left;
-  }
-  .shortcuts [data-app="about"] {
-    grid-column: span 2;
-    --tile-color: #9c397b;
-  }
-  .shortcuts [data-app="documents"] {
-    --tile-color: #ddbee9;
-    --tile-text: #311a42;
-  }
-  .shortcuts [data-app="complaints"] {
-    --tile-color: #edc3ce;
-    --tile-text: #401d34;
-  }
-  .shortcuts a {
-    grid-column: span 2;
-    --tile-color: #684080;
-  }
-  .shortcuts .shortcut-picture {
-    width: clamp(56px, 20vw, 100px);
-    height: clamp(56px, 20vw, 100px);
-    border: 0;
-    border-radius: 0;
-    box-shadow: none;
-  }
-  .shortcuts .shortcut-icon {
-    font-size: clamp(2.1rem, 9vw, 3.35rem);
-    filter: grayscale(1) brightness(.35);
-  }
-  .shortcuts .linkedin-icon {
-    width: auto;
-    height: auto;
-    border: 0;
-    background: transparent;
-    font-size: 2.8rem;
-  }
+  .shortcuts :is(.shortcut-picture, .shortcut-icon, .linkedin-icon) { width: 28px; height: 28px; }
+  .shell--app-open .shortcuts, .taskbar, .window-controls { display: none; }
+  .profile-sidebar { display: none; }
 
-  .shell--app-open .shortcuts, .shell--app-open .phone-status,
-  .taskbar, .start-menu, .menu-dismiss, .window-controls, .profile-sidebar { display: none; }
+  .start-menu {
+    z-index: 5;
+    top: var(--handheld-bar);
+    bottom: auto;
+    width: min(360px, 100%);
+    max-height: calc(100dvh - 2 * var(--handheld-bar));
+    border-radius: 0;
+  }
+  .menu-dismiss { inset: var(--handheld-bar) 0; z-index: 4; }
+
   .app-window {
-    inset: 0 !important;
+    inset: var(--handheld-bar) 0 var(--handheld-bar) !important;
     width: 100%;
     max-height: none;
     transform: none;
     border: 0;
     border-radius: 0;
   }
-  .title-bar { min-height: 54px; padding: 4px 12px; cursor: default; background: #6e4484; border: 0; text-shadow: none; }
-  .phone-back {
-    display: block;
-    min-height: 44px;
-    padding: 0 8px;
-    border: 1px solid #a66ab6;
-    border-radius: 0;
-    background: #eed4ed;
+  .title-bar {
+    min-height: 32px;
+    padding: 4px 12px;
+    border: 0;
+    border-bottom: 1px solid #bd8ac3;
+    background: linear-gradient(#f5dbef, #d9b4e3);
     color: #381553;
-    font-weight: bold;
+    text-shadow: none;
+    cursor: default;
   }
   .window-body { flex: 1; }
   .profile, .profile-details { grid-template-columns: 1fr; }
@@ -394,25 +391,9 @@ a { color: #642989; }
 
 .shortcuts a, .start-column a { text-decoration: none; }
 
-.linkedin-icon {
-  display: grid;
-  place-items: center;
-  width: 2.2rem;
-  height: 2.2rem;
-  border: 1px solid #004a83;
-  border-radius: 5px;
-  background: #0a66c2;
-  color: white;
-  font: bold 1.45rem Arial, sans-serif;
-  text-shadow: none;
-}
-
-.start-column .linkedin-icon {
-  width: 1.35rem;
-  height: 1.35rem;
-  border-radius: 3px;
-  font-size: .92rem;
-}
+.linkedin-icon { width: 35px; height: 35px; object-fit: contain; }
+.start-column .linkedin-icon { width: 21px; height: 21px; }
+.window-icon { width: 18px; height: 18px; vertical-align: middle; margin-inline-end: 4px; }
 
 .window-body--explorer { padding: 0; }
 .explorer { background: #fffaf6; }
@@ -422,7 +403,7 @@ a { color: #642989; }
   gap: 8px;
   padding: 8px;
   border-bottom: 1px solid #cda8d9;
-  background: #f2e3f4;
+  background: linear-gradient(#fff8ec, #eee1d4);
 }
 .explorer-toolbar > button, .explorer-address button {
   min-height: 36px;
@@ -483,8 +464,13 @@ a { color: #642989; }
   text-align: center;
 }
 button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
-.explorer-item > span { font-size: 2rem; }
+.explorer-folders img { width: 16px; height: 16px; vertical-align: middle; }
 .explorer-item small { color: #634b73; }
+.explorer-text-file {
+  font: .875rem/1.55 "Courier New", monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 
 @media (max-width: 700px) {
   .explorer-layout { grid-template-columns: minmax(0, 1fr); }

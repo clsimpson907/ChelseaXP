@@ -82,3 +82,8 @@ SQL stores timestamps and keyed hashes of client addresses. Entries older than
 two days are pruned when a new slot is reserved. Complaint text, name, and email
 are sent privately to the configured inbox. A successful response means Resend
 accepted the message for delivery.
+
+## Visual assets
+
+The folder, mail, and document icons are from the Windows XP High Resolution Icon Pack by the creator of [GUI Archive](https://guiarchive.blogspot.com/).
+The LinkedIn shortcut uses the supplied vintage LinkedIn icon.
