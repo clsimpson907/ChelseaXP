@@ -19,3 +19,5 @@ Microsoft Wiki (Fandom): Features new to Windows XP (Windows Explorer task pane)
 https://microsoft.fandom.com/wiki/Features_new_to_Windows_XP#Windows_Explorer
 Microsoft Wiki (Fandom): Control Panel
 https://microsoft.fandom.com/wiki/Control_Panel
+
+Additional Explorer icons from the same pack: My Music, My Pictures, New Folder, Desktop, My Network Places, Search, Folder View, and Tile View.
