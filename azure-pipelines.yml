@@ -35,6 +35,8 @@ stages:
               npm run build
             workingDirectory: frontend
             displayName: Check and build the React app
+            env:
+              VITE_API_ORIGIN: https://chelseaxp-api.victoriouscoast-91561d2b.westus2.azurecontainerapps.io
           - task: UseDotNet@2
             inputs:
               packageType: sdk
