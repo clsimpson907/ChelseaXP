@@ -50,11 +50,12 @@ function LinkedInShortcut({ onClick }: { onClick?: () => void }) {
   )
 }
 
-function AppContent({ entry, open, close, active, sessionFolders, addFolder, renameFolder }: {
+function AppContent({ entry, open, close, active, sessionFolders, addFolder, renameFolder, deleteFolder }: {
   entry: WindowEntry
   sessionFolders: SessionFolder[]
   addFolder: (parent: FolderId) => SessionFolder
   renameFolder: (id: FolderId, name: string) => string | undefined
+  deleteFolder: (id: FolderId) => void
   open: (id: AppId, folder?: LocationId) => void
   close: () => void
   active: boolean
@@ -95,7 +96,7 @@ function AppContent({ entry, open, close, active, sessionFolders, addFolder, ren
     case 'computer':
     case 'documents':
       return <DocumentExplorer key={navigation} initialFolder={folder ?? id}
-        sessionFolders={sessionFolders} addFolder={addFolder} renameFolder={renameFolder}
+        sessionFolders={sessionFolders} addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder}
         openCredits={() => open('notepad')} openControlPanel={() => open('control')} />
     case 'notepad':
       return <pre className="notepad-text">{credits}</pre>
@@ -184,6 +185,20 @@ export default function App() {
     setSessionFolders((current) => current.map((entry) => entry.id === id ? { ...entry, name } : entry))
   }
 
+  function deleteFolder(id: FolderId) {
+    setSessionFolders((current) => {
+      if (!current.some((folder) => folder.id === id)) return current
+      const parents = new Map(current.map((folder) => [folder.id, folder.parent]))
+
+      function isDeleted(folder: FolderId): boolean {
+        const parent = parents.get(folder)
+        return folder === id || (parent !== undefined && isDeleted(parent))
+      }
+
+      return current.filter((folder) => !isDeleted(folder.id))
+    })
+  }
+
   function open(id: AppId, folder?: LocationId) {
     setWindows((entries) => {
       const existing = entries.find((entry) => entry.id === id)
@@ -247,7 +262,7 @@ export default function App() {
               desktop={desktop} depth={index + 1} active={foreground} hidden={hidden}
               onActivate={() => activate(app.id)} onMinimize={() => minimize(app.id)} onClose={() => close(app.id)}>
               <AppContent entry={windows[index]} sessionFolders={sessionFolders}
-                addFolder={addFolder} renameFolder={renameFolder} open={open} close={() => close(app.id)} active={foreground} />
+                addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} open={open} close={() => close(app.id)} active={foreground} />
             </DesktopWindow>
           )
         })}
