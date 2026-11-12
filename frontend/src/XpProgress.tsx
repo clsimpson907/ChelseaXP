@@ -29,7 +29,7 @@ export default function XpProgress({ label, icon, messages, reverseMessages, com
         message: (step.message + messageOffset) % messages.length,
         reverseMessage: '',
       } : current)
-    }, 470 + Math.random() * 140)
+    }, 650 + Math.random() * 140)
     return () => globalThis.clearTimeout(timer)
   }, [complete, messages.length, step])
 
@@ -38,10 +38,10 @@ export default function XpProgress({ label, icon, messages, reverseMessages, com
 
     const timer = globalThis.setTimeout(() => {
       const message = reverseMessages[Math.floor(Math.random() * reverseMessages.length)]
-      const drop = 2 + Math.floor(Math.random() * 3)
-      setStep((current) => current.filled > 0 ? {
+      const restartAt = 3 + Math.floor(Math.random() * 2)
+      setStep((current) => current.filled > restartAt ? {
         ...current,
-        filled: Math.max(0, current.filled - drop),
+        filled: restartAt,
         reverseMessage: message,
       } : current)
     }, 3000)

@@ -9,11 +9,33 @@ const locations = {
 
 type LocationId = keyof typeof locations
 
+function HistoryDropdown({ label, entries, onSelect }: {
+  label: string
+  entries: { id: LocationId; index: number }[]
+  onSelect: (index: number) => void
+}) {
+  return (
+    <span className="explorer-history" data-disabled={entries.length === 0}>
+      <select aria-label={label} title={label} disabled={entries.length === 0} value=""
+        onChange={(event) => {
+          if (event.target.value) onSelect(Number(event.target.value))
+        }}>
+        <option value="" disabled>{label}</option>
+        {entries.map(({ id, index }) => (
+          <option key={index} value={index}>{locations[id].name}</option>
+        ))}
+      </select>
+    </span>
+  )
+}
+
 export default function DocumentExplorer() {
   const [history, setHistory] = useState<{ entries: LocationId[]; index: number }>({
     entries: ['documents'], index: 0,
   })
   const locationId = history.entries[history.index]
+  const historyEntries = history.entries.map((id, index) => ({ id, index }))
+  const [address, setAddress] = useState<LocationId | null>(null)
   const heading = useRef<HTMLHeadingElement>(null)
   const files = useRef<HTMLElement>(null)
   const location = locations[locationId]
@@ -24,6 +46,7 @@ export default function DocumentExplorer() {
   }
 
   function openLocation(id: LocationId) {
+    setAddress(null)
     if (id === locationId) return
     setHistory(({ entries, index }) => ({
       entries: [...entries.slice(0, index + 1), id],
@@ -32,36 +55,52 @@ export default function DocumentExplorer() {
     focusFiles()
   }
 
-  function travel(offset: -1 | 1) {
-    setHistory((current) => ({ ...current, index: current.index + offset }))
+  function travel(index: number) {
+    setAddress(null)
+    setHistory((current) => ({ ...current, index }))
     focusFiles()
   }
 
   return (
     <div className="explorer">
       <div className="explorer-toolbar" role="group" aria-label="Explorer navigation">
-        <button type="button" aria-label="Back" title="Back" disabled={history.index === 0} onClick={() => travel(-1)}>
-          <img src="/icons/back.png" alt="" width="23" height="23" />
+        <div className="explorer-history-group">
+          <button type="button" aria-label="Back" title="Back" disabled={history.index === 0}
+            onClick={() => travel(history.index - 1)}>
+            <img src="/icons/back.png" alt="" width="22" height="22" /> Back
+          </button>
+          <HistoryDropdown label="Back history" entries={historyEntries.slice(0, history.index).reverse()} onSelect={travel} />
+        </div>
+        <div className="explorer-history-group">
+          <button type="button" aria-label="Forward" title="Forward" disabled={history.index >= history.entries.length - 1}
+            onClick={() => travel(history.index + 1)}>
+            <img src="/icons/forward.png" alt="" width="22" height="22" />
+          </button>
+          <HistoryDropdown label="Forward history" entries={historyEntries.slice(history.index + 1)} onSelect={travel} />
+        </div>
+        <button type="button" aria-label="Up" title="Up one level" disabled={location.parent === null}
+          onClick={() => openLocation('documents')}>
+          <img src="/icons/up.png" alt="" width="22" height="22" />
         </button>
-        <button type="button" aria-label="Forward" title="Forward" disabled={history.index >= history.entries.length - 1} onClick={() => travel(1)}>
-          <img src="/icons/forward.png" alt="" width="23" height="23" />
-        </button>
-        <button type="button" aria-label="Up" title="Up one level" disabled={location.parent === null} onClick={() => openLocation('documents')}>
-          <img src="/icons/up.png" alt="" width="23" height="23" />
-        </button>
+        <span className="explorer-toolbar-divider" aria-hidden="true" />
       </div>
-      <div className="explorer-address-row">
-        <span aria-hidden="true">Address</span>
-        <nav className="explorer-address" aria-label="Folder path">
-          {location.parent ? (
-            <>
-              <button onClick={() => openLocation(location.parent)}>My Documents</button>
-              <span aria-hidden="true">›</span>
-              <span aria-current="location">{location.name}</span>
-            </>
-          ) : <span aria-current="location">{location.name}</span>}
-        </nav>
-      </div>
+      <form className="explorer-address-row" onSubmit={(event) => {
+        event.preventDefault()
+        openLocation(address ?? locationId)
+      }}>
+        <label htmlFor="explorer-address">Address</label>
+        <span className="explorer-address">
+          <select id="explorer-address" value={address ?? locationId}
+            onChange={(event) => setAddress(event.target.value as LocationId)}>
+            <option value="documents">My Documents</option>
+            <option value="notes">My Documents › Project Notes</option>
+            <option value="credits">My Documents › Credits.txt</option>
+          </select>
+        </span>
+        <button className="explorer-go" type="submit">
+          <img src="/icons/go.png" alt="" width="18" height="18" /> Go
+        </button>
+      </form>
       <div className="explorer-layout">
         <nav className="window-sidebar explorer-folders" aria-label="Folders">
           <h2>Folders</h2>
