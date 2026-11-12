@@ -2,7 +2,9 @@ import { useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent, ReactNode, RefObject } from 'react'
 
 type WindowBounds = { x: number; y: number; width: number; height: number }
-type Interaction = { kind: 'move' | 'resize'; pointer: number; x: number; y: number; bounds: WindowBounds }
+const resizeEdges = ['n', 'e', 's', 'w', 'nw', 'ne', 'sw'] as const
+type ResizeEdge = (typeof resizeEdges)[number] | 'se'
+type Interaction = { kind: 'move' | ResizeEdge; pointer: number; x: number; y: number; bounds: WindowBounds }
 type Props = {
   id: string
   title: string
@@ -35,15 +37,28 @@ export default function DesktopWindow({
     return { x: current.left - workspace.left, y: current.top - workspace.top, width: current.width, height: current.height }
   }
 
-  function resize(start: WindowBounds, dx: number, dy: number) {
+  function resize(start: WindowBounds, dx: number, dy: number, edge: ResizeEdge) {
     const workspace = desktop.current
     if (!workspace) return
-    const maxWidth = workspace.clientWidth - start.x
-    const maxHeight = workspace.clientHeight - start.y
+
+    const fromLeft = edge.includes('w')
+    const fromTop = edge.includes('n')
+    const right = start.x + start.width
+    const bottom = start.y + start.height
+    const maxWidth = fromLeft ? right : workspace.clientWidth - start.x
+    const maxHeight = fromTop ? bottom : workspace.clientHeight - start.y
+    const width = fromLeft || edge.includes('e')
+      ? clamp(start.width + (fromLeft ? -dx : dx), Math.min(360, maxWidth), maxWidth)
+      : start.width
+    const height = fromTop || edge.includes('s')
+      ? clamp(start.height + (fromTop ? -dy : dy), Math.min(220, maxHeight), maxHeight)
+      : start.height
+
     setBounds({
-      ...start,
-      width: clamp(start.width + dx, Math.min(360, maxWidth), maxWidth),
-      height: clamp(start.height + dy, Math.min(220, maxHeight), maxHeight),
+      x: fromLeft ? right - width : start.x,
+      y: fromTop ? bottom - height : start.y,
+      width,
+      height,
     })
   }
 
@@ -64,8 +79,8 @@ export default function DesktopWindow({
 
     const dx = event.clientX - start.x
     const dy = event.clientY - start.y
-    if (start.kind === 'resize') {
-      resize(start.bounds, dx, dy)
+    if (start.kind !== 'move') {
+      resize(start.bounds, dx, dy, start.kind)
     } else {
       setBounds({
         ...start.bounds,
@@ -89,7 +104,7 @@ export default function DesktopWindow({
     const current = measure()
     if (!offset || !current) return
     event.preventDefault()
-    resize(current, offset[0], offset[1])
+    resize(current, offset[0], offset[1], 'se')
   }
 
   return (
@@ -124,12 +139,16 @@ export default function DesktopWindow({
       <div className={`window-body${id === 'about' ? ' window-body--profile' : id === 'documents' ? ' window-body--explorer' : ''}`}>
         {children}
       </div>
+      {resizeEdges.map((edge) => (
+        <div key={edge} className="window-resize-edge" data-edge={edge} aria-hidden="true"
+          onPointerDown={(event) => begin(event, edge)} onPointerMove={update} onLostPointerCapture={end} />
+      ))}
       <button
         type="button"
         className="window-resize"
         aria-label={`Resize ${title} using arrow keys`}
         title="Drag to resize, or use the arrow keys"
-        onPointerDown={(event) => begin(event, 'resize')}
+        onPointerDown={(event) => begin(event, 'se')}
         onPointerMove={update}
         onLostPointerCapture={end}
         onKeyDown={resizeWithKeyboard}
