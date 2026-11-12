@@ -181,6 +181,16 @@ a { color: #642989; }
   background: linear-gradient(#d3a2e4, #ad78c7 52%, #9b65b9);
 }
 
+.taskbar-clock {
+  margin-inline-start: auto;
+  padding-inline: 14px;
+  color: #291338;
+  font-size: .85rem;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .start-button {
   align-self: stretch;
   min-width: 104px;

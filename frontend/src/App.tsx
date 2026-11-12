@@ -60,6 +60,23 @@ function AppContent({ id, open }: { id: AppId; open: (id: AppId) => void }) {
   }
 }
 
+const taskbarTimeFormat = new Intl.DateTimeFormat(undefined, {
+  hour: 'numeric',
+  minute: '2-digit',
+})
+
+function TaskbarClock() {
+  const [time, setTime] = useState(() => taskbarTimeFormat.format(new Date()))
+
+  useEffect(() => {
+    const update = () => setTime(taskbarTimeFormat.format(new Date()))
+    const timer = globalThis.setInterval(update, 1000)
+    return () => globalThis.clearInterval(timer)
+  }, [])
+
+  return <span className="taskbar-clock">{time}</span>
+}
+
 export default function App() {
   const [selected, setSelected] = useState<AppId | null>('about')
   const [minimized, setMinimized] = useState(false)
@@ -208,6 +225,7 @@ export default function App() {
             <span aria-hidden="true">{current.icon} </span>{current.label}
           </button>
         )}
+        <TaskbarClock />
       </footer>
     </div>
   )
