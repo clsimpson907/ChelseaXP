@@ -194,17 +194,9 @@ a { color: #642989; }
   height: 20px;
   padding: 0;
   border: 0;
-  background: var(--paper);
-  color: #713984;
+  background: transparent;
   cursor: nwse-resize;
   touch-action: none;
-}
-.window-resize::before {
-  content: "";
-  position: absolute;
-  inset: 4px 3px 3px 4px;
-  background: repeating-linear-gradient(135deg, transparent 0 2px, currentColor 2px 3px);
-  clip-path: polygon(100% 0, 100% 100%, 0 100%);
 }
 .window-resize:focus-visible { outline-offset: -3px; }
 
@@ -1215,18 +1207,61 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 }
 .xp-file-explorer .task-pane-actions button:disabled { opacity: .65; cursor: default; }
 
-.xp-file-explorer .explorer-files[data-music="true"] {
-  position: relative;
-  isolation: isolate;
-}
-.explorer-files[data-music="true"]::before {
+.explorer-file-pane[data-music="true"]::before {
   position: absolute;
   z-index: -1;
-  inset: auto 5px 5px auto;
+  inset: auto -22px -15px auto;
+  rotate: -15deg;
   width: min(34%, 145px);
   aspect-ratio: 1;
   background: url('/icons/audio-cd.png') center / contain no-repeat;
   opacity: .12;
   pointer-events: none;
   content: '';
+}
+
+.explorer-file-pane[data-pictures="true"]::before {
+  position: absolute;
+  z-index: -1;
+  right: -15px;
+  bottom: -22px;
+  width: min(40%, 156px);
+  aspect-ratio: 1;
+  background: url('/icons/take-picture.png') center / contain no-repeat;
+  rotate: -15deg;
+  opacity: .13;
+  pointer-events: none;
+  content: '';
+}
+.xp-file-explorer .explorer-items[data-view="Thumbnails"] {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 104px), 104px));
+  align-items: start;
+}
+.xp-file-explorer [data-view="Thumbnails"] .explorer-item {
+  flex-direction: column;
+  text-align: center;
+}
+.xp-file-explorer [data-view="Thumbnails"] .explorer-item > img {
+  width: 88px;
+  max-width: 100%;
+  height: 78px;
+  padding: 15px;
+  border: 1px solid #eadbea;
+  background: #fffdfd;
+  object-fit: contain;
+}
+
+.explorer-file-pane {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  background: #fffdfd;
+}
+.xp-file-explorer .explorer-file-pane > .explorer-files {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
 }

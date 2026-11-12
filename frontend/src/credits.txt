@@ -31,3 +31,5 @@ My Computer drive icons (Local Disk, Floppy Disk, and Optical Drive): Windows XP
 Rename and Delete task icons: Windows XP High Resolution Icon Pack by GUI Archive.
 
 My Music watermark: Audio CD icon from the Windows XP High Resolution Icon Pack by GUI Archive.
+
+My Pictures watermark: Take Picture icon from the Windows XP High Resolution Icon Pack by GUI Archive.

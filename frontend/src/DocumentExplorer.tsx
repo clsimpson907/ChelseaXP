@@ -11,7 +11,7 @@ const documentEntries: Entry[] = [
   { id: 'resume', name: 'Résumé.pdf', icon: 'document', type: 'PDF document' },
   { id: 'credits', name: 'Credits.txt', icon: 'document', type: 'Text document' },
 ]
-const views = ['Tiles', 'Icons', 'List', 'Details'] as const
+const views = ['Tiles', 'Icons', 'List', 'Details', 'Thumbnails'] as const
 type View = (typeof views)[number]
 
 function Icon({ icon, size = 16 }: { icon: string; size?: number }) {
@@ -72,6 +72,7 @@ export default function DocumentExplorer({
   const [search, setSearch] = useState<SearchCriteria | null>(null)
   const [folderView, setFolderView] = useState<View>('Tiles')
   const [desktopView, setDesktopView] = useState<View>('Icons')
+  const [picturesView, setPicturesView] = useState<View>('Thumbnails')
   const [menu, setMenu] = useState<string | null>(null)
   const files = useRef<HTMLElement>(null)
   const lastPointer = useRef('')
@@ -84,9 +85,10 @@ export default function DocumentExplorer({
   const isDesktop = locationId === 'desktop'
   const isComputer = locationId === 'computer'
   const isMusic = locationId === 'music'
+  const isPictures = locationId === 'pictures'
   const isProtectedDisk = locationId === 'disk'
-  const view = isDesktop ? desktopView : folderView
-  const setView = isDesktop ? setDesktopView : setFolderView
+  const view = isDesktop ? desktopView : isPictures ? picturesView : folderView
+  const setView = isDesktop ? setDesktopView : isPictures ? setPicturesView : setFolderView
   const addressId = address && folders[address] ? address : locationId
   const deleteTarget = itemDialog && 'folder' in itemDialog
     ? sessionFolders.find((folder) => folder.id === itemDialog.folder) : undefined
@@ -104,7 +106,7 @@ export default function DocumentExplorer({
     : isDesktop ? ['documents', 'network'] as const
       : isComputer ? ['network', 'documents'] as const
         : isProtectedDisk ? ['computer', 'documents', 'network'] as const
-          : isMusic ? ['documents', 'computer', 'network'] as const : explorerPlaces.filter((id) => id !== locationId)
+          : isMusic || isPictures ? ['documents', 'computer', 'network'] as const : explorerPlaces.filter((id) => id !== locationId)
   const canCreate = !isComputer && !isProtectedDisk && locationId !== 'network'
 
   function folderEntry(id: FolderId): Entry {
@@ -395,7 +397,7 @@ export default function DocumentExplorer({
                     <Icon icon={folders[id].icon} /> {folders[id].name}
                   </button>
                 ))}
-                {locationId !== 'documents' && !isDesktop && !isProtectedDisk && !isMusic && <button type="button" onClick={openControlPanel}>
+                {locationId !== 'documents' && !isDesktop && !isProtectedDisk && !isMusic && !isPictures && <button type="button" onClick={openControlPanel}>
                   <Icon icon="control-panel" /> Control Panel
                 </button>}
               </TaskSection>
@@ -415,7 +417,8 @@ export default function DocumentExplorer({
             </TaskSection>}
           </TaskPane>}
         </div>
-        <section className="explorer-files" data-music={isMusic && !activeSearch} data-protected={isProtectedDisk && !activeSearch} ref={files} tabIndex={-1} aria-label={location.name}
+        <div className="explorer-file-pane" data-music={isMusic && !activeSearch} data-pictures={isPictures && !activeSearch}>
+        <section className="explorer-files" data-protected={isProtectedDisk && !activeSearch} ref={files} tabIndex={-1} aria-label={location.name}
           onClick={(event) => {
             if (!(event.target as HTMLElement).closest('li')) {
               setSelection(null)
@@ -439,6 +442,7 @@ export default function DocumentExplorer({
             : locationId === 'notes' ? 'No project notes published yet.' : 'This folder is empty.'}</p>}
           {nameError && <p className="explorer-empty" role="status">{nameError}</p>}
         </section>
+        </div>
       </div>
     </div>
   )
