@@ -1172,3 +1172,45 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 .xp-file-explorer .explorer-items[data-desktop="true"] .explorer-item {
   overflow-wrap: anywhere;
 }
+
+.explorer-computer-group + .explorer-computer-group { margin-top: 8px; }
+.explorer-computer-group h2 {
+  margin: 0 0 4px;
+  padding: 3px 5px;
+  border-bottom: 1px solid #dcc2e6;
+  font-size: .8rem;
+}
+
+.xp-file-explorer .explorer-files[data-protected="true"] { padding: 0; }
+.explorer-protected-disk {
+  position: relative;
+  isolation: isolate;
+  min-height: 100%;
+  padding: 18px 14px;
+  overflow: hidden;
+  background: #a076bb;
+  color: #fffaff;
+}
+.explorer-protected-disk::before {
+  position: absolute;
+  z-index: -1;
+  right: -10px;
+  bottom: -18px;
+  width: min(55%, 240px);
+  aspect-ratio: 1;
+  background: url('/icons/my-computer.png') center / contain no-repeat;
+  opacity: .13;
+  content: '';
+}
+.explorer-protected-disk h1 { margin: 0; color: inherit; }
+.explorer-protected-disk p { max-width: 48ch; font-weight: bold; }
+.explorer-protected-disk button {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: #f3dcfa;
+  font-size: .8rem;
+  font-weight: bold;
+  cursor: default;
+}
+.xp-file-explorer .task-pane-actions button:disabled { opacity: .65; cursor: default; }

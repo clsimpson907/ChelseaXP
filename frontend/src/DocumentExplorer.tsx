@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import InsertDiskDialog from './InsertDiskDialog'
 import ConfirmFolderDelete from './ConfirmFolderDelete'
 import SearchCompanion, { type SearchCriteria } from './SearchCompanion'
 import TaskPane, { TaskSection } from './TaskPane'
@@ -57,6 +58,7 @@ export default function DocumentExplorer({
     return { entries: [path], index: 0 }
   })
   const [address, setAddress] = useState<FolderId | null>(null)
+  const [emptyDrive, setEmptyDrive] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<{ folder: FolderId } | { deniedName: string } | null>(null)
   const [selection, setSelection] = useState<string | null>(null)
   const [editing, setEditing] = useState<FolderId | null>(null)
@@ -80,6 +82,8 @@ export default function DocumentExplorer({
   useEffect(() => { files.current?.scrollTo(0, 0) }, [locationId])
   const location = folders[locationId]
   const isDesktop = locationId === 'desktop'
+  const isComputer = locationId === 'computer'
+  const isProtectedDisk = locationId === 'disk'
   const view = isDesktop ? desktopView : folderView
   const setView = isDesktop ? setDesktopView : setFolderView
   const addressId = address && folders[address] ? address : locationId
@@ -96,8 +100,10 @@ export default function DocumentExplorer({
     return parent ? [id, ...ancestors(parent)] : [id]
   }
   const otherPlaces = locationId === 'documents' ? ['desktop', 'computer', 'network'] as const
-    : isDesktop ? ['documents', 'network'] as const : explorerPlaces.filter((id) => id !== locationId)
-  const canCreate = locationId !== 'computer' && locationId !== 'network'
+    : isDesktop ? ['documents', 'network'] as const
+      : isComputer ? ['network', 'documents'] as const
+        : isProtectedDisk ? ['computer', 'documents', 'network'] as const : explorerPlaces.filter((id) => id !== locationId)
+  const canCreate = !isComputer && !isProtectedDisk && locationId !== 'network'
 
   function folderEntry(id: FolderId): Entry {
     const folder = folders[id]
@@ -105,6 +111,7 @@ export default function DocumentExplorer({
   }
 
   function folderPath(id: FolderId): string {
+    if (id === 'disk') return 'C:\\'
     const folder = folders[id]
     return folder.parent ? folderPath(folder.parent) + ' › ' + folder.name : folder.name
   }
@@ -113,8 +120,18 @@ export default function DocumentExplorer({
     ...shortcut, id: 'shortcut-' + id, type: 'Shortcut',
   }))
   const folderEntries = folderIds.filter((id) => folders[id].parent === locationId).map(folderEntry)
+  const removableDrives: Entry[] = [
+    { id: 'floppy-drive', name: '3½ Floppy (A:)', icon: 'floppy-disk', type: 'Removable Drive', open: () => setEmptyDrive('A:') },
+    { id: 'cd-drive', name: 'CD Drive (D:)', icon: 'optical-drive', type: 'Removable Drive', open: () => setEmptyDrive('D:') },
+  ]
+  const computerGroups = [
+    { title: 'Files Stored on This Computer', entries: folderEntries.filter(({ id }) => id !== 'disk') },
+    { title: 'Hard Disk Drives', entries: [{ ...folderEntry('disk'), type: 'Local Disk' }] },
+    { title: 'Devices with Removable Storage', entries: removableDrives },
+  ]
   const activeSearch = sidebar === 'search' ? search : null
   const entries = activeSearch ? searchEntries(activeSearch)
+    : isComputer ? computerGroups.flatMap((group) => group.entries)
     : [...(isDesktop ? shortcutEntries : []), ...folderEntries, ...(locationId === 'documents' ? documentEntries : [])]
 
   function searchEntries({ name, scope, category, media }: SearchCriteria) {
@@ -209,7 +226,7 @@ export default function DocumentExplorer({
       { label: 'Rename', action: () => { if (editable) setEditing(editable.id) }, disabled: !editable },
       { label: 'Clear selection', action: () => setSelection(null), disabled: !selected },
     ],
-    View: views.map((option) => ({ label: option, action: () => setView(option) })),
+    View: views.map((option) => ({ label: option, action: () => setView(option), disabled: isProtectedDisk && !activeSearch })),
     Favorites: [{ label: 'My Documents', action: () => openLocation('documents') }],
     Tools: [
       { label: 'Search', action: () => toggleSidebar('search') },
@@ -218,10 +235,42 @@ export default function DocumentExplorer({
     Help: [{ label: 'Credits', action: openCredits }],
   }
 
+  function renderEntries(items: Entry[]) {
+    return <ul className="explorer-items" data-view={view} data-desktop={isDesktop && !activeSearch}>
+      {items.map((entry) => <li key={entry.id}>
+        {editing === entry.id && entry.folder ? <form className="explorer-rename" onSubmit={(event) => {
+          event.preventDefault()
+          finishName(entry.folder!, String(new FormData(event.currentTarget).get('name')))
+        }}>
+          <Icon icon={entry.icon} size={40} />
+          <input name="name" aria-label="Folder name" defaultValue={entry.name} maxLength={80}
+            ref={renameInput}
+            onBlur={(event) => {
+              if (!finishName(entry.folder!, event.currentTarget.value)) setEditing(null)
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') { setEditing(null); setNameError(''); files.current?.focus() }
+            }} />
+        </form> : <button type="button" className="explorer-item" aria-pressed={selection === entry.id}
+          onPointerDown={(event) => { lastPointer.current = event.pointerType }}
+          onClick={(event) => {
+            setSelection(entry.id)
+            if (event.detail === 0 || lastPointer.current === 'touch') openEntry(entry)
+          }}
+          onDoubleClick={() => openEntry(entry)}>
+          <Icon icon={entry.icon} size={view === 'List' || view === 'Details' ? 16 : isDesktop && view === 'Icons' ? 32 : 44} />
+          <span className="explorer-item-label">{entry.name}</span>
+          {view === 'Details' ? <small>{entry.type}</small> : entry.id === 'resume' && <small>Coming soon</small>}
+        </button>}
+      </li>)}
+    </ul>
+  }
+
   return (
     <div className="explorer xp-file-explorer" onKeyDown={(event) => {
       if (event.key === 'Escape') setMenu(null)
     }}>
+      {emptyDrive && <InsertDiskDialog drive={emptyDrive} onClose={() => setEmptyDrive(null)} />}
       {deniedName && <ConfirmFolderDelete name={deniedName} onCancel={() => setPendingDelete(null)} />}
       {deleteTarget && <ConfirmFolderDelete name={deleteTarget.name}
         onCancel={() => setPendingDelete(null)}
@@ -271,7 +320,7 @@ export default function DocumentExplorer({
         <span className="explorer-toolbar-divider" aria-hidden="true" />
         <label className="explorer-view-picker">
           <Icon icon="explorer-view" size={22} /><span aria-hidden="true">▾</span>
-          <select aria-label="View" value={view} onChange={(event) => setView(event.target.value as View)}>
+          <select aria-label="View" disabled={isProtectedDisk && !activeSearch} value={view} onChange={(event) => setView(event.target.value as View)}>
             {views.map((option) => <option key={option}>{option}</option>)}
           </select>
         </label>
@@ -300,16 +349,29 @@ export default function DocumentExplorer({
             onSearch={(criteria) => { setSearch(criteria); setSelection(null); files.current?.scrollTo(0, 0) }}
           /> : <TaskPane label="Explorer tasks">
             {sidebar === 'tasks' && <>
+              {isComputer && <TaskSection title="System Tasks">
+                <button type="button" onClick={openControlPanel}>
+                  <Icon icon="control-panel" /> Change a setting
+                </button>
+              </TaskSection>}
+              {isProtectedDisk && <TaskSection title="System Tasks">
+                <button type="button" disabled>
+                  <Icon icon="folder" /> Show the contents of this drive
+                </button>
+                <button type="button" onClick={() => toggleSidebar('search')}>
+                  <Icon icon="explorer-search" /> Search for files or folders
+                </button>
+              </TaskSection>}
               {(canCreate || selected) && <TaskSection title="File and Folder Tasks">
                 {selected ? <>
                   {selected.id !== 'resume' && <button type="button" onClick={() => openEntry(selected)}>
-                    <Icon icon={selected.icon} /> {selected.type === 'Shortcut' ? 'Open shortcut' : selected.folder ? 'Open this folder' : 'Open in Notepad'}
+                    <Icon icon={selected.icon} /> {selected.type === 'Shortcut' ? 'Open shortcut' : selected.type === 'Removable Drive' || selected.id === 'disk' ? 'Open drive' : selected.folder ? 'Open this folder' : 'Open in Notepad'}
                   </button>}
                   {editable && <button type="button" onClick={() => setEditing(editable.id)}>Rename this folder</button>}
-                  <button type="button" onClick={() => setPendingDelete(editable
+                  {selected.type !== 'Removable Drive' && selected.id !== 'disk' && <button type="button" onClick={() => setPendingDelete(editable
                     ? { folder: editable.id } : { deniedName: selected.name })}>
                     Delete this {selected.type === 'Shortcut' ? 'shortcut' : selected.folder ? 'folder' : 'file'}
-                  </button>
+                  </button>}
                   {selected.id === 'resume' && <p className="task-pane-note">Coming soon</p>}
                 </> : <button type="button" onClick={createFolder}><Icon icon="new-folder" /> Make a new folder</button>}
               </TaskSection>}
@@ -319,13 +381,13 @@ export default function DocumentExplorer({
                     <Icon icon={folders[id].icon} /> {folders[id].name}
                   </button>
                 ))}
-                {locationId !== 'documents' && !isDesktop && <button type="button" onClick={openControlPanel}>
+                {locationId !== 'documents' && !isDesktop && !isProtectedDisk && <button type="button" onClick={openControlPanel}>
                   <Icon icon="control-panel" /> Control Panel
                 </button>}
               </TaskSection>
-              <TaskSection title="Details" defaultExpanded={false}>
+              <TaskSection key={isProtectedDisk ? "disk-details" : "folder-details"} title="Details" defaultExpanded={isProtectedDisk}>
                 <p className="task-pane-note"><strong>{selected?.name ?? location.name}</strong><br />
-                  {selected?.type ?? (sessionFolders.some(({ id }) => id === locationId) ? 'File Folder' : 'System Folder')}
+                  {selected?.type ?? (isProtectedDisk ? 'Local Disk' : sessionFolders.some(({ id }) => id === locationId) ? 'File Folder' : 'System Folder')}
                 </p>
               </TaskSection>
             </>}
@@ -339,7 +401,7 @@ export default function DocumentExplorer({
             </TaskSection>}
           </TaskPane>}
         </div>
-        <section className="explorer-files" ref={files} tabIndex={-1} aria-label={location.name}
+        <section className="explorer-files" data-protected={isProtectedDisk && !activeSearch} ref={files} tabIndex={-1} aria-label={location.name}
           onClick={(event) => {
             if (!(event.target as HTMLElement).closest('li')) {
               setSelection(null)
@@ -348,34 +410,18 @@ export default function DocumentExplorer({
             }
           }}>
           {activeSearch && <p className="explorer-empty" role="status">{entries.length} search results</p>}
-          {entries.length ? <ul className="explorer-items" data-view={view} data-desktop={isDesktop && !activeSearch}>
-            {entries.map((entry) => <li key={entry.id}>
-              {editing === entry.id && entry.folder ? <form className="explorer-rename" onSubmit={(event) => {
-                event.preventDefault()
-                finishName(entry.folder!, String(new FormData(event.currentTarget).get('name')))
-              }}>
-                <Icon icon={entry.icon} size={40} />
-                <input name="name" aria-label="Folder name" defaultValue={entry.name} maxLength={80}
-                  ref={renameInput}
-                  onBlur={(event) => {
-                    if (!finishName(entry.folder!, event.currentTarget.value)) setEditing(null)
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Escape') { setEditing(null); setNameError(''); files.current?.focus() }
-                  }} />
-              </form> : <button type="button" className="explorer-item" aria-pressed={selection === entry.id}
-                onPointerDown={(event) => { lastPointer.current = event.pointerType }}
-                onClick={(event) => {
-                  setSelection(entry.id)
-                  if (event.detail === 0 || lastPointer.current === 'touch') openEntry(entry)
-                }}
-                onDoubleClick={() => openEntry(entry)}>
-                <Icon icon={entry.icon} size={view === 'List' || view === 'Details' ? 16 : isDesktop && view === 'Icons' ? 32 : 44} />
-                <span className="explorer-item-label">{entry.name}</span>
-                {view === 'Details' ? <small>{entry.type}</small> : entry.id === 'resume' && <small>Coming soon</small>}
-              </button>}
-            </li>)}
-          </ul> : <p className="explorer-empty">{activeSearch ? 'No matching files or folders.'
+          {isProtectedDisk && !activeSearch ? (
+            <div className="explorer-protected-disk">
+              <h1>These files are hidden.</h1>
+              <p>This folder contains files that keep your system working properly. You should not modify its contents.</p>
+              <button type="button" disabled>Show the contents of this folder</button>
+            </div>
+          ) : isComputer && !activeSearch ? computerGroups.map((group) => (
+            <section className="explorer-computer-group" key={group.title} aria-label={group.title}>
+              <h2>{group.title}</h2>
+              {renderEntries(group.entries)}
+            </section>
+          )) : entries.length ? renderEntries(entries) : <p className="explorer-empty">{activeSearch ? 'No matching files or folders.'
             : locationId === 'notes' ? 'No project notes published yet.' : 'This folder is empty.'}</p>}
           {nameError && <p className="explorer-empty" role="status">{nameError}</p>}
         </section>
