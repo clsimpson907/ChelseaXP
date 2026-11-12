@@ -139,7 +139,7 @@ export default function DesktopWindow({
           <button aria-label={`Close ${title}`} onClick={onClose}>×</button>
         </div>
       </div>
-      <div className={`window-body${id === 'about' ? ' window-body--profile' : id === 'documents' ? ' window-body--explorer' : ''}`}>
+      <div className={`window-body${id === 'about' ? ' window-body--profile' : id === 'computer' || id === 'documents' || id === 'control' ? ' window-body--explorer' : ''}`}>
         {children}
       </div>
       {resizeEdges.map((edge) => (
