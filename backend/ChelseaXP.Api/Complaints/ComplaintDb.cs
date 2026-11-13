@@ -24,6 +24,7 @@ public sealed class ComplaintDb(DbContextOptions<ComplaintDb> options) : DbConte
             return new("daily-limit", now.Date.AddDays(1));
         }
 
+        // In a rolling window, the boundary reservation determines when one slot opens.
         var burstStart = now.AddMinutes(-10);
         var burstBoundary = await Reservations
             .Where(row => row.CreatedUtc > burstStart)

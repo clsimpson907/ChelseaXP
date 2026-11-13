@@ -6,6 +6,7 @@ function wait(milliseconds: number) {
 }
 
 export async function showProgressUntil<T>(task: Promise<T>, finish: () => void): Promise<T> {
+  // Give quick requests time to show the progress dialog, then briefly show completion.
   const [result] = await Promise.allSettled([task, wait(minimumDuration)])
   finish()
   await wait(completedDuration)

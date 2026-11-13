@@ -94,6 +94,7 @@ public static class ComplaintEndpoints
                 return TemporarilyUnavailable();
             }
 
+            // Delivery starts after the reservation commits, so failed sends still count toward quota.
             using var request = new HttpRequestMessage(HttpMethod.Post, "emails");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.ResendApiKey);
             request.Content = JsonContent.Create(new

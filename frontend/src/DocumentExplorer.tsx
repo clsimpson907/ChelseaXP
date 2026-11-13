@@ -3,6 +3,7 @@ import InsertDiskDialog from './InsertDiskDialog'
 import ExplorerItemDialog from './ExplorerItemDialog'
 import SearchCompanion, { type SearchCriteria } from './SearchCompanion'
 import ChromeOverflow from './ChromeOverflow'
+import ExplorerMenuBar from './ExplorerMenuBar'
 import TaskPane, { TaskSection } from './TaskPane'
 import { locationIds, locations, type FolderId, type SessionFolder } from './explorerLocations'
 
@@ -75,12 +76,12 @@ export default function DocumentExplorer({
   const [folderView, setFolderView] = useState<View>('Tiles')
   const [desktopView, setDesktopView] = useState<View>('Icons')
   const [picturesView, setPicturesView] = useState<View>('Thumbnails')
-  const [menu, setMenu] = useState<string | null>(null)
   const files = useRef<HTMLElement>(null)
   const lastPointer = useRef('')
   const renameInput = useRef<HTMLInputElement>(null)
   const folders: Record<FolderId, { name: string; parent: FolderId | null; icon: string; renamed?: boolean }> = { ...locations, ...Object.fromEntries(sessionFolders.map((folder) => [folder.id, folder])) }
   const folderIds: FolderId[] = [...locationIds, ...sessionFolders.map((folder) => folder.id)]
+  // A history entry retains its ancestors so deletion can fall back to a surviving folder.
   const locationId = history.entries[history.index].find((id) => folders[id]) ?? initialFolder
   useEffect(() => { files.current?.scrollTo(0, 0) }, [locationId])
   const location = folders[locationId]
@@ -184,6 +185,11 @@ export default function DocumentExplorer({
   const editable = sessionFolders.find((folder) => folder.id === selected?.id)
   const canManageSelection = selected && selected.type !== 'Removable Drive' && selected.id !== 'disk'
   const itemKind = selected?.type === 'Shortcut' ? 'shortcut' : selected?.folder ? 'folder' : 'file'
+
+  function deleteSelection() {
+    if (!selected || !canManageSelection || itemDialog || emptyDrive) return
+    setItemDialog(editable ? { folder: editable.id } : { deniedName: selected.name, operation: 'delete' })
+  }
 
   function renameSelection() {
     if (!selected || !canManageSelection) return
@@ -297,7 +303,12 @@ export default function DocumentExplorer({
 
   return (
     <div className="explorer xp-file-explorer" onKeyDown={(event) => {
-      if (event.key === 'Escape') setMenu(null)
+      if (event.key !== 'Delete' || event.repeat || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey ||
+        event.nativeEvent.isComposing || !(event.target instanceof HTMLElement) ||
+        event.target.isContentEditable || event.target.closest('input, textarea, select, dialog') ||
+        !canManageSelection) return
+      event.preventDefault()
+      deleteSelection()
     }}>
       {emptyDrive && <InsertDiskDialog drive={emptyDrive} onClose={() => setEmptyDrive(null)} />}
       {denied && <ExplorerItemDialog name={denied.deniedName} operation={denied.operation} onCancel={() => setItemDialog(null)} />}
@@ -309,25 +320,7 @@ export default function DocumentExplorer({
           setSelection(null)
           requestAnimationFrame(() => files.current?.focus({ preventScroll: true }))
         }} />}
-      <div className="explorer-menu-bar" aria-label="Explorer menus" onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setMenu(null)
-      }}>
-        {Object.entries(menuActions).map(([label, actions]) => (
-          <div className="explorer-menu" key={label} data-menu={label}>
-            <button type="button" aria-expanded={menu === label}
-              onClick={() => setMenu(menu === label ? null : label)}>{label}</button>
-            {menu === label && <div className="explorer-menu-options">
-              {actions.map(({ label, action, disabled }) => (
-                <button key={label} type="button" disabled={disabled}
-                  onClick={() => { action(); setMenu(null) }}>{label}</button>
-              ))}
-            </div>}
-          </div>
-        ))}
-        <ChromeOverflow kind="menu" commands={Object.entries(menuActions).slice(2).map(([label, actions]) => ({
-          label, children: actions,
-        }))} />
-      </div>
+      <ExplorerMenuBar label="Explorer menus" menus={menuActions} />
       <div className="explorer-toolbar" role="group" aria-label="Explorer navigation">
         <div className="explorer-history-group">
           <button type="button" aria-label="Back" disabled={!back.length} onClick={() => travel(back[0].index)}>
@@ -428,8 +421,7 @@ export default function DocumentExplorer({
                     <button type="button" onClick={renameSelection}>
                       <Icon icon="rename" /> Rename this {itemKind}
                     </button>
-                    <button type="button" onClick={() => setItemDialog(editable
-                      ? { folder: editable.id } : { deniedName: selected.name, operation: 'delete' })}>
+                    <button type="button" onClick={deleteSelection}>
                       <Icon icon="delete" /> Delete this {itemKind}
                     </button>
                   </>}
@@ -447,7 +439,7 @@ export default function DocumentExplorer({
                   <Icon icon="control-panel" /> Control Panel
                 </button>}
               </TaskSection>
-              <TaskSection key={isProtectedDisk ? "disk-details" : "folder-details"} title="Details" defaultExpanded={isProtectedDisk}>
+              <TaskSection key={isProtectedDisk ? "disk-details" : "folder-details"} title="Details">
                 <p className="task-pane-note"><strong className={(selected ? editable?.renamed : location.renamed) ? 'task-pane-name' : undefined}
                     title={(selected ? editable?.renamed : location.renamed) ? selected?.name ?? location.name : undefined}>
                     {selected?.name ?? location.name}

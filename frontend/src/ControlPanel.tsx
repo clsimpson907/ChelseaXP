@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { explorerPlaces, locations, type LocationId } from './explorerLocations'
 import ChromeOverflow from './ChromeOverflow'
+import ExplorerMenuBar from './ExplorerMenuBar'
 import TaskPane, { TaskSection } from './TaskPane'
 
 const categories = [
@@ -26,7 +27,6 @@ export default function ControlPanel({ initialPage, openComplaints, openFolder }
     index: initialPage === 'complaints' ? 2 : initialPage ? 1 : 0,
   })
   const [pendingAddress, setAddress] = useState<string | null>(null)
-  const [menu, setMenu] = useState<string | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [showFolders, setShowFolders] = useState(false)
@@ -95,27 +95,8 @@ export default function ControlPanel({ initialPage, openComplaints, openFolder }
   }
 
   return (
-    <div className="explorer control-panel" onKeyDown={(event) => {
-      if (event.key === 'Escape') setMenu(null)
-    }}>
-      <div className="explorer-menu-bar" aria-label="Control Panel menus" onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setMenu(null)
-      }}>
-        {Object.entries(menus).map(([label, actions]) => (
-          <div className="explorer-menu" key={label} data-menu={label}>
-            <button type="button" aria-expanded={menu === label}
-              onClick={() => setMenu(menu === label ? null : label)}>{label}</button>
-            {menu === label && <div className="explorer-menu-options">
-              {actions.map(({ label: actionLabel, action }) => (
-                <button key={actionLabel} type="button" onClick={() => { action(); setMenu(null) }}>{actionLabel}</button>
-              ))}
-            </div>}
-          </div>
-        ))}
-        <ChromeOverflow kind="menu" commands={Object.entries(menus).slice(2).map(([label, actions]) => ({
-          label, children: actions,
-        }))} />
-      </div>
+    <div className="explorer control-panel">
+      <ExplorerMenuBar label="Control Panel menus" menus={menus} />
       <div className="explorer-toolbar control-panel-toolbar" role="group" aria-label="Control Panel navigation">
         <button type="button" aria-label="Back" disabled={history.index === 0} onClick={() => travel(history.index - 1)}>
           <img src="/icons/back.png" alt="" width="22" height="22" /> Back
