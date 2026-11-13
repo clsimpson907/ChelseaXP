@@ -29,7 +29,6 @@ export default function ControlPanel({ initialPage, openComplaints, openFolder }
   const [menu, setMenu] = useState<string | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [showTasks, setShowTasks] = useState(true)
   const [showFolders, setShowFolders] = useState(false)
   const location = history.entries[history.index]
   const heading = useRef<HTMLHeadingElement>(null)
@@ -89,13 +88,7 @@ export default function ControlPanel({ initialPage, openComplaints, openFolder }
   const menus = {
     File: [{ label: 'Control Panel Home', action: () => navigate({ kind: 'home' }) }],
     Edit: [{ label: 'Search', action: toggleSearch }],
-    View: [
-      { label: switchLabel, action: switchView },
-      {
-        label: showTasks || showFolders ? 'Hide task pane' : 'Show task pane',
-        action: () => { setShowFolders(false); setShowTasks(!(showTasks || showFolders)) },
-      },
-    ],
+    View: [{ label: switchLabel, action: switchView }],
     Favorites: [{ label: 'My Documents', action: () => openFolder('documents') }],
     Tools: [{ label: 'Folders', action: () => setShowFolders(!showFolders) }],
     Help: [{ label: 'Help and Support', action: () => navigate({ kind: 'category', id: 'feedback' }) }],
@@ -183,8 +176,8 @@ export default function ControlPanel({ initialPage, openComplaints, openFolder }
         </span>
         <button className="explorer-go" type="submit"><img src="/icons/go.png" alt="" width="18" height="18" /> Go</button>
       </form>
-      <div className="control-panel-layout" data-sidebar={showTasks || showFolders}>
-        {(showTasks || showFolders) && <TaskPane label="Control Panel tasks">
+      <div className="control-panel-layout">
+        <TaskPane label="Control Panel tasks">
           {!showFolders && <>
 <TaskSection title="Control Panel" icon="/icons/control-panel.png">
             <button onClick={switchView}>
@@ -206,7 +199,7 @@ export default function ControlPanel({ initialPage, openComplaints, openFolder }
               </button>
             ))}
           </TaskSection>}
-        </TaskPane>}
+        </TaskPane>
         <section className={`control-panel-content${categoryHome ? ' control-panel-content--categories' : classicHome ? ' control-panel-content--classic' : ''}`}
           ref={content} aria-labelledby="control-panel-heading">
           <h1 id="control-panel-heading" ref={heading} tabIndex={-1} className={classicHome ? "control-panel-hidden-heading" : undefined}>
