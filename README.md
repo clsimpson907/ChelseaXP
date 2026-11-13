@@ -1,6 +1,8 @@
 # ChelseaXP
 
-A Windows XP-inspired portfolio website.
+A Windows XP-inspired portfolio website with a Windows Mobile-style interface on phones.
+
+[Open ChelseaXP](https://chelseaxp.party)
 
 ## User guide
 
@@ -33,6 +35,17 @@ dotnet build backend/ChelseaXP.Api --configuration Release
 
 Azure Pipelines runs on pushes and pull requests targeting `main`, checks the frontend, smoke-tests the published API, and saves both build outputs as artifacts.
 
+## Frontend deployment
+
+After a successful CI build on `main`, Azure Pipelines deploys the frontend artifact
+to the `chelseaxp-web` Static Web App using the secret `SWA_DEPLOYMENT_TOKEN`.
+Pull request validation builds skip deployment. The pipeline also supports a
+manual run on `main` with **Deploy frontend to chelseaxp-web** selected.
+A direct push to `main` also qualifies for automatic deployment, so use pull
+requests for changes intended to deploy after merge.
+
+The public domain is `chelseaxp.party`, with DNS managed in Cloudflare.
+
 ## API container
 
 Build and run the Linux image locally with Docker.
@@ -49,6 +62,12 @@ The workflow tests the image and publishes a commit-tagged image to GitHub
 Container Registry. Use the image reference from the run summary when
 deploying to Azure Container Apps, with an ingress target port of `8080`.
 For anonymous pulls, set the package visibility to Public in GitHub Packages.
+
+For configuration-only changes, open `chelseaxp-api` in Azure Portal and select
+**Revisions and replicas > Create new revision**. Edit the existing container's
+environment variables, keep its current image, and create the revision. An Azure
+DevOps release and a fresh API image are only needed for their respective
+deployment workflows, not to apply these settings.
 
 ## Complaints
 
@@ -69,18 +88,43 @@ Container App URL. For local Vite development, the form defaults to
 | --- | --- |
 | `ConnectionStrings__Complaints` | Azure SQL connection string with `Authentication=Active Directory Managed Identity`, TLS enabled, and the ChelseaXP database specified |
 | `Complaints__ResendApiKey` | Resend sending key |
-| `Complaints__Sender` | Sender on the verified domain |
+| `Complaints__Sender` | `complaints@chelseaxp.party` once Resend verifies the domain for sending |
 | `Complaints__Recipient` | Inbox for complaint notifications |
 | `Complaints__ClientHashKey` | Random secret at least 32 characters long, shared across revisions |
-| `Complaints__AllowedOrigins__0` | Exact frontend origin without a trailing slash |
+| `Complaints__AllowedOrigins__0` | First exact frontend origin without a trailing slash. See the example below. |
 | `Complaints__BehindContainerAppsIngress` | `true` for the public Azure Container Apps HTTP ingress |
 | `Complaints__PerClientHourlyLimit` | Defaults to `3` per rolling hour |
 | `Complaints__DailyLimit` | Defaults to `10` per UTC calendar day |
 | `Complaints__Enabled` | Set to `true` once SQL and Resend are configured |
 
+Allow each hostname that serves the site directly. Use one numbered entry per
+origin, for example:
+
+```text
+Complaints__AllowedOrigins__0=https://salmon-mud-02182f11e.5.azurestaticapps.net
+Complaints__AllowedOrigins__1=https://chelseaxp.party
+Complaints__AllowedOrigins__2=https://www.chelseaxp.party
+```
+
+Include the `www` entry if it serves the site directly. A redirect to the apex
+domain only needs the apex entry. Reuse the existing Resend key if its sending
+scope includes the verified domain.
+
 For local development, allow `http://localhost:5173` and use the local
 connection settings for your SQL test environment. Only enable the ingress
 setting when Azure Container Apps supplies the trusted forwarded client address.
+
+The shared burst quota is three submissions per rolling 10 minutes across all
+visitors. The per-client hourly and UTC daily limits are configurable.
+
+After updating the revision, open Complaints from the public site and submit one
+test complaint to verify inbox delivery. `GET /api/health` checks that the API
+process responds. `GET /api/complaints/status` checks availability and quotas.
+If the status endpoint responds directly but the browser shows
+`STATUS_CHECK_FAILED`, check that the response includes
+`Access-Control-Allow-Origin` matching the address bar's origin. If the endpoint
+returns HTTP 503, check the active revision's configuration and console logs.
+Availability alone does not verify Resend delivery.
 
 Each request that passes the shared quota reserves a slot before contacting
 Resend. Provider failures still use that slot, and SQL failures stop delivery.
@@ -92,4 +136,4 @@ accepted the message for delivery.
 ## Visual assets
 
 The folder, mail, and document icons are from the Windows XP High Resolution Icon Pack by the creator of [GUI Archive](https://guiarchive.blogspot.com/).
-The LinkedIn shortcut uses the supplied vintage LinkedIn icon.
+The shortcut uses a vintage LinkedIn icon. LinkedIn branding belongs to LinkedIn. See the [in-site credits source](frontend/src/credits.txt) for the full list.
