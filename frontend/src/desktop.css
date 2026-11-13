@@ -309,7 +309,7 @@ a { color: #642989; }
 .start-app-icon { width: 22px; height: 22px; flex: 0 0 auto; }
 .phone-status, .phone-date, .phone-softkeys { display: none; }
 
-@media (max-width: 700px) {
+@media (max-width: 700px) and (pointer: coarse) and (hover: none) {
   .shell { --handheld-bar: 46px; }
   .desktop { height: 100dvh; overflow: hidden; }
 
@@ -349,50 +349,30 @@ a { color: #642989; }
     outline-offset: -3px;
   }
 
-  .shortcuts {
+  .shortcuts, .taskbar, .window-controls, .window-resize, .window-resize-edge { display: none; }
+  .phone-today {
     position: absolute;
     inset: var(--handheld-bar) 0;
-    display: block;
-    width: 100%;
     overflow: auto;
-    padding: 0;
-    background: linear-gradient(#60285c32, #32184154);
+    color: #32194c;
   }
-  .phone-date {
+  .phone-date, .phone-owner {
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-height: 40px;
-    padding: 6px 12px;
-    border-bottom: 1px solid #af78bb;
-    background: linear-gradient(90deg, #f2d4eb, #d8b4e5dd);
-    color: #381553;
-    font-size: .85rem;
-    font-weight: bold;
-  }
-  .shortcuts :is(button, a) {
-    display: flex;
-    align-items: center;
-    gap: 11px;
+    gap: 8px;
     width: 100%;
-    min-height: 48px;
-    padding: 6px 12px;
+    min-height: 44px;
+    padding: 5px 10px;
     border: 0;
     border-bottom: 1px solid #a56eae;
-    border-radius: 0;
     background: linear-gradient(90deg, #fff2f8f2, #edcfedd9);
-    color: #381553;
-    font-size: .94rem;
-    text-align: left;
-    text-shadow: none;
+    color: inherit;
+    font-size: .9rem;
+    font-weight: bold;
+    text-align: start;
   }
-  .shortcuts :is(button, a):hover, .shortcuts :is(button, a):focus-visible {
-    border-bottom-color: #a56eae;
-    background: #f9e5f7;
-    outline-offset: -3px;
-  }
-  .shortcuts :is(.shortcut-icon, .linkedin-icon) { width: 28px; height: 28px; }
-  .shell--app-open .shortcuts, .taskbar, .window-controls, .window-resize, .window-resize-edge { display: none; }
+  .phone-owner:hover, .phone-owner:focus-visible { background: #f9e5f7; }
+  .phone-owner:focus-visible { outline-offset: -3px; }
   .profile-sidebar { display: none; }
 
   .start-menu {
@@ -428,7 +408,7 @@ a { color: #642989; }
   .profile-actions button { min-height: 44px; }
 }
 
-@media (min-width: 701px) {
+@media not all and (max-width: 700px) and (pointer: coarse) and (hover: none) {
   .shortcuts {
     width: 100%;
     height: 100%;
@@ -569,7 +549,7 @@ a { color: #642989; }
 }
 .explorer-go { min-height: 24px; padding-inline: 3px; }
 
-@media (max-width: 700px) {
+@media (max-width: 700px) and (pointer: coarse) and (hover: none) {
   .explorer-toolbar { --control-height: 44px; }
   .explorer-history { width: 28px; }
   .explorer-address-row { min-height: 48px; }
@@ -615,7 +595,7 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 700px) and (pointer: coarse) and (hover: none) {
   .explorer-layout { grid-template-columns: minmax(0, 1fr); }
   .explorer-folders { display: none; }
 }
@@ -751,7 +731,7 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
   font-weight: bold;
 }
 
-@media (min-width: 701px) {
+@media not all and (max-width: 700px) and (pointer: coarse) and (hover: none) {
   .app-window:has(.xp-progress) {
     left: max(0px, calc((100% - 440px) / 2)) !important;
     top: max(0px, calc((100% - 225px) / 2)) !important;
@@ -762,12 +742,12 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
   .app-window:has(.xp-progress) :is(.window-resize, .window-resize-edge) { display: none; }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 700px) and (pointer: coarse) and (hover: none) {
   .xp-progress { max-width: 460px; margin-inline: auto; }
   .xp-progress > button { min-height: 44px; }
 }
 
-@media (min-width: 701px) {
+@media not all and (max-width: 700px) and (pointer: coarse) and (hover: none) {
   .app-window--maximized:not(:has(.xp-progress)) {
     inset: 0 !important;
     width: 100% !important;
@@ -910,7 +890,7 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
   font-weight: bold;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 700px) and (pointer: coarse) and (hover: none) {
   .control-panel-layout { display: flex; flex-direction: column; }
   .control-panel .task-pane { flex: none; max-height: 45%; padding: 7px; }
 
@@ -959,7 +939,7 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 .xp-file-explorer [aria-expanded="false"] .task-pane-toggle::before { rotate: 90deg; }
 .xp-file-explorer .task-pane-section + .task-pane-section { margin-top: 12px; }
 .xp-file-explorer .task-pane-note { font-size: .72rem; line-height: 1.25; }
-@media (min-width: 701px) {
+@media not all and (max-width: 700px) and (pointer: coarse) and (hover: none) {
   .xp-file-explorer .task-pane-actions { padding: 7px 8px; }
   .xp-file-explorer .task-pane-actions :is(button, a) {
     align-items: flex-start;
@@ -1001,7 +981,7 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 .explorer-rename input { min-width: 0; width: 100%; font: inherit; }
 .explorer-empty { margin: 8px; font-size: .85rem; }
 
-@media (max-width: 700px) {
+@media (max-width: 700px) and (pointer: coarse) and (hover: none) {
   .xp-file-explorer .explorer-toolbar { flex-wrap: wrap; }
   .xp-file-explorer .explorer-layout { grid-template-rows: minmax(0, auto) minmax(0, 1fr); }
   .xp-file-explorer .explorer-folders { display: flex; max-height: 130px; }
@@ -1098,7 +1078,7 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 .search-companion-birby[data-pose="documents"] { background-position: left bottom; }
 .search-companion-birby[data-pose="all"] { background-position: right bottom; }
 
-@media (max-width: 700px) {
+@media (max-width: 700px) and (pointer: coarse) and (hover: none) {
   .xp-file-explorer [data-sidebar="search"] .explorer-folders { max-height: 43vh; }
   .search-companion-body { flex-direction: row; align-items: end; gap: 8px; }
   .search-companion-bubble { flex: 1; min-width: 0; }
@@ -1333,14 +1313,14 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 @container (max-width: 540px) {
   .profile-sidebar-toggle { display: none; }
 }
-@media (max-width: 700px) {
+@media (max-width: 700px) and (pointer: coarse) and (hover: none) {
   .xp-file-explorer .explorer-layout[data-sidebar="hidden"] { grid-template-rows: minmax(0, 1fr); }
   .profile-sidebar-toggle { display: none; }
 }
 
 .window-body--explorer { container-type: inline-size; }
 
-@media (min-width: 701px) {
+@media not all and (max-width: 700px) and (pointer: coarse) and (hover: none) {
   @container (max-width: 420px) {
     .explorer-layout[data-sidebar="tasks"],
     .control-panel-layout[data-sidebar="true"] {
@@ -1356,7 +1336,7 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 .title-bar > :first-child { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .window-controls { flex-shrink: 0; }
 
-@media (min-width: 701px) {
+@media not all and (max-width: 700px) and (pointer: coarse) and (hover: none) {
   @container (max-width: 440px) {
     .xp-file-explorer .explorer-toolbar, .control-panel-toolbar, .explorer-menu-bar { flex-wrap: nowrap; }
     .toolbar-overflow { display: block; }
@@ -1490,7 +1470,7 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
   border-top: 1px solid #d5b2df;
 }
 
-@media (min-width: 701px) {
+@media not all and (max-width: 700px) and (pointer: coarse) and (hover: none) {
   .start-menu { width: min(340px, 100%); }
   .start-header { padding: 6px 8px; }
   .start-column { padding: 5px; }
