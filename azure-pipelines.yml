@@ -62,7 +62,15 @@ stages:
   - stage: DeployFrontend
     displayName: Deploy frontend
     dependsOn: Build
-    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.Reason'], 'Manual'), ${{ eq(parameters.deployFrontend, true) }})
+    condition: |
+      and(
+        succeeded(),
+        eq(variables['Build.SourceBranch'], 'refs/heads/main'),
+        or(
+          in(variables['Build.Reason'], 'IndividualCI', 'BatchedCI'),
+          and(eq(variables['Build.Reason'], 'Manual'), ${{ eq(parameters.deployFrontend, true) }})
+        )
+      )
     jobs:
       - job: DeployStaticSite
         displayName: Publish to Azure Static Web Apps
