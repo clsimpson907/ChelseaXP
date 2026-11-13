@@ -270,7 +270,7 @@ export default function App() {
         <header className="phone-status">
           <button ref={phoneStartButton} aria-expanded={startOpen} aria-controls={startOpen ? 'start-menu' : undefined}
             onClick={() => setStartOpen(!startOpen)}>
-            <span className="start-logo" aria-hidden="true">✿</span> Start
+            <span className="start-logo" aria-hidden="true"><img src="/icons/start-paw.svg" alt="" width="22" height="22" /></span> Start
           </button>
           <div className="phone-status-indicators">
             <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -398,7 +398,7 @@ export default function App() {
       <footer className="taskbar">
         <button className="start-button" aria-expanded={startOpen} aria-controls={startOpen ? 'start-menu' : undefined}
           ref={startButton} onClick={() => setStartOpen(!startOpen)}>
-          <span className="start-logo" aria-hidden="true">✿</span> Start
+          <span className="start-logo" aria-hidden="true"><img src="/icons/start-paw.svg" alt="" width="22" height="22" /></span> Start
         </button>
         {apps.filter((app) => windows.some((entry) => entry.id === app.id)).map((app) => (
           <button key={app.id} id={`task-${app.id}`} className="task-button"
