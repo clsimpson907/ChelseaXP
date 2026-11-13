@@ -69,6 +69,7 @@ export default function DocumentExplorer({
     renameInput.current?.select()
   }, [editing])
   const [nameError, setNameError] = useState('')
+  const [showMobileTasks, setShowMobileTasks] = useState(false)
   const [showTasks, setShowTasks] = useState(true)
   const [sidebar, setSidebar] = useState<'tasks' | 'folders' | 'search'>('tasks')
   const [search, setSearch] = useState<SearchCriteria | null>(null)
@@ -399,8 +400,14 @@ export default function DocumentExplorer({
         </span>
         <button className="explorer-go" type="submit"><Icon icon="go" size={18} /> Go</button>
       </form>
-      <div className="explorer-layout" data-sidebar={sidebar === 'tasks' && !showTasks ? 'hidden' : sidebar}>
-        {(showTasks || sidebar !== 'tasks') && <div className="explorer-folders">
+      <button type="button" className="mobile-explorer-tasks" aria-expanded={showMobileTasks && sidebar === 'tasks'}
+        onClick={() => {
+          setShowMobileTasks(sidebar !== 'tasks' || !showMobileTasks)
+          setSidebar('tasks')
+          setSearch(null)
+        }}>Folder tasks</button>
+      <div className="explorer-layout" data-mobile-tasks={showMobileTasks} data-sidebar={sidebar === 'tasks' && !showTasks ? 'hidden' : sidebar}>
+        {(showTasks || showMobileTasks || sidebar !== 'tasks') && <div className="explorer-folders">
           {sidebar === 'search' ? <SearchCompanion
             folders={folderIds.map((id) => ({ id, name: folderPath(id) }))}
             current={locationId}

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import DesktopWindow from './DesktopWindow'
+import PhoneCalendar from './PhoneCalendar'
+import { siteDate } from './siteDate'
 import ComplaintsForm from './ComplaintsForm'
 import ControlPanel from './ControlPanel'
 import DocumentExplorer, { type DesktopShortcut } from './DocumentExplorer'
@@ -21,7 +23,7 @@ const apps = [
 ] as const
 
 type AppId = (typeof apps)[number]['id']
-type WindowEntry = { id: AppId; minimized: boolean; folder?: FolderId; navigation?: number; controlPage?: 'feedback' }
+type WindowEntry = { id: AppId; minimized: boolean; folder?: FolderId; navigation?: number; controlPage?: 'feedback' | 'complaints' }
 
 const linkedInUrl = 'https://www.linkedin.com/in/chelsea-simpson-54437215a/'
 const desktopShortcuts = [
@@ -144,14 +146,14 @@ const taskbarTimeFormat = new Intl.DateTimeFormat(undefined, {
 const todayFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'full' })
 
 function LocalClock({ showDate = false }: { showDate?: boolean }) {
-  const format = showDate ? todayFormat : taskbarTimeFormat
-  const [time, setTime] = useState(() => format.format(new Date()))
+  const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
-    const update = () => setTime(format.format(new Date()))
-    const timer = globalThis.setInterval(update, 1000)
+    const timer = globalThis.setInterval(() => setNow(new Date()), 1000)
     return () => globalThis.clearInterval(timer)
-  }, [format])
+  }, [])
+
+  const time = showDate ? todayFormat.format(siteDate(now)) : taskbarTimeFormat.format(now)
 
   return <span className={showDate ? 'phone-date' : 'taskbar-clock'}>{time}</span>
 }
@@ -160,6 +162,7 @@ export default function App() {
   const [windows, setWindows] = useState<WindowEntry[]>([{ id: 'about', minimized: false }])
   const [sessionFolders, setSessionFolders] = useState<SessionFolder[]>([])
   const [phoneHome, setPhoneHome] = useState(true)
+  const [phonePage, setPhonePage] = useState<'today' | 'programs' | 'calendar'>('today')
   const [startOpen, setStartOpen] = useState(false)
   const desktop = useRef<HTMLElement>(null)
   const startButton = useRef<HTMLButtonElement>(null)
@@ -229,7 +232,7 @@ export default function App() {
     })
   }
 
-  function open(id: AppId, folder?: FolderId, controlPage?: 'feedback') {
+  function open(id: AppId, folder?: FolderId, controlPage?: 'feedback' | 'complaints') {
     setWindows((entries) => {
       const existing = entries.find((entry) => entry.id === id)
       const entry = { ...existing, id, minimized: false }
@@ -245,7 +248,10 @@ export default function App() {
 
   function close(id: AppId) {
     setWindows((entries) => entries.filter((entry) => entry.id !== id))
-    if (isPhone) setPhoneHome(true)
+    if (isPhone) {
+      setPhoneHome(true)
+      setPhonePage('today')
+    }
     requestAnimationFrame(() => {
       desktop.current?.querySelector<HTMLButtonElement>(`[data-app="${id}"]`)?.focus()
     })
@@ -270,16 +276,25 @@ export default function App() {
           </button>
           <LocalClock />
         </header>
-        {isPhone && !phoneApp && (
+        {isPhone && !phoneApp && phonePage === 'today' && (
           <section className="phone-today" aria-label="Today">
             <LocalClock showDate />
             <button type="button" className="phone-owner" onClick={() => open('about')}>
               <img src="/icons/user-accounts.png" alt="" width="20" height="20" />
               <span>Owner: Chelsea Simpson</span>
             </button>
+            <div className="phone-today-row">
+              <img src="/icons/mail.png" alt="" width="20" height="20" />
+              <span>No unread messages</span>
+            </div>
+            <button type="button" className="phone-owner" onClick={() => open('control', undefined, 'complaints')}>
+              <img src="/icons/event-viewer.png" alt="" width="20" height="20" />
+              <span>Complaints Department</span>
+            </button>
           </section>
         )}
-        <nav className="shortcuts" aria-label="Portfolio apps">
+        <nav className={isPhone ? "phone-programs" : "shortcuts"} hidden={isPhone && (Boolean(phoneApp) || phonePage !== 'programs')}
+          aria-label={isPhone ? "Programs" : "Portfolio apps"}>
           {desktopShortcuts.map(({ id, label, icon }) => id === 'linkedin' ? <LinkedInShortcut key={id} /> : (
             <button key={id} data-app={id} onClick={() => {
               if (id === 'network') open('computer', 'network')
@@ -313,11 +328,14 @@ export default function App() {
             </DesktopWindow>
           )
         })}
+        {isPhone && !phoneApp && phonePage === 'calendar' && <PhoneCalendar />}
         <footer className="phone-softkeys">
           {phoneApp ? (
             <button onClick={() => close(phoneApp)}>Today</button>
           ) : (
-            <button onClick={() => open('documents')}>My Documents</button>
+            <button onClick={() => setPhonePage(phonePage === 'today' ? 'calendar' : 'today')}>
+              {phonePage === 'today' ? 'Calendar' : 'Today'}
+            </button>
           )}
           <LinkedInShortcut />
         </footer>
@@ -333,6 +351,11 @@ export default function App() {
             </button>
             <div className="start-columns">
               <div className="start-column">
+                {isPhone && <button type="button" onClick={() => {
+                  setPhoneHome(true)
+                  setPhonePage('programs')
+                  dismissStart()
+                }}>Programs</button>}
                 <button onClick={() => open('complaints')}>
                   <img className="start-app-icon" src="/icons/mail.png" alt="" />
                   Complaints

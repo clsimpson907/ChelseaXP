@@ -15,14 +15,15 @@ const categories = [
 type Location = { kind: 'home' } | { kind: 'category'; id: string } | { kind: 'item'; id: string }
 
 export default function ControlPanel({ initialPage, openComplaints, openFolder }: {
-  initialPage?: 'feedback'
+  initialPage?: 'feedback' | 'complaints'
   openComplaints: () => void
   openFolder: (id: LocationId) => void
 }) {
   const [view, setView] = useState<'category' | 'classic'>('category')
   const [history, setHistory] = useState<{ entries: Location[]; index: number }>({
-    entries: initialPage ? [{ kind: 'home' }, { kind: 'category', id: initialPage }] : [{ kind: 'home' }],
-    index: initialPage ? 1 : 0,
+    entries: initialPage ? [{ kind: 'home' }, { kind: 'category', id: 'feedback' },
+      ...(initialPage === 'complaints' ? [{ kind: 'item', id: 'complaints' } as const] : [])] : [{ kind: 'home' }],
+    index: initialPage === 'complaints' ? 2 : initialPage ? 1 : 0,
   })
   const [pendingAddress, setAddress] = useState<string | null>(null)
   const [menu, setMenu] = useState<string | null>(null)
