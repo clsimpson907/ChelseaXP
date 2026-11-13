@@ -35,7 +35,7 @@ Start in **My Documents** for project notes and credits, or **My Computer** for 
 2. Type a name and press **Enter**. Open the new folder to create folders inside it.
 3. On desktop, select a folder you made and choose **Rename this folder** or **Delete this folder**. You can also press **Delete** with an item selected. Explorer asks before deleting the folder and everything inside it.
 
-Temporary folders are shared across open Explorer windows. A folder created in Explorer’s **Desktop** folder also appears on the visible desktop. Reloading resets all visitor-created folders. Trying to rename or delete built-in files and folders brings up an **Access is denied** dialog.
+Temporary folders are shared across open Explorer windows. A folder created in Explorer’s **Desktop** folder also appears on the visible desktop. Reloading resets all visitor-created folders. Renaming a built-in file or folder shows **Access is denied**. Deleting a built-in item asks for confirmation first. Choose **Yes** to see the error naming the item, or **No** to cancel.
 
 ## Using Control Panel
 
@@ -55,7 +55,7 @@ A slow check or send may make the progress bar lose ground and start filling aga
 | `COMPLAINTS_PAUSED` | Complaints is temporarily disabled. |
 | `STATUS_CHECK_FAILED` | ChelseaXP couldn’t check availability. |
 
-Quota messages give a retry time in your local time zone.
+Quota messages give a retry time in your local time zone. By default, each visitor can send up to three complaints per rolling hour. Across all visitors, the limits are three per rolling 10 minutes and ten per UTC day.
 
 ## About, contact, and credits
 
