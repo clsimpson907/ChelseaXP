@@ -31,7 +31,7 @@ const desktopShortcuts = [
 ] as const
 type DesktopShortcutId = (typeof desktopShortcuts)[number]['id']
 
-const phoneLayout = '(max-width: 700px)'
+const phoneLayout = '(max-width: 700px) and (pointer: coarse) and (hover: none)'
 
 function subscribeToPhoneLayout(onChange: () => void) {
   const media = globalThis.matchMedia(phoneLayout)
@@ -159,7 +159,7 @@ function LocalClock({ showDate = false }: { showDate?: boolean }) {
 export default function App() {
   const [windows, setWindows] = useState<WindowEntry[]>([{ id: 'about', minimized: false }])
   const [sessionFolders, setSessionFolders] = useState<SessionFolder[]>([])
-  const [phoneHome, setPhoneHome] = useState(false)
+  const [phoneHome, setPhoneHome] = useState(true)
   const [startOpen, setStartOpen] = useState(false)
   const desktop = useRef<HTMLElement>(null)
   const startButton = useRef<HTMLButtonElement>(null)
@@ -168,7 +168,7 @@ export default function App() {
   const isPhone = useSyncExternalStore(subscribeToPhoneLayout, isPhoneLayout)
 
   const active = windows.findLast((entry) => !entry.minimized)?.id
-  const phoneApp = phoneHome ? undefined : active
+  const phoneApp = isPhone && !phoneHome ? active : undefined
 
   useEffect(() => {
     if (startOpen) startProfileButton.current?.focus()
@@ -270,8 +270,16 @@ export default function App() {
           </button>
           <LocalClock />
         </header>
+        {isPhone && !phoneApp && (
+          <section className="phone-today" aria-label="Today">
+            <LocalClock showDate />
+            <button type="button" className="phone-owner" onClick={() => open('about')}>
+              <img src="/icons/user-accounts.png" alt="" width="20" height="20" />
+              <span>Owner: Chelsea Simpson</span>
+            </button>
+          </section>
+        )}
         <nav className="shortcuts" aria-label="Portfolio apps">
-          <LocalClock showDate />
           {desktopShortcuts.map(({ id, label, icon }) => id === 'linkedin' ? <LinkedInShortcut key={id} /> : (
             <button key={id} data-app={id} onClick={() => {
               if (id === 'network') open('computer', 'network')
