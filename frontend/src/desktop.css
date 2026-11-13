@@ -957,7 +957,18 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 .xp-file-explorer .task-pane-toggle { font-size: 0; }
 .xp-file-explorer .task-pane-toggle::before { content: '»'; display: block; rotate: -90deg; font-size: .85rem; line-height: 1; }
 .xp-file-explorer [aria-expanded="false"] .task-pane-toggle::before { rotate: 90deg; }
-.xp-file-explorer .task-pane-actions button { font-size: .78rem; }
+.xp-file-explorer .task-pane-section + .task-pane-section { margin-top: 12px; }
+.xp-file-explorer .task-pane-note { font-size: .72rem; line-height: 1.25; }
+@media (min-width: 701px) {
+  .xp-file-explorer .task-pane-actions { padding: 7px 8px; }
+  .xp-file-explorer .task-pane-actions :is(button, a) {
+    align-items: flex-start;
+    gap: 6px;
+    padding: 1px 2px;
+    font-size: .72rem;
+    line-height: 1.15;
+  }
+}
 .explorer-search-field { display: grid; gap: 4px; font-size: .8rem; }
 .explorer-search-field input { width: 100%; }
 .xp-file-explorer .explorer-files { padding: 6px; background: #fffdfd; }
@@ -1455,4 +1466,39 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.xp-file-explorer .task-pane-section[data-variant="system"] h2 button {
+  background: #73428c;
+  border-color: #73428c;
+  color: white;
+}
+.task-pane-section[data-variant="system"] .task-pane-toggle {
+  background: #8951a1;
+  border-color: #c297d2;
+  color: white;
+}
+.task-pane-section[data-variant="system"] .task-pane-actions {
+  padding: 7px 8px;
+  background: #f4e9f8;
+}
+
+.start-folder-links { font-weight: bold; }
+.start-system-group {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid #d5b2df;
+}
+
+@media (min-width: 701px) {
+  .start-menu { width: min(340px, 100%); }
+  .start-header { padding: 6px 8px; }
+  .start-column { padding: 5px; }
+  .start-column :is(button, a) {
+    min-height: 29px;
+    padding: 3px 5px;
+    gap: 6px;
+    font-size: .78rem;
+  }
+  .start-app-icon, .start-column .linkedin-icon { width: 20px; height: 20px; }
 }

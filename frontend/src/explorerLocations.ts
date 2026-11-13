@@ -13,6 +13,6 @@ export const locations = {
 
 export type LocationId = keyof typeof locations
 export type FolderId = LocationId | `folder-${string}`
-export type SessionFolder = { id: FolderId; name: string; parent: FolderId; icon: 'folder' }
+export type SessionFolder = { id: FolderId; name: string; parent: FolderId; icon: 'folder'; renamed?: boolean }
 export const locationIds = Object.keys(locations) as LocationId[]
 export const explorerPlaces = ['computer', 'documents', 'pictures', 'music', 'videos', 'downloads'] as const

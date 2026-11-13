@@ -5,7 +5,7 @@ import TaskPane, { TaskSection } from './TaskPane'
 
 const categories = [
   {
-    id: 'feedback', label: 'Help and Feedback', icon: '/icons/help-and-support.png',
+    id: 'feedback', label: 'Help and Support', icon: '/icons/help-and-support.png',
     items: [
       { id: 'complaints', label: 'Complaints Department', icon: '/icons/event-viewer.png' },
     ],
@@ -14,13 +14,15 @@ const categories = [
 
 type Location = { kind: 'home' } | { kind: 'category'; id: string } | { kind: 'item'; id: string }
 
-export default function ControlPanel({ openComplaints, openFolder }: {
+export default function ControlPanel({ initialPage, openComplaints, openFolder }: {
+  initialPage?: 'feedback'
   openComplaints: () => void
   openFolder: (id: LocationId) => void
 }) {
   const [view, setView] = useState<'category' | 'classic'>('category')
   const [history, setHistory] = useState<{ entries: Location[]; index: number }>({
-    entries: [{ kind: 'home' }], index: 0,
+    entries: initialPage ? [{ kind: 'home' }, { kind: 'category', id: initialPage }] : [{ kind: 'home' }],
+    index: initialPage ? 1 : 0,
   })
   const [pendingAddress, setAddress] = useState<string | null>(null)
   const [menu, setMenu] = useState<string | null>(null)
@@ -95,7 +97,7 @@ export default function ControlPanel({ openComplaints, openFolder }: {
     ],
     Favorites: [{ label: 'My Documents', action: () => openFolder('documents') }],
     Tools: [{ label: 'Folders', action: () => setShowFolders(!showFolders) }],
-    Help: [{ label: 'Help and Feedback', action: () => navigate({ kind: 'category', id: 'feedback' }) }],
+    Help: [{ label: 'Help and Support', action: () => navigate({ kind: 'category', id: 'feedback' }) }],
   }
 
   return (
@@ -168,13 +170,13 @@ export default function ControlPanel({ openComplaints, openFolder }: {
               {address === 'home' ? <span>Control Panel</span> : <>
                 <button type="button" onClick={() => navigate({ kind: 'home' })}>Control Panel</button>
                 <span aria-hidden="true">›</span>
-                <span>{address === 'feedback' ? 'Help and Feedback' : 'Complaints Department'}</span>
+                <span>{address === 'feedback' ? 'Help and Support' : 'Complaints Department'}</span>
               </>}
             </span>
           </span>
           <select aria-label="Address" value={address} onChange={(event) => setAddress(event.target.value)}>
             <option value="home">Control Panel</option>
-            <option value="feedback">Control Panel › Help and Feedback</option>
+            <option value="feedback">Control Panel › Help and Support</option>
             <option value="complaints">Control Panel › Complaints Department</option>
           </select>
         </span>

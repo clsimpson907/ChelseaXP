@@ -21,7 +21,7 @@ const apps = [
 ] as const
 
 type AppId = (typeof apps)[number]['id']
-type WindowEntry = { id: AppId; minimized: boolean; folder?: FolderId; navigation?: number }
+type WindowEntry = { id: AppId; minimized: boolean; folder?: FolderId; navigation?: number; controlPage?: 'feedback' }
 
 const linkedInUrl = 'https://www.linkedin.com/in/chelsea-simpson-54437215a/'
 const desktopShortcuts = [
@@ -129,7 +129,7 @@ function AppContent({ entry, open, close, active, sessionFolders, addFolder, ren
     case 'notepad':
       return <pre className="notepad-text">{credits}</pre>
     case 'control':
-      return <ControlPanel openComplaints={() => open('complaints')}
+      return <ControlPanel key={navigation} initialPage={entry.controlPage} openComplaints={() => open('complaints')}
         openFolder={(destination) => open(destination === 'documents' ? 'documents' : 'computer', destination)} />
     case 'complaints':
       return <ComplaintsForm onClose={close} active={active} />
@@ -212,7 +212,7 @@ export default function App() {
     const name = input.trim()
     if (!name || name === '.' || name === '..' || /[\\/:*?"<>|]/.test(name)) return 'Enter a valid folder name.'
     if (folderNameExists(folder.parent, name, id)) return 'A file or folder already has that name.'
-    setSessionFolders((current) => current.map((entry) => entry.id === id ? { ...entry, name } : entry))
+    setSessionFolders((current) => current.map((entry) => entry.id === id && entry.name !== name ? { ...entry, name, renamed: true } : entry))
   }
 
   function deleteFolder(id: FolderId) {
@@ -229,13 +229,13 @@ export default function App() {
     })
   }
 
-  function open(id: AppId, folder?: FolderId) {
+  function open(id: AppId, folder?: FolderId, controlPage?: 'feedback') {
     setWindows((entries) => {
       const existing = entries.find((entry) => entry.id === id)
       const entry = { ...existing, id, minimized: false }
       return [
         ...entries.filter((item) => item.id !== id),
-        folder ? { ...entry, folder, navigation: (entry.navigation ?? 0) + 1 } : entry,
+        folder || controlPage ? { ...entry, folder, controlPage, navigation: (entry.navigation ?? 0) + 1 } : entry,
       ]
     })
     setPhoneHome(false)
@@ -329,17 +329,29 @@ export default function App() {
                   <img className="start-app-icon" src="/icons/mail.png" alt="" />
                   Complaints
                 </button>
-              </div>
-              <div className="start-column">
-                <button onClick={() => open('documents')}>
-                  <img className="start-app-icon" src="/icons/my-documents.png" alt="" />
-                  My Documents
-                </button>
-                <button onClick={() => open('control')}>
-                  <img className="start-app-icon" src="/icons/control-panel.png" alt="" />
-                  Control Panel
-                </button>
                 <LinkedInShortcut onClick={dismissStart} />
+              </div>
+              <div className="start-column start-system-column">
+                <div className="start-folder-links">
+                  {(['documents', 'pictures', 'music', 'computer'] as const).map((id) => (
+                    <button key={id} onClick={() => open(id === 'computer' ? 'computer' : 'documents', id)}>
+                      <img className="start-app-icon" src={'/icons/' + locations[id].icon + '.png'} alt="" />
+                      {locations[id].name}
+                    </button>
+                  ))}
+                </div>
+                <div className="start-system-group">
+                  <button onClick={() => open('control')}>
+                    <img className="start-app-icon" src="/icons/control-panel.png" alt="" />
+                    Control Panel
+                  </button>
+                </div>
+                <div className="start-system-group">
+                  <button onClick={() => open('control', undefined, 'feedback')}>
+                    <img className="start-app-icon" src="/icons/help-and-support.png" alt="" />
+                    Help and Support
+                  </button>
+                </div>
               </div>
             </div>
           </nav>

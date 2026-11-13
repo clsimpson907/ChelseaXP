@@ -79,7 +79,7 @@ export default function DocumentExplorer({
   const files = useRef<HTMLElement>(null)
   const lastPointer = useRef('')
   const renameInput = useRef<HTMLInputElement>(null)
-  const folders: Record<FolderId, { name: string; parent: FolderId | null; icon: string }> = { ...locations, ...Object.fromEntries(sessionFolders.map((folder) => [folder.id, folder])) }
+  const folders: Record<FolderId, { name: string; parent: FolderId | null; icon: string; renamed?: boolean }> = { ...locations, ...Object.fromEntries(sessionFolders.map((folder) => [folder.id, folder])) }
   const folderIds: FolderId[] = [...locationIds, ...sessionFolders.map((folder) => folder.id)]
   const locationId = history.entries[history.index].find((id) => folders[id]) ?? initialFolder
   useEffect(() => { files.current?.scrollTo(0, 0) }, [locationId])
@@ -414,9 +414,12 @@ export default function DocumentExplorer({
                   <Icon icon="control-panel" /> Change a setting
                 </button>
               </TaskSection>}
-              {isProtectedDisk && <TaskSection title="System Tasks">
+              {isProtectedDisk && <TaskSection title="System Tasks" variant="system">
                 <button type="button" disabled>
-                  <Icon icon="folder" /> Show the contents of this drive
+                  <Icon icon="explorer-folders" /> <span>Show the contents of<br />this drive</span>
+                </button>
+                <button type="button" disabled>
+                  <Icon icon="control-panel" /> Add or remove programs
                 </button>
                 <button type="button" onClick={() => toggleSidebar('search')}>
                   <Icon icon="explorer-search" /> Search for files or folders
@@ -443,7 +446,7 @@ export default function DocumentExplorer({
                 {otherPlaces.map((id) => (
                   <button key={id} type="button" onClick={() => openLocation(id)}>
                     <Icon icon={folders[id].icon} />
-                    <span className="task-pane-name" title={folders[id].name}>{folders[id].name}</span>
+                    <span className={folders[id].renamed ? 'task-pane-name' : undefined} title={folders[id].renamed ? folders[id].name : undefined}>{folders[id].name}</span>
                   </button>
                 ))}
                 {isComputer && <button type="button" onClick={openControlPanel}>
@@ -451,7 +454,10 @@ export default function DocumentExplorer({
                 </button>}
               </TaskSection>
               <TaskSection key={isProtectedDisk ? "disk-details" : "folder-details"} title="Details" defaultExpanded={isProtectedDisk}>
-                <p className="task-pane-note"><strong className="task-pane-name" title={selected?.name ?? location.name}>{selected?.name ?? location.name}</strong>
+                <p className="task-pane-note"><strong className={(selected ? editable?.renamed : location.renamed) ? 'task-pane-name' : undefined}
+                    title={(selected ? editable?.renamed : location.renamed) ? selected?.name ?? location.name : undefined}>
+                    {selected?.name ?? location.name}
+                  </strong><br />
                   {selected?.type ?? (isProtectedDisk ? 'Local Disk' : sessionFolders.some(({ id }) => id === locationId) ? 'File Folder' : 'System Folder')}
                 </p>
               </TaskSection>
@@ -461,7 +467,7 @@ export default function DocumentExplorer({
                 <button key={id} type="button" aria-current={id === locationId ? 'location' : undefined}
                   onClick={() => openLocation(id)} title={folderPath(id)} style={{ paddingInlineStart: 4 + depth * 12 }}>
                   <Icon icon={folders[id].icon} />
-                  <span className="task-pane-name" title={folders[id].name}>{folders[id].name}</span>
+                  <span className={folders[id].renamed ? 'task-pane-name' : undefined} title={folders[id].renamed ? folders[id].name : undefined}>{folders[id].name}</span>
                 </button>
               ))}
             </TaskSection>}
