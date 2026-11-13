@@ -26,6 +26,7 @@ function clamp(value: number, minimum: number, maximum: number) {
 export default function DesktopWindow({
   id, title, icon, desktop, depth, active, hidden, children, onActivate, onMinimize, onClose,
 }: Props) {
+  const isExplorerWindow = id === 'computer' || id === 'documents' || id === 'control'
   const panel = useRef<HTMLElement>(null)
   const interaction = useRef<Interaction | null>(null)
   const [bounds, setBounds] = useState<WindowBounds | null>(null)
@@ -49,7 +50,7 @@ export default function DesktopWindow({
     const maxWidth = fromLeft ? right : workspace.clientWidth - start.x
     const maxHeight = fromTop ? bottom : workspace.clientHeight - start.y
     const width = fromLeft || edge.includes('e')
-      ? clamp(start.width + (fromLeft ? -dx : dx), Math.min(360, maxWidth), maxWidth)
+      ? clamp(start.width + (fromLeft ? -dx : dx), Math.min(isExplorerWindow ? 136 : 360, maxWidth), maxWidth)
       : start.width
     const height = fromTop || edge.includes('s')
       ? clamp(start.height + (fromTop ? -dy : dy), Math.min(220, maxHeight), maxHeight)
@@ -139,7 +140,7 @@ export default function DesktopWindow({
           <button aria-label={`Close ${title}`} onClick={onClose}>×</button>
         </div>
       </div>
-      <div className={`window-body${id === 'about' ? ' window-body--profile' : id === 'computer' || id === 'documents' || id === 'control' ? ' window-body--explorer' : ''}`}>
+      <div className={`window-body${id === 'about' ? ' window-body--profile' : isExplorerWindow ? ' window-body--explorer' : ''}`}>
         {children}
       </div>
       {resizeEdges.map((edge) => (

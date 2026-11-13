@@ -50,7 +50,6 @@ function blockedState(code: unknown, resetAt: unknown): Blocked | null {
 
 export default function ComplaintsForm({ onClose, active }: { onClose: () => void; active: boolean }) {
   const [availability, setAvailability] = useState<Availability>({ state: 'checking' })
-  const [check, setCheck] = useState(0)
   const [sending, setSending] = useState(false)
   const [progressComplete, setProgressComplete] = useState(false)
   const [feedback, setFeedback] = useState<{ text: string; error: boolean } | null>(null)
@@ -70,11 +69,6 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
           if (!controller.signal.aborted) setProgressComplete(true)
         })
         if (controller.signal.aborted) return
-        // The previous API revision has no availability route during rollout.
-        if (response.status === 404) {
-          setAvailability({ state: 'available' })
-          return
-        }
         if (!response.ok) throw new Error('Availability request failed')
 
         const result = await response.json()
@@ -89,7 +83,7 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
 
     void checkAvailability()
     return () => controller.abort()
-  }, [check])
+  }, [])
 
   useEffect(() => {
     if (availability.state === 'available') {
@@ -98,7 +92,7 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
     }
 
     const dialog = crashDialog.current
-    if (!active || !dialog || (availability.state !== 'paused' && availability.state !== 'daily-limit')) return
+    if (!active || !dialog || availability.state === 'checking') return
 
     dialog.showModal()
     return () => {
@@ -116,12 +110,6 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
     } else {
       onClose()
     }
-  }
-
-  function retryAvailability() {
-    setProgressComplete(false)
-    setAvailability({ state: 'checking' })
-    setCheck((previous) => previous + 1)
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -174,14 +162,14 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
     }
   }
 
-  const blocked = availability.state === 'paused' || availability.state === 'daily-limit'
+  const blocked = availability.state !== 'checking' && availability.state !== 'available'
   const explanation = availability.state === 'paused'
     ? 'Complaints is temporarily disabled. Please check back later.'
     : availability.state === 'daily-limit'
       ? `Today’s complaint quota has been reached. Try again after ${new Date(availability.resetAt).toLocaleString(undefined, {
           dateStyle: 'medium', timeStyle: 'short',
         })} (local time).`
-      : ''
+      : 'Availability couldn’t be checked. Please try again later.'
   return (
     <>
       <dialog
@@ -205,26 +193,19 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
             <h1 id="complaints-crash-title">ChelseaXP</h1>
             <p>An error has occurred. Complaints could not continue.</p>
             <p id="complaints-crash-message">{explanation}</p>
-            <p>Error: CXP : {availability.state === 'paused' ? '0001 : COMPLAINTS_PAUSED' : '0002 : DAILY_QUOTA_FULL'}</p>
+            <p>Error: CXP : {availability.state === 'paused' ? '0001 : COMPLAINTS_PAUSED' : availability.state === 'daily-limit' ? '0002 : DAILY_QUOTA_FULL' : '0003 : STATUS_CHECK_FAILED'}</p>
             <button type="button">Press any key or click to continue <span aria-hidden="true">_</span></button>
           </div>
         )}
       </dialog>
 
       {availability.state === 'checking' && (
-        <XpProgress key={`check-${check}`} label="Checking Complaints availability" icon="/icons/connection-status.png"
+        <XpProgress label="Checking Complaints availability" icon="/icons/connection-status.png"
           messages={checkingMessages} reverseMessages={checkingReverseMessages} complete={progressComplete} onCancel={onClose} />
       )}
       {sending && (
         <XpProgress label="Sending complaint" icon="/icons/mail.png"
           messages={sendingMessages} reverseMessages={sendingReverseMessages} complete={progressComplete} onCancel={onClose} />
-      )}
-      {availability.state === 'unavailable' && (
-        <div className="complaints-unavailable">
-          <h1>Complaints unavailable</h1>
-          <p>Availability couldn’t be checked. Please try again later.</p>
-          <button type="button" onClick={retryAvailability}>Check again</button>
-        </div>
       )}
 
       <div hidden={availability.state !== 'available' || sending}>

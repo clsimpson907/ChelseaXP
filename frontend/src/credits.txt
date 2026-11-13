@@ -25,3 +25,11 @@ Additional Explorer icons from the same pack: My Music, My Pictures, New Folder,
 Birby Search Companion artwork: generated from Chelsea Simpson's photo of Birby.
 
 Critical error icon: Windows XP High Resolution Icon Pack by GUI Archive.
+
+My Computer drive icons (Local Disk, Floppy Disk, and Optical Drive): Windows XP High Resolution Icon Pack by GUI Archive.
+
+Rename and Delete task icons: Windows XP High Resolution Icon Pack by GUI Archive.
+
+My Music watermark: Audio CD icon from the Windows XP High Resolution Icon Pack by GUI Archive.
+
+My Pictures watermark: Take Picture icon from the Windows XP High Resolution Icon Pack by GUI Archive.

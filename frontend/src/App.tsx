@@ -2,8 +2,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import DesktopWindow from './DesktopWindow'
 import ComplaintsForm from './ComplaintsForm'
 import ControlPanel from './ControlPanel'
-import DocumentExplorer from './DocumentExplorer'
-import { locations, type FolderId, type LocationId, type SessionFolder } from './explorerLocations'
+import DocumentExplorer, { type DesktopShortcut } from './DocumentExplorer'
+import { locations, type FolderId, type SessionFolder } from './explorerLocations'
 import credits from './credits.txt?raw'
 import './desktop.css'
 
@@ -21,7 +21,15 @@ const apps = [
 ] as const
 
 type AppId = (typeof apps)[number]['id']
-type WindowEntry = { id: AppId; minimized: boolean; folder?: LocationId; navigation?: number }
+type WindowEntry = { id: AppId; minimized: boolean; folder?: FolderId; navigation?: number; controlPage?: 'feedback' }
+
+const linkedInUrl = 'https://www.linkedin.com/in/chelsea-simpson-54437215a/'
+const desktopShortcuts = [
+  ...shortcuts,
+  { id: 'network', label: locations.network.name, icon: '/icons/my-network-places.png' },
+  { id: 'linkedin', label: 'LinkedIn', icon: '/icons/linkedin.png' },
+] as const
+type DesktopShortcutId = (typeof desktopShortcuts)[number]['id']
 
 const phoneLayout = '(max-width: 700px)'
 
@@ -38,7 +46,7 @@ function isPhoneLayout() {
 function LinkedInShortcut({ onClick }: { onClick?: () => void }) {
   return (
     <a
-      href="https://www.linkedin.com/in/chelsea-simpson-54437215a/"
+      href={linkedInUrl}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="LinkedIn (opens in a new tab)"
@@ -56,18 +64,33 @@ function AppContent({ entry, open, close, active, sessionFolders, addFolder, ren
   addFolder: (parent: FolderId) => SessionFolder
   renameFolder: (id: FolderId, name: string) => string | undefined
   deleteFolder: (id: FolderId) => void
-  open: (id: AppId, folder?: LocationId) => void
+  open: (id: AppId, folder?: FolderId) => void
   close: () => void
   active: boolean
 }) {
+  const [showProfileSidebar, setShowProfileSidebar] = useState(true)
   const { id, folder, navigation } = entry
+  function launchShortcut(shortcutId: DesktopShortcutId) {
+    if (shortcutId === 'linkedin') window.open(linkedInUrl, '_blank', 'noopener,noreferrer')
+    else if (shortcutId === 'network') open('computer', 'network')
+    else open(shortcutId)
+  }
+
+  const explorerShortcuts: DesktopShortcut[] = desktopShortcuts.map(({ id: shortcutId, label, icon }) => ({
+    id: shortcutId,
+    name: label,
+    icon,
+    folder: shortcutId === 'computer' || shortcutId === 'documents' || shortcutId === 'network' ? shortcutId : undefined,
+    open: () => launchShortcut(shortcutId),
+  }))
+
   switch (id) {
     case 'about':
       return (
-        <div className="profile">
-          <div className="window-sidebar profile-sidebar">
+        <div className="profile" data-sidebar={showProfileSidebar}>
+          {showProfileSidebar && <div className="window-sidebar profile-sidebar" id="about-photo-sidebar">
             <img className="profile-picture account-picture" src="/chelsea.jpg" alt="Chelsea Simpson" width="130" height="130" />
-          </div>
+          </div>}
           <div className="profile-main">
             <h1>Hi, I’m Chelsea Simpson!</h1>
             <p className="profile-role">Software Developer</p>
@@ -88,6 +111,11 @@ function AppContent({ entry, open, close, active, sessionFolders, addFolder, ren
               </section>
             </div>
             <div className="profile-actions">
+              <button type="button" className="profile-sidebar-toggle" aria-expanded={showProfileSidebar}
+                aria-controls={showProfileSidebar ? 'about-photo-sidebar' : undefined}
+                onClick={() => setShowProfileSidebar(!showProfileSidebar)}>
+                {showProfileSidebar ? 'Hide sidebar' : 'Show sidebar'}
+              </button>
               <button onClick={() => open('documents')}>Open My Documents →</button>
             </div>
           </div>
@@ -95,13 +123,13 @@ function AppContent({ entry, open, close, active, sessionFolders, addFolder, ren
       )
     case 'computer':
     case 'documents':
-      return <DocumentExplorer key={navigation} initialFolder={folder ?? id}
+      return <DocumentExplorer key={navigation} initialFolder={folder ?? id} desktopShortcuts={explorerShortcuts}
         sessionFolders={sessionFolders} addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder}
         openCredits={() => open('notepad')} openControlPanel={() => open('control')} />
     case 'notepad':
       return <pre className="notepad-text">{credits}</pre>
     case 'control':
-      return <ControlPanel openComplaints={() => open('complaints')}
+      return <ControlPanel key={navigation} initialPage={entry.controlPage} openComplaints={() => open('complaints')}
         openFolder={(destination) => open(destination === 'documents' ? 'documents' : 'computer', destination)} />
     case 'complaints':
       return <ComplaintsForm onClose={close} active={active} />
@@ -163,6 +191,8 @@ export default function App() {
   }
 
   function folderNameExists(parent: FolderId, name: string, except?: FolderId) {
+    const normalized = name.toLowerCase()
+    if (parent === 'desktop' && desktopShortcuts.some(({ label }) => label.toLowerCase() === normalized)) return true
     return [...Object.entries(locations), ...sessionFolders.map((folder) => [folder.id, folder] as const)]
       .some(([id, folder]) => id !== except && folder.parent === parent && folder.name.toLowerCase() === name.toLowerCase())
       || (parent === 'documents' && ['résumé.pdf', 'credits.txt'].includes(name.toLowerCase()))
@@ -182,7 +212,7 @@ export default function App() {
     const name = input.trim()
     if (!name || name === '.' || name === '..' || /[\\/:*?"<>|]/.test(name)) return 'Enter a valid folder name.'
     if (folderNameExists(folder.parent, name, id)) return 'A file or folder already has that name.'
-    setSessionFolders((current) => current.map((entry) => entry.id === id ? { ...entry, name } : entry))
+    setSessionFolders((current) => current.map((entry) => entry.id === id && entry.name !== name ? { ...entry, name, renamed: true } : entry))
   }
 
   function deleteFolder(id: FolderId) {
@@ -199,13 +229,13 @@ export default function App() {
     })
   }
 
-  function open(id: AppId, folder?: LocationId) {
+  function open(id: AppId, folder?: FolderId, controlPage?: 'feedback') {
     setWindows((entries) => {
       const existing = entries.find((entry) => entry.id === id)
       const entry = { ...existing, id, minimized: false }
       return [
         ...entries.filter((item) => item.id !== id),
-        folder ? { ...entry, folder, navigation: (entry.navigation ?? 0) + 1 } : entry,
+        folder || controlPage ? { ...entry, folder, controlPage, navigation: (entry.navigation ?? 0) + 1 } : entry,
       ]
     })
     setPhoneHome(false)
@@ -242,13 +272,22 @@ export default function App() {
         </header>
         <nav className="shortcuts" aria-label="Portfolio apps">
           <LocalClock showDate />
-          {shortcuts.map(({ id, label, icon }) => (
-            <button key={id} data-app={id} onClick={() => open(id)}>
+          {desktopShortcuts.map(({ id, label, icon }) => id === 'linkedin' ? <LinkedInShortcut key={id} /> : (
+            <button key={id} data-app={id} onClick={() => {
+              if (id === 'network') open('computer', 'network')
+              else if (id === 'computer' || id === 'documents') open(id, id)
+              else open(id)
+            }}>
               <img className="shortcut-icon" src={icon} alt="" />
               <span>{label}</span>
             </button>
           ))}
-          <LinkedInShortcut />
+          {sessionFolders.filter(({ parent }) => parent === 'desktop').map(({ id, name, icon }) => (
+            <button key={id} onClick={() => open('computer', id)}>
+              <img className="shortcut-icon" src={'/icons/' + icon + '.png'} alt="" />
+              <span>{name}</span>
+            </button>
+          ))}
         </nav>
 
         {apps.map((app) => {
@@ -290,17 +329,29 @@ export default function App() {
                   <img className="start-app-icon" src="/icons/mail.png" alt="" />
                   Complaints
                 </button>
-              </div>
-              <div className="start-column">
-                <button onClick={() => open('documents')}>
-                  <img className="start-app-icon" src="/icons/my-documents.png" alt="" />
-                  My Documents
-                </button>
-                <button onClick={() => open('control')}>
-                  <img className="start-app-icon" src="/icons/control-panel.png" alt="" />
-                  Control Panel
-                </button>
                 <LinkedInShortcut onClick={dismissStart} />
+              </div>
+              <div className="start-column start-system-column">
+                <div className="start-folder-links">
+                  {(['documents', 'pictures', 'music', 'computer'] as const).map((id) => (
+                    <button key={id} onClick={() => open(id === 'computer' ? 'computer' : 'documents', id)}>
+                      <img className="start-app-icon" src={'/icons/' + locations[id].icon + '.png'} alt="" />
+                      {locations[id].name}
+                    </button>
+                  ))}
+                </div>
+                <div className="start-system-group">
+                  <button onClick={() => open('control')}>
+                    <img className="start-app-icon" src="/icons/control-panel.png" alt="" />
+                    Control Panel
+                  </button>
+                </div>
+                <div className="start-system-group">
+                  <button onClick={() => open('control', undefined, 'feedback')}>
+                    <img className="start-app-icon" src="/icons/help-and-support.png" alt="" />
+                    Help and Support
+                  </button>
+                </div>
               </div>
             </div>
           </nav>
