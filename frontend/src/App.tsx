@@ -145,7 +145,7 @@ const taskbarTimeFormat = new Intl.DateTimeFormat(undefined, {
 
 const todayFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'full' })
 
-function LocalClock({ showDate = false }: { showDate?: boolean }) {
+function LocalClock({ showDate = false, compact = false }: { showDate?: boolean; compact?: boolean }) {
   const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
@@ -153,7 +153,11 @@ function LocalClock({ showDate = false }: { showDate?: boolean }) {
     return () => globalThis.clearInterval(timer)
   }, [])
 
-  const time = showDate ? todayFormat.format(siteDate(now)) : taskbarTimeFormat.format(now)
+  const time = showDate ? todayFormat.format(siteDate(now))
+    : compact ? taskbarTimeFormat.formatToParts(now)
+      .filter(({ type }) => type !== 'dayPeriod')
+      .map(({ value }) => value).join('').trim()
+    : taskbarTimeFormat.format(now)
 
   return <span className={showDate ? 'phone-date' : 'taskbar-clock'}>{time}</span>
 }
@@ -274,7 +278,16 @@ export default function App() {
             onClick={() => setStartOpen(!startOpen)}>
             <span className="start-logo" aria-hidden="true">✿</span> Start
           </button>
-          <LocalClock />
+          <div className="phone-status-indicators">
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M1 2h7L4.5 6 1 2ZM4 6h1v7H4zM7 10h2v4H7zM10 7h2v7h-2zM13 4h2v10h-2z" />
+            </svg>
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16">
+              <path fill="currentColor" d="M1 6h3l4-4v12l-4-4H1z" />
+              <path fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" d="m10.5 5 3-2m-2.5 5h4m-4.5 3 3 2" />
+            </svg>
+            <LocalClock compact />
+          </div>
         </header>
         {isPhone && !phoneApp && phonePage === 'today' && (
           <section className="phone-today" aria-label="Today">

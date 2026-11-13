@@ -334,6 +334,16 @@ a { color: #642989; }
   }
   .phone-status { top: 0; border-bottom: 1px solid #f1bbe9; }
   .phone-softkeys { bottom: 0; border-top: 1px solid #f1bbe9; }
+  .phone-status-indicators {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .phone-status-indicators svg { flex: none; }
+  .phone-status .start-logo {
+    border-inline-end: 1px solid #fff9;
+    padding-inline-end: 6px;
+  }
   .phone-status .taskbar-clock { color: inherit; font-weight: normal; }
   .phone-softkeys .linkedin-icon { display: none; }
   .phone-status button, .phone-softkeys :is(button, a) {
