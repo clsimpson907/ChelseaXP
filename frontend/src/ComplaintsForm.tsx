@@ -34,16 +34,23 @@ const sendingReverseMessages = [
 const apiOrigin = import.meta.env.VITE_API_ORIGIN || 'http://localhost:5080'
 const maxMessageLength = 2000
 
+const quotaErrors = {
+  'daily-limit': { error: '0002 : DAILY_QUOTA_FULL', message: 'Everyone’s daily complaint quota has been reached.' },
+  'burst-limit': { error: '0004 : TEN_MINUTE_QUOTA_FULL', message: 'Everyone’s 10-minute complaint quota has been reached.' },
+  'hourly-limit': { error: '0005 : HOURLY_QUOTA_FULL', message: 'You’ve reached your hourly complaint limit.' },
+} as const
+
+type QuotaCode = keyof typeof quotaErrors
 type Blocked =
   | { state: 'paused' }
-  | { state: 'daily-limit'; resetAt: string }
+  | { state: QuotaCode; resetAt: string }
 
 type Availability = Blocked | { state: 'checking' | 'available' | 'unavailable' }
 
 function blockedState(code: unknown, resetAt: unknown): Blocked | null {
   if (code === 'paused') return { state: 'paused' }
-  if (code === 'daily-limit' && typeof resetAt === 'string' && Number.isFinite(Date.parse(resetAt))) {
-    return { state: 'daily-limit', resetAt }
+  if ((code === 'daily-limit' || code === 'burst-limit' || code === 'hourly-limit') && typeof resetAt === 'string' && Number.isFinite(Date.parse(resetAt))) {
+    return { state: code, resetAt }
   }
   return null
 }
@@ -163,13 +170,15 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
   }
 
   const blocked = availability.state !== 'checking' && availability.state !== 'available'
-  const explanation = availability.state === 'paused'
-    ? 'Complaints is temporarily disabled. Please check back later.'
-    : availability.state === 'daily-limit'
-      ? `Today’s complaint quota has been reached. Try again after ${new Date(availability.resetAt).toLocaleString(undefined, {
-          dateStyle: 'medium', timeStyle: 'short',
-        })} (local time).`
+  const quota = 'resetAt' in availability ? quotaErrors[availability.state] : null
+  const explanation = 'resetAt' in availability
+    ? quotaErrors[availability.state].message + ' Try again after ' + new Date(availability.resetAt).toLocaleString(undefined, {
+        dateStyle: 'medium', timeStyle: 'medium',
+      }) + ' (local time).'
+    : availability.state === 'paused'
+      ? 'Complaints is temporarily disabled. Please check back later.'
       : 'Availability couldn’t be checked. Please try again later.'
+  const crashCode = quota?.error ?? (availability.state === 'paused' ? '0001 : COMPLAINTS_PAUSED' : '0003 : STATUS_CHECK_FAILED')
   return (
     <>
       <dialog
@@ -193,7 +202,7 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
             <h1 id="complaints-crash-title">ChelseaXP</h1>
             <p>An error has occurred. Complaints could not continue.</p>
             <p id="complaints-crash-message">{explanation}</p>
-            <p>Error: CXP : {availability.state === 'paused' ? '0001 : COMPLAINTS_PAUSED' : availability.state === 'daily-limit' ? '0002 : DAILY_QUOTA_FULL' : '0003 : STATUS_CHECK_FAILED'}</p>
+            <p>Error: CXP : {crashCode}</p>
             <button type="button">Press any key or click to continue <span aria-hidden="true">_</span></button>
           </div>
         )}
