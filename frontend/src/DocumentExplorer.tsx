@@ -61,7 +61,7 @@ export default function DocumentExplorer({
   })
   const [address, setAddress] = useState<FolderId | null>(null)
   const [emptyDrive, setEmptyDrive] = useState<string | null>(null)
-  const [itemDialog, setItemDialog] = useState<{ folder: FolderId } | { deniedName: string; operation: 'rename' | 'delete' } | null>(null)
+  const [itemDialog, setItemDialog] = useState<{ deleteName: string; isFolder: boolean; folder?: FolderId } | { deniedName: string; operation: 'rename' | 'delete' } | null>(null)
   const [selection, setSelection] = useState<string | null>(null)
   const [editing, setEditing] = useState<FolderId | null>(null)
   useEffect(() => {
@@ -93,8 +93,7 @@ export default function DocumentExplorer({
   const view = isDesktop ? desktopView : isPictures ? picturesView : folderView
   const setView = isDesktop ? setDesktopView : isPictures ? setPicturesView : setFolderView
   const addressId = address && folders[address] ? address : locationId
-  const deleteTarget = itemDialog && 'folder' in itemDialog
-    ? sessionFolders.find((folder) => folder.id === itemDialog.folder) : undefined
+  const deleteTarget = itemDialog && 'deleteName' in itemDialog ? itemDialog : null
   const denied = itemDialog && 'deniedName' in itemDialog ? itemDialog : null
   const historyEntries = history.entries.flatMap(([id], index) =>
     folders[id] ? [{ name: folders[id].name, index }] : [])
@@ -188,7 +187,7 @@ export default function DocumentExplorer({
 
   function deleteSelection() {
     if (!selected || !canManageSelection || itemDialog || emptyDrive) return
-    setItemDialog(editable ? { folder: editable.id } : { deniedName: selected.name, operation: 'delete' })
+    setItemDialog({ deleteName: selected.name, isFolder: itemKind === 'folder', folder: editable?.id })
   }
 
   function renameSelection() {
@@ -312,10 +311,14 @@ export default function DocumentExplorer({
     }}>
       {emptyDrive && <InsertDiskDialog drive={emptyDrive} onClose={() => setEmptyDrive(null)} />}
       {denied && <ExplorerItemDialog name={denied.deniedName} operation={denied.operation} onCancel={() => setItemDialog(null)} />}
-      {deleteTarget && <ExplorerItemDialog name={deleteTarget.name}
+      {deleteTarget && <ExplorerItemDialog name={deleteTarget.deleteName} isFolder={deleteTarget.isFolder}
         onCancel={() => setItemDialog(null)}
         onConfirm={() => {
-          deleteFolder(deleteTarget.id)
+          if (!deleteTarget.folder) {
+            setItemDialog({ deniedName: deleteTarget.deleteName, operation: 'delete' })
+            return
+          }
+          deleteFolder(deleteTarget.folder)
           setItemDialog(null)
           setSelection(null)
           requestAnimationFrame(() => files.current?.focus({ preventScroll: true }))
