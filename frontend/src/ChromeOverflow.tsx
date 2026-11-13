@@ -6,8 +6,6 @@ export type OverflowCommand = {
   disabled?: boolean
   icon?: string
   children?: OverflowCommand[]
-
-
 }
 
 export default function ChromeOverflow({ kind, commands }: {
@@ -29,6 +27,7 @@ export default function ChromeOverflow({ kind, commands }: {
     const panel = popup.current
     const button = trigger.current
     if (!panel || !button || !panel.matches(':popover-open')) return
+    // The native popover escapes the window clip, so position it in viewport coordinates.
     const anchor = button.getBoundingClientRect()
     const width = panel.offsetWidth
     const height = panel.offsetHeight

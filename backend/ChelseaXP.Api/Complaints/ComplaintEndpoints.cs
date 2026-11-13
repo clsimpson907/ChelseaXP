@@ -32,12 +32,11 @@ public static class ComplaintEndpoints
                 return TemporarilyUnavailable();
             }
 
-            var dayStart = DateTime.UtcNow.Date;
             try
             {
-                if (await database.IsDailyLimitReachedAsync(settings.DailyLimit, dayStart, cancellationToken))
+                if (await database.GetLimitAsync(HashClient(context, settings), settings, DateTime.UtcNow, cancellationToken) is { } limit)
                 {
-                    return Results.Ok(new { state = "daily-limit", resetAt = dayStart.AddDays(1) });
+                    return Results.Ok(new { state = limit.Code, resetAt = limit.ResetAt });
                 }
 
                 return Results.Ok(new { state = "available" });
@@ -77,20 +76,16 @@ public static class ComplaintEndpoints
             var clientHash = HashClient(context, settings);
             try
             {
-                var quota = await database.TryReserveAsync(clientHash, settings, cancellationToken);
-                if (quota.DailyResetAt is { } resetAt)
+                if (await database.TryReserveAsync(clientHash, settings, cancellationToken) is { } limit)
                 {
+                    context.Response.Headers.RetryAfter = Math.Max(1, Math.Ceiling((limit.ResetAt - DateTime.UtcNow).TotalSeconds))
+                        .ToString(System.Globalization.CultureInfo.InvariantCulture);
                     return Results.Json(new
                     {
-                        code = "daily-limit",
-                        message = "Today's complaint inbox is full.",
-                        resetAt,
+                        code = limit.Code,
+                        message = "The submission limit has been reached. Please try again later.",
+                        resetAt = limit.ResetAt,
                     }, statusCode: 429);
-                }
-
-                if (!quota.Reserved)
-                {
-                    return Error(429, "The submission limit has been reached. Please try again later.");
                 }
             }
             catch (Exception error) when (error is DbException or DbUpdateException)
@@ -99,6 +94,7 @@ public static class ComplaintEndpoints
                 return TemporarilyUnavailable();
             }
 
+            // Delivery starts after the reservation commits, so failed sends still count toward quota.
             using var request = new HttpRequestMessage(HttpMethod.Post, "emails");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.ResendApiKey);
             request.Content = JsonContent.Create(new

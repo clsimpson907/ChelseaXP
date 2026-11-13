@@ -36,7 +36,7 @@ export default function XpProgress({ label, icon, messages, reverseMessages, com
   useEffect(() => {
     if (complete) return
 
-    const timer = globalThis.setTimeout(() => {
+    const timer = globalThis.setInterval(() => {
       const message = reverseMessages[Math.floor(Math.random() * reverseMessages.length)]
       const restartAt = 3 + Math.floor(Math.random() * 2)
       setStep((current) => current.filled > restartAt ? {
@@ -45,7 +45,7 @@ export default function XpProgress({ label, icon, messages, reverseMessages, com
         reverseMessage: message,
       } : current)
     }, 3000)
-    return () => globalThis.clearTimeout(timer)
+    return () => globalThis.clearInterval(timer)
   }, [complete, reverseMessages])
 
   const filled = complete ? segmentCount : step.filled

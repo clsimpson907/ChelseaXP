@@ -2,6 +2,12 @@
 
 A Windows XP-inspired portfolio website.
 
+## User guide
+
+[Read the ChelseaXP User’s Guide](docs/user-guide.md).
+
+When a major visitor-facing feature ships, update the relevant guide section in the same PR. Verify the steps against the feature and include current desktop or phone screenshots where they clarify the walkthrough.
+
 ## Local development
 
 Install Node.js 24 with npm and the .NET 11 SDK. Run these commands from the repository root in separate terminals.
