@@ -70,7 +70,6 @@ export default function DocumentExplorer({
   }, [editing])
   const [nameError, setNameError] = useState('')
   const [showMobileTasks, setShowMobileTasks] = useState(false)
-  const [showTasks, setShowTasks] = useState(true)
   const [sidebar, setSidebar] = useState<'tasks' | 'folders' | 'search'>('tasks')
   const [search, setSearch] = useState<SearchCriteria | null>(null)
   const [folderView, setFolderView] = useState<View>('Tiles')
@@ -256,19 +255,7 @@ export default function DocumentExplorer({
       { label: 'Rename', action: renameSelection, disabled: !canManageSelection },
       { label: 'Clear selection', action: () => setSelection(null), disabled: !selected },
     ],
-    View: [
-      ...views.map((option) => ({ label: option, action: () => setView(option), disabled: isProtectedDisk && !activeSearch })),
-      {
-        label: showTasks || sidebar !== 'tasks' ? 'Hide task pane' : 'Show task pane',
-        action: () => {
-          setShowTasks(!(showTasks || sidebar !== 'tasks'))
-          setSidebar('tasks')
-          setSearch(null)
-          setSelection(null)
-        },
-        disabled: false,
-      },
-    ],
+    View: views.map((option) => ({ label: option, action: () => setView(option), disabled: isProtectedDisk && !activeSearch })),
     Favorites: [{ label: 'My Documents', action: () => openLocation('documents') }],
     Tools: [
       { label: 'Search', action: () => toggleSidebar('search') },
@@ -406,8 +393,8 @@ export default function DocumentExplorer({
           setSidebar('tasks')
           setSearch(null)
         }}>Folder tasks</button>
-      <div className="explorer-layout" data-mobile-tasks={showMobileTasks} data-sidebar={sidebar === 'tasks' && !showTasks ? 'hidden' : sidebar}>
-        {(showTasks || showMobileTasks || sidebar !== 'tasks') && <div className="explorer-folders">
+      <div className="explorer-layout" data-mobile-tasks={showMobileTasks} data-sidebar={sidebar}>
+        <div className="explorer-folders">
           {sidebar === 'search' ? <SearchCompanion
             folders={folderIds.map((id) => ({ id, name: folderPath(id) }))}
             current={locationId}
@@ -479,7 +466,7 @@ export default function DocumentExplorer({
               ))}
             </TaskSection>}
           </TaskPane>}
-        </div>}
+        </div>
         <div className="explorer-file-pane" data-music={isMusic && !activeSearch} data-pictures={isPictures && !activeSearch}>
         <section className="explorer-files" data-protected={isProtectedDisk && !activeSearch} ref={files} tabIndex={-1} aria-label={location.name}
           onClick={(event) => {

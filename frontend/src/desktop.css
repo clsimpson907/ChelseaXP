@@ -851,7 +851,6 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
   grid-template-rows: minmax(0, 1fr);
   min-height: 0;
 }
-.control-panel-layout[data-sidebar="false"] { grid-template-columns: minmax(0, 1fr); }
 .control-panel-content {
   min-width: 0;
   min-height: 0;
@@ -1325,23 +1324,12 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 }
 .control-panel-content--classic .control-panel-items img { width: 32px; height: 32px; }
 
-.explorer-layout[data-sidebar="hidden"],
-.profile[data-sidebar="false"] { grid-template-columns: minmax(0, 1fr); }
-
-@container (max-width: 540px) {
-  .profile-sidebar-toggle { display: none; }
-}
-@media (max-width: 700px) and (pointer: coarse) and (hover: none) {
-  .xp-file-explorer .explorer-layout[data-sidebar="hidden"] { grid-template-rows: minmax(0, 1fr); }
-  .profile-sidebar-toggle { display: none; }
-}
-
 .window-body--explorer { container-type: inline-size; }
 
 @media not all and (max-width: 700px) and (pointer: coarse) and (hover: none) {
   @container (max-width: 420px) {
     .explorer-layout[data-sidebar="tasks"],
-    .control-panel-layout[data-sidebar="true"] {
+    .control-panel-layout {
       grid-template-columns: minmax(0, 1fr);
     }
     .explorer-layout[data-sidebar="tasks"] > .explorer-folders,
@@ -1547,10 +1535,6 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
     text-align: start;
   }
   .xp-file-explorer .explorer-layout { grid-template-columns: minmax(0, 1fr); }
-  .xp-file-explorer .explorer-layout[data-sidebar="hidden"][data-mobile-tasks="true"] {
-    grid-template-rows: minmax(0, auto) minmax(0, 1fr);
-  }
-  .xp-file-explorer .explorer-layout[data-sidebar="hidden"][data-mobile-tasks="false"],
   .xp-file-explorer .explorer-layout[data-sidebar="tasks"][data-mobile-tasks="false"] {
     grid-template-rows: minmax(0, 1fr);
   }
