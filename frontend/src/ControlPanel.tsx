@@ -1,3 +1,4 @@
+import { useNavigation } from './useNavigation'
 import AddressPicker from './AddressPicker'
 import ComplaintReview from './ComplaintReview'
 import { useEffect, useId, useRef, useState } from 'react'
@@ -18,26 +19,19 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, onCapt
   openFolder: (id: LocationId) => void
 }) {
   const [view, setView] = useState<'category' | 'classic'>('category')
-  const [history, setHistory] = useState<{ entries: Location[]; index: number }>({
-    entries: initialPage ? [{ kind: 'home' }, { kind: 'item', id: 'complaints' }] : [{ kind: 'home' }],
-    index: initialPage ? 1 : 0,
-  })
+  const history = useNavigation<Location>(() => initialPage
+    ? [{ kind: 'home' }, { kind: 'item', id: 'complaints' }] : [{ kind: 'home' }])
   const [pendingAddress, setAddress] = useState<string | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [showFolders, setShowFolders] = useState(false)
-  const location = history.entries[history.index]
+  const location = history.current
   const headingId = useId()
   const heading = useRef<HTMLHeadingElement>(null)
   const content = useRef<HTMLElement>(null)
 
-  const navigationEntries = history.entries.map((entry, index) => ({
-    index,
-    name: entry.kind === 'home' ? 'Control Panel' : department.label,
-  }))
   const navigation = {
-    back: navigationEntries.slice(0, history.index).reverse(),
-    forward: navigationEntries.slice(history.index + 1),
+    ...history.destinations((entry) => entry.kind === 'home' ? 'Control Panel' : department.label),
     onSelect: travel,
   }
   const item = location.kind === 'item' ? department : undefined
@@ -61,20 +55,18 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, onCapt
   }, [location])
 
   function navigate(next: Location) {
-    setHistory(({ entries, index }) => ({
-      entries: [...entries.slice(0, index + 1), next], index: index + 1,
-    }))
+    history.push(next)
     resetContent()
   }
 
   function switchView() {
     setView((current) => current === 'category' ? 'classic' : 'category')
-    setHistory({ entries: [{ kind: 'home' }], index: 0 })
+    history.reset({ kind: 'home' })
     resetContent()
   }
 
   function travel(index: number) {
-    setHistory((current) => ({ ...current, index }))
+    history.select(index)
     resetContent()
   }
 
@@ -121,7 +113,7 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, onCapt
           </select>
         </label>
         <ChromeOverflow kind="toolbar" commands={[
-          { label: 'Forward', icon: 'forward', disabled: history.index === history.entries.length - 1, action: () => travel(history.index + 1) },
+          { label: 'Forward', icon: 'forward', disabled: !navigation.forward.length, action: () => travel(navigation.forward[0].index) },
           { label: 'Up', icon: 'up', disabled: location.kind === 'home', action: up },
           { label: 'Search', icon: 'explorer-search', action: toggleSearch },
           { label: 'Folders', icon: 'explorer-folders', action: () => setShowFolders(!showFolders) },

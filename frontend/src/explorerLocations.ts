@@ -9,6 +9,14 @@ export const locations = {
   videos: { name: 'My Videos', parent: 'documents', icon: 'folder' },
   downloads: { name: 'Downloads', parent: 'documents', icon: 'folder' },
   notes: { name: 'Project Notes', parent: 'documents', icon: 'folder' },
+  'documents-settings': { name: 'Documents and Settings', parent: 'disk', icon: 'folder' },
+  'program-files': { name: 'Program Files', parent: 'disk', icon: 'folder' },
+  'chelseaxp-system': { name: 'ChelseaXP', parent: 'disk', icon: 'folder' },
+  chelsea: { name: 'Chelsea', parent: 'documents-settings', icon: 'folder' },
+  birby: { name: 'Birby', parent: 'documents-settings', icon: 'folder' },
+  cookies: { name: 'Cookies', parent: 'chelsea', icon: 'folder' },
+  favorites: { name: 'Favorites', parent: 'chelsea', icon: 'help-favorites' },
+  'start-menu': { name: 'Start Menu', parent: 'chelsea', icon: 'folder' },
   desktop: { name: 'Desktop', parent: null, icon: 'desktop' },
   recycle: { name: 'Recycle Bin', parent: 'desktop', icon: 'recycle-bin' },
   'published-complaints': { name: 'Complaints', parent: 'recycle', icon: 'folder' },
@@ -17,6 +25,11 @@ export const locations = {
 
 export type LocationId = keyof typeof locations
 export type FolderId = LocationId | `folder-${string}`
-export type SessionFolder = { id: FolderId; name: string; parent: FolderId; icon: 'folder'; modifiedAt: number; renamed?: boolean }
+export type SessionFolder = { id: FolderId; name: string; parent: FolderId; icon: string; modifiedAt: number; renamed?: boolean }
 export const locationIds = Object.keys(locations) as LocationId[]
 export const explorerPlaces = ['computer', 'documents', 'pictures', 'music', 'videos', 'downloads'] as const
+
+export const movableLocations = ['documents', 'pictures', 'music', 'videos', 'downloads', 'notes'] as const
+export const fixedLocationIds = locationIds.filter((id) => !movableLocations.some((movable) => movable === id))
+export const fixedLocations: Partial<Record<LocationId, { name: string; parent: FolderId | null; icon: string }>> =
+  Object.fromEntries(fixedLocationIds.map((id) => [id, locations[id]]))

@@ -1,3 +1,4 @@
+import { useNavigation } from './useNavigation'
 import NavigationHistory from './NavigationHistory'
 import { Fragment, useEffect, useId, useRef, useState } from 'react'
 import ChromeOverflow from './ChromeOverflow'
@@ -64,14 +65,14 @@ export default function HelpCenter({ openComplaints, openDepartment, initialTopi
   openComplaints: () => void
   openDepartment: () => void
 }) {
-  const [history, setHistory] = useState<{ entries: string[]; index: number }>(initialTopic ? { entries: ['', initialTopic], index: 1 } : { entries: [''], index: 0 })
+  const history = useNavigation(() => initialTopic ? ['', initialTopic] : [''])
   const [catFact] = useState(() => catFacts[Math.floor(Math.random() * catFacts.length)])
   const [search, setSearch] = useState('')
   const [keyword, setKeyword] = useState('')
   const [selection, setSelection] = useState('')
   const searchId = useId()
   const heading = useRef<HTMLHeadingElement>(null)
-  const page = history.entries[history.index]
+  const page = history.current
   const topic = topics.find(({ title }) => title === page)
   const query = page.startsWith('?') ? page.slice(1) : ''
   const matches = query ? topics.filter(({ title, body }) => (title + ' ' + body).toLowerCase().includes(query.toLowerCase())) : topics
@@ -84,14 +85,14 @@ export default function HelpCenter({ openComplaints, openDepartment, initialTopi
     if (next === page) return
     setSelection('')
     setKeyword('')
-    setHistory(({ entries, index }) => ({ entries: [...entries.slice(0, index + 1), next], index: index + 1 }))
+    history.push(next)
     focusPage()
   }
 
   function travel(index: number) {
     setSelection('')
     setKeyword('')
-    setHistory((current) => ({ ...current, index }))
+    history.select(index)
     focusPage()
   }
 
@@ -109,11 +110,9 @@ export default function HelpCenter({ openComplaints, openDepartment, initialTopi
       : [...new Set(history.entries.filter((entry) => topics.some(({ title }) => title === entry)))].reverse()
   const selectedTopic = sectionTopics.includes(selection) ? selection : ''
 
-  const navigationEntries = history.entries.map((entry, index) => ({
-    index,
-    name: entry.startsWith('?') ? 'Search results for ' + entry.slice(1)
-      : ({ '': 'Home', index: 'Index', favorites: 'Favorites', history: 'History', support: 'Support' } as Record<string, string>)[entry] ?? entry,
-  }))
+  const navigation = history.destinations((entry) => entry.startsWith('?') ? 'Search results for ' + entry.slice(1)
+      : ({ '': 'Home', index: 'Index', favorites: 'Favorites', history: 'History', support: 'Support' } as Record<string, string>)[entry] ?? entry
+  )
   const groups = ['desktop', 'new-folder', 'control-panel', 'mail']
   const topicIcons: Record<string, string> = {
     'Using the desktop': 'desktop',
@@ -139,8 +138,7 @@ export default function HelpCenter({ openComplaints, openDepartment, initialTopi
     <div className="help-center">
       <nav className="explorer-toolbar help-main-toolbar" aria-label="Help and Support navigation">
         <NavigationHistory
-          back={navigationEntries.slice(0, history.index).reverse()}
-          forward={navigationEntries.slice(history.index + 1)}
+          {...navigation}
           onSelect={travel}
         />
         <button type="button" onClick={() => navigate('')} aria-label="Home" data-tooltip="Home"><img width="22" height="22" src="/icons/help-home.png" alt="" /></button>

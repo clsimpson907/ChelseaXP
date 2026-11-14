@@ -1,3 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 using System.Text.Json;
 using ChelseaXP.Api.Complaints;
@@ -13,6 +17,21 @@ public sealed class ComplaintTests
         SubmittedAt = DateTimeOffset.UnixEpoch, Name = "Private name",
         Email = "private@example.invalid", IpAddress = "192.0.2.24",
     };
+
+    [Fact]
+    public async Task PublishUsesTheSharedReviewerPolicy()
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.Services.AddDbContext<ComplaintDb>();
+        builder.AddComplaintReviewAccess();
+        await using var app = builder.Build();
+        app.MapComplaintReview(databaseConfigured: true);
+
+        var endpoint = Assert.Single(((IEndpointRouteBuilder)app).DataSources
+            .SelectMany(source => source.Endpoints).OfType<RouteEndpoint>(),
+            route => route.RoutePattern.RawText == "/api/complaints/review/{id:long}/publish");
+        Assert.Equal("ComplaintReviewer", Assert.Single(endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>()).Policy);
+    }
 
     [Fact]
     public void PublishingWithoutADraftLocksTheOriginalCopy()

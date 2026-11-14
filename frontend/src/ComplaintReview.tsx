@@ -305,7 +305,7 @@ function ComplaintWorkspace({ active, help, navigation, live }: ReviewProps & {
     window.getSelection()?.removeAllRanges()
   }
 
-  const canPublish = role === 'admin' && canEdit
+  const canPublish = canEdit
   const softkeys = active ? document.getElementById('phone-softkeys') : null
 
   async function save(publish = false) {
@@ -351,31 +351,39 @@ function ComplaintWorkspace({ active, help, navigation, live }: ReviewProps & {
     }
   }
 
-  const publish = () => { void save(true) }
+  const editCommands = [
+    { label: 'Redact', icon: 'redact', disabled: !canRedact, action: redact },
+    { label: 'Undo', icon: 'undo', disabled: !canUndo, action: () => restoreHistory('undo'), showLabel: true },
+    { label: 'Redo', icon: 'redo', disabled: !canRedo, action: () => restoreHistory('redo') },
+  ]
+  const publishCommands = [{
+    label: 'Publish', icon: 'publish', showLabel: false, disabled: !canPublish, action: () => { void save(true) },
+  }]
+  const toolbarCommands = [...editCommands, ...publishCommands]
 
   return (
     <div className="complaint-review-preview" data-reading={reading}>
       <ExplorerMenuBar label="Complaints Department menus" menus={{
         File: [
           { label: 'Save as draft', disabled: !canEdit, action: () => { void save() } },
-          ...(role === 'admin' ? [{ label: 'Publish', action: publish, disabled: !canPublish }] : []),
+          ...publishCommands,
           ...(live ? [{ label: 'Sign out', action: live.signOut }] : []),
         ],
-        Edit: [
-          { label: 'Redact', action: redact, disabled: !canRedact },
-          { label: 'Undo', action: () => restoreHistory('undo'), disabled: !canUndo },
-          { label: 'Redo', action: () => restoreHistory('redo'), disabled: !canRedo },
-        ],
+        Edit: editCommands,
         Help: help,
       }} />
       <div className="complaint-review-preview-header">
         <div className="explorer-toolbar complaint-review-toolbar" role="group" aria-label="Complaint navigation and actions">
           <NavigationHistory {...navigation} />
           <span className="explorer-toolbar-divider" aria-hidden="true" />
-          <button type="button" aria-label="Redact" data-tooltip="Redact" disabled={!canRedact} onClick={redact}><img src="/icons/complaint-redact.png" alt="" width="20" height="20" /></button>
-          <button type="button" disabled={!canUndo} onClick={() => restoreHistory('undo')} aria-label="Undo"><img src="/icons/complaint-undo.png" alt="" width="20" height="20" />Undo</button>
-          <button type="button" disabled={!canRedo} onClick={() => restoreHistory('redo')} aria-label="Redo" data-tooltip="Redo"><img src="/icons/complaint-redo.png" alt="" width="20" height="20" /></button>
-          {role === 'admin' && <button className="complaint-desktop-publish" type="button" disabled={!canPublish} onClick={publish} aria-label="Publish" data-tooltip="Publish"><img src="/icons/complaint-publish.png" alt="" width="20" height="20" /></button>}
+          {toolbarCommands.map(({ label, icon, disabled, action, showLabel }) => (
+            <button key={icon} className={icon === 'publish' ? 'complaint-desktop-publish' : undefined}
+              type="button" aria-label={label} data-tooltip={showLabel ? undefined : label}
+              disabled={disabled} onClick={action}>
+              <img src={'/icons/complaint-' + icon + '.png'} alt="" width="20" height="20" />
+              {showLabel && label}
+            </button>
+          ))}
         </div>
         <button className="complaint-inbox-back" type="button" onClick={() => setReading(false)}>Back to Inbox</button>
         {live ? <button type="button" onClick={live.signOut}>Sign out</button> : <>
@@ -434,10 +442,9 @@ function ComplaintWorkspace({ active, help, navigation, live }: ReviewProps & {
       </div>
       {softkeys && createPortal(
         <div className="complaint-phone-actions">
-          <button type="button" disabled={!reading || !canRedact} onClick={redact}>Redact</button>
-          <button type="button" disabled={!reading || !canUndo} onClick={() => restoreHistory('undo')}>Undo</button>
-          <button type="button" disabled={!reading || !canRedo} onClick={() => restoreHistory('redo')}>Redo</button>
-          {role === 'admin' && <button type="button" disabled={!reading || !canPublish} onClick={publish}>Publish</button>}
+          {toolbarCommands.map(({ label, icon, disabled, action }) => (
+            <button key={icon} type="button" disabled={!reading || disabled} onClick={action}>{label}</button>
+          ))}
         </div>,
         softkeys,
       )}

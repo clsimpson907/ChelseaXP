@@ -50,7 +50,7 @@ public static class ComplaintReviewEndpoints
             if (complaint is null) return Results.NotFound();
             if (!complaint.TryPublish(DateTimeOffset.UtcNow)) return Results.Conflict();
             return await Save(db, ct);
-        }).RequireAuthorization("ComplaintAdmin");
+        });
 
         app.MapGet("/api/complaints/published", async (ComplaintDb db, HttpContext context, long? offset, CancellationToken ct) =>
         {

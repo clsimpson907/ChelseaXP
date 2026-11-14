@@ -1,3 +1,5 @@
+import { complaintApiOrigin as apiOrigin } from './publishedComplaints'
+import BlueScreen from './BlueScreen'
 import { useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import XpProgress from './XpProgress'
@@ -31,7 +33,6 @@ const sendingReverseMessages = [
   'Refolding the complaint with more conviction…',
 ] as const
 
-const apiOrigin = import.meta.env.VITE_API_ORIGIN || 'http://localhost:5080'
 const maxMessageLength = 2000
 
 const quotaErrors = {
@@ -61,7 +62,6 @@ export default function ComplaintsForm({ onClose, active, openPrivacy }: { onClo
   const [sending, setSending] = useState(false)
   const [progressComplete, setProgressComplete] = useState(false)
   const [feedback, setFeedback] = useState<{ text: string; error: boolean } | null>(null)
-  const crashDialog = useRef<HTMLDialogElement>(null)
   const hasOpenedForm = useRef(false)
   const messageInput = useRef<HTMLTextAreaElement>(null)
 
@@ -94,23 +94,10 @@ export default function ComplaintsForm({ onClose, active, openPrivacy }: { onClo
   }, [])
 
   useEffect(() => {
-    if (availability.state === 'available') {
-      hasOpenedForm.current = true
-      return
-    }
-
-    const dialog = crashDialog.current
-    if (!active || !dialog || availability.state === 'checking') return
-
-    dialog.showModal()
-    return () => {
-      if (dialog.open) dialog.close()
-    }
-  }, [active, availability.state])
+    if (availability.state === 'available') hasOpenedForm.current = true
+  }, [availability.state])
 
   function dismissCrash() {
-    if (!crashDialog.current?.open) return
-    crashDialog.current.close()
     if (hasOpenedForm.current) {
       setFeedback({ text: explanation, error: true })
       setAvailability({ state: 'available' })
@@ -188,32 +175,9 @@ export default function ComplaintsForm({ onClose, active, openPrivacy }: { onClo
   const crashCode = quota?.error ?? (availability.state === 'paused' ? '0001 : COMPLAINTS_PAUSED' : '0003 : STATUS_CHECK_FAILED')
   return (
     <>
-      <dialog
-        className="complaints-blue-screen"
-        ref={crashDialog}
-        aria-labelledby={elementId + '-complaints-crash-title'}
-        aria-describedby={elementId + '-complaints-crash-message'}
-        onClick={dismissCrash}
-        onKeyDown={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-          dismissCrash()
-        }}
-        onCancel={(event) => {
-          event.preventDefault()
-          dismissCrash()
-        }}
-      >
-        {blocked && (
-          <div className="crash-content">
-            <h1 id={elementId + '-complaints-crash-title'}>ChelseaXP</h1>
-            <p>An error has occurred. Complaints could not continue.</p>
-            <p id={elementId + '-complaints-crash-message'}>{explanation}</p>
-            <p>Error: CXP : {crashCode}</p>
-            <button type="button">Press any key or click to continue <span aria-hidden="true">_</span></button>
-          </div>
-        )}
-      </dialog>
+      {active && blocked && <BlueScreen
+        message="An error has occurred. Complaints could not continue."
+        explanation={explanation} code={crashCode} onContinue={dismissCrash} />}
 
       {availability.state === 'checking' && (
         <XpProgress label="Checking Complaints availability" icon="/icons/connection-status.png"

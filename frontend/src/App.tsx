@@ -1,4 +1,6 @@
-import { recycleFolder, restoreFolder, touchFolderPath, type FolderState } from './recycleFolders'
+import BlueScreen from './BlueScreen'
+import { dragItem, dropItem } from './explorerDrag'
+import { moveItem, recycleFolder, restoreFolder, touchFolderPath, type FolderState, type SessionFile } from './recycleFolders'
 import { reviewReturnKey } from './ComplaintReview'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import DesktopWindow from './DesktopWindow'
@@ -7,8 +9,8 @@ import { siteDate } from './siteDate'
 import ComplaintsForm from './ComplaintsForm'
 import ControlPanel from './ControlPanel'
 import HelpCenter from './HelpCenter'
-import DocumentExplorer, { type DesktopShortcut } from './DocumentExplorer'
-import { locations, type FolderId, type SessionFolder } from './explorerLocations'
+import DocumentExplorer, { type DesktopItem } from './DocumentExplorer'
+import { locations, fixedLocations, movableLocations, premadeModifiedAt, type FolderId, type SessionFolder } from './explorerLocations'
 import credits from './credits.txt?raw'
 import './desktop.css'
 
@@ -39,6 +41,12 @@ const desktopShortcuts = [
 ] as const
 type DesktopShortcutId = (typeof desktopShortcuts)[number]['id']
 
+const startingDesktop = [
+  shortcuts[0],
+  { id: 'linkedin', label: 'LinkedIn', icon: '/icons/linkedin.png' },
+  { id: 'recycle', label: locations.recycle.name, icon: '/icons/recycle-bin.png' },
+] as const
+
 const phoneLayout = '(max-width: 700px) and (pointer: coarse) and (hover: none)'
 
 function subscribeToPhoneLayout(onChange: () => void) {
@@ -66,17 +74,20 @@ function LinkedInShortcut({ onClick }: { onClick?: () => void }) {
   )
 }
 
-function AppContent({ entry, setCaption, open, close, active, sessionFolders, locationDates, addFolder, renameFolder, deleteFolder, recycleBin }: {
+function AppContent({ entry, setCaption, open, close, active, desktopItems, sessionFolders, sessionFiles, move, locationDates, addFolder, renameFolder, deleteFolder, recycleBin }: {
   entry: WindowEntry
+  desktopItems: DesktopItem[]
   setCaption: (instance: number, caption: string) => void
   sessionFolders: SessionFolder[]
+  sessionFiles: SessionFile[]
+  move: (id: string, parent: FolderId, now: number) => void
   locationDates: FolderState['locationDates']
   addFolder: (parent: FolderId) => SessionFolder
   renameFolder: (id: FolderId, name: string) => string | undefined
-  deleteFolder: (id: FolderId) => void
+  deleteFolder: (id: string, now: number) => void
   recycleBin: {
     trash: FolderState['trash']
-    restore: (id: FolderId) => void
+    restore: (id: string) => void
     restoreAll: () => void
     empty: () => void
     hidingComplaints: boolean
@@ -87,20 +98,6 @@ function AppContent({ entry, setCaption, open, close, active, sessionFolders, lo
 }) {
   const { id, folder, navigation, instance } = entry
   const updateCaption = useCallback((caption: string) => setCaption(instance, caption), [instance, setCaption])
-  function launchShortcut(shortcutId: DesktopShortcutId) {
-    if (shortcutId === 'linkedin') window.open(linkedInUrl, '_blank', 'noopener,noreferrer')
-    else if (shortcutId === 'network') open('computer', 'network')
-    else open(shortcutId)
-  }
-
-  const explorerShortcuts: DesktopShortcut[] = desktopShortcuts.map(({ id: shortcutId, label, icon }) => ({
-    id: shortcutId,
-    name: label,
-    icon,
-    folder: shortcutId === 'computer' || shortcutId === 'documents' || shortcutId === 'network' ? shortcutId : undefined,
-    open: () => launchShortcut(shortcutId),
-  }))
-
   switch (id) {
     case 'about':
       return (
@@ -135,8 +132,8 @@ function AppContent({ entry, setCaption, open, close, active, sessionFolders, lo
       )
     case 'computer':
     case 'documents':
-      return <DocumentExplorer onCaptionChange={updateCaption} key={navigation} initialFolder={folder ?? id} desktopShortcuts={explorerShortcuts}
-        sessionFolders={sessionFolders} locationDates={locationDates} addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} recycleBin={recycleBin}
+      return <DocumentExplorer onCaptionChange={updateCaption} key={navigation} initialFolder={folder ?? id} desktopItems={desktopItems}
+        sessionFolders={sessionFolders} sessionFiles={sessionFiles} move={move} locationDates={locationDates} addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} recycleBin={recycleBin}
         openCredits={() => open('notepad')} openControlPanel={() => open('control')} />
     case 'notepad':
       return <pre className="notepad-text">{credits}</pre>
@@ -180,11 +177,23 @@ function LocalClock({ showDate = false, compact = false }: { showDate?: boolean;
 }
 
 export default function App() {
+  const [crashed, setCrashed] = useState(false)
+
+  if (crashed) return <BlueScreen
+    message="An error has occurred. ChelseaXP could not continue."
+    explanation="The ChelseaXP system folder was deleted. Your desktop will restart."
+    code="0006 : CHELSEAXP_SYSTEM_FOLDER_DELETED"
+    onContinue={() => setCrashed(false)} />
+
+  return <DesktopSession crash={() => setCrashed(true)} />
+}
+
+function DesktopSession({ crash }: { crash: () => void }) {
   const [returningToReview] = useState(() => sessionStorage.getItem(reviewReturnKey) !== null)
   const [windows, setWindows] = useState<WindowEntry[]>(() => returningToReview
     ? [{ id: 'about', instance: 0, minimized: false }, { id: 'control', instance: 1, minimized: false, controlPage: 'complaints' }]
     : [{ id: 'about', instance: 0, minimized: false }])
-  const [{ folders: sessionFolders, trash, locationDates }, setFolderState] = useState<FolderState>({ folders: [], trash: [], locationDates: {} })
+  const [{ folders: sessionFolders, files: sessionFiles, trash, locationDates }, setFolderState] = useState<FolderState>({ folders: movableLocations.map((id) => ({ id, ...locations[id], modifiedAt: premadeModifiedAt })), files: [{ id: 'credits', name: 'Credits.txt', parent: 'documents', icon: 'document', modifiedAt: premadeModifiedAt }], trash: [], locationDates: {} })
   const [hidingComplaints, setHidingComplaints] = useState(false)
   useEffect(() => {
     if (!hidingComplaints) return
@@ -194,7 +203,7 @@ export default function App() {
 
   const recycleBin = {
     trash,
-    restore: (id: FolderId) => {
+    restore: (id: string) => {
       const now = Date.now()
       setFolderState((state) => restoreFolder(state, id, now))
     },
@@ -246,10 +255,10 @@ export default function App() {
 
   function folderNameExists(parent: FolderId, name: string, except?: FolderId) {
     const normalized = name.toLowerCase()
-    if (parent === 'desktop' && desktopShortcuts.some(({ label }) => label.toLowerCase() === normalized)) return true
-    return [...Object.entries(locations), ...sessionFolders.map((folder) => [folder.id, folder] as const)]
+    if (parent === 'desktop' && startingDesktop.some(({ label }) => label.toLowerCase() === normalized)) return true
+    return [...Object.entries(fixedLocations), ...sessionFolders.map((folder) => [folder.id, folder] as const)]
       .some(([id, folder]) => id !== except && folder.parent === parent && folder.name.toLowerCase() === name.toLowerCase())
-      || (parent === 'documents' && name.toLowerCase() === 'credits.txt')
+      || sessionFiles.some((file) => file.parent === parent && file.name.toLowerCase() === normalized)
   }
 
   function addFolder(parent: FolderId): SessionFolder {
@@ -272,9 +281,18 @@ export default function App() {
       .map((entry) => entry.id === id ? { ...entry, name, renamed: true } : entry) }, id, now))
   }
 
-  function deleteFolder(id: FolderId) {
-    const now = Date.now()
+  function deleteFolder(id: string, now: number) {
+    if (id === 'chelseaxp-system') {
+      crash()
+      return
+    }
     setFolderState((state) => recycleFolder(state, id, now))
+  }
+
+  function move(id: string, parent: FolderId, now: number) {
+    if (parent === 'desktop' && startingDesktop.some(({ label }) =>
+      [...sessionFolders, ...sessionFiles].some((item) => item.id === id && item.name.toLowerCase() === label.toLowerCase()))) return
+    setFolderState((state) => moveItem(state, id, parent, now))
   }
 
   function shortcutActivation(id: string, launch: () => void) {
@@ -289,6 +307,9 @@ export default function App() {
   }
 
   function open(id: AppId, folder?: FolderId, controlPage?: 'complaints', helpTopic?: string) {
+    const destinationId = folder ?? (id === 'documents' ? 'documents' : undefined)
+    if (destinationId && !Object.hasOwn(fixedLocations, destinationId) &&
+      !sessionFolders.some((item) => item.id === destinationId)) return
     const existing = isPhone ? windows.findLast((entry) => entry.id === id) : undefined
     const instance = existing?.instance ?? nextWindowInstance++
     const entry = { ...existing, id, instance, minimized: false }
@@ -331,6 +352,26 @@ export default function App() {
     focusWindow(entry.instance)
   }
 
+  function launchShortcut(id: DesktopShortcutId | 'recycle') {
+    if (id === 'linkedin') window.open(linkedInUrl, '_blank', 'noopener,noreferrer')
+    else if (id === 'network' || id === 'recycle') open('computer', id)
+    else open(id)
+  }
+
+  const desktopItems: DesktopItem[] = [
+    ...startingDesktop.map(({ id, label, icon }) => ({
+      id, name: label, icon, type: id === 'recycle' ? 'System Folder' : 'Shortcut',
+      folder: id === 'recycle' ? id : undefined, open: () => launchShortcut(id),
+    })),
+    ...sessionFiles.filter(({ parent }) => parent === 'desktop').map((file) => ({
+      ...file, type: 'Text document', movable: true, open: () => open('notepad'),
+    })),
+    ...sessionFolders.filter(({ parent }) => parent === 'desktop').map((folder) => ({
+      ...folder, type: 'File Folder', movable: true, folder: folder.id,
+      open: () => open('computer', folder.id),
+    })),
+  ]
+
   return (
     <div className={`shell${phoneApp !== undefined ? ' shell--app-open' : ''}`} onPointerDown={(event) => {
       if (!isPhone && !(event.target as Element).closest('.shortcuts > button')) setSelectedShortcut(null)
@@ -339,7 +380,9 @@ export default function App() {
         dismissStart()
       }
     }}>
-      <main className="desktop" ref={desktop}>
+      <main className="desktop" ref={desktop}
+        onDragOver={(event) => { if (!isPhone && !(event.target as Element).closest('.app-window, button')) dropItem('desktop', move).onDragOver(event) }}
+        onDrop={(event) => { if (!isPhone && !(event.target as Element).closest('.app-window, button')) dropItem('desktop', move).onDrop(event) }}>
         <header className="phone-status">
           <button ref={phoneStartButton} aria-expanded={startOpen} aria-controls={startOpen ? 'start-menu' : undefined}
             onClick={() => setStartOpen(!startOpen)}>
@@ -375,25 +418,25 @@ export default function App() {
         )}
         <nav className={isPhone ? "phone-programs" : "shortcuts"} hidden={isPhone && (phoneApp !== undefined || phonePage !== 'programs')}
           aria-label={isPhone ? "Programs" : "Portfolio apps"}>
-          {desktopShortcuts.map(({ id, label, icon }) => isPhone && id === 'linkedin' ? <LinkedInShortcut key={id} /> : (
-            <button key={id} data-app={id} {...shortcutActivation(id, () => {
-              if (id === 'linkedin') window.open(linkedInUrl, '_blank', 'noopener,noreferrer')
-              else if (id === 'network') open('computer', 'network')
-              else if (id === 'computer' || id === 'documents') open(id, id)
-              else open(id)
-            })}>
+          {isPhone && desktopShortcuts.map(({ id, label, icon }) => id === 'linkedin' ? <LinkedInShortcut key={id} /> : (
+            <button key={id} data-app={id} {...shortcutActivation(id, () => launchShortcut(id))}>
               <img className="shortcut-icon" src={icon} alt="" />
               <span>{label}</span>
             </button>
           ))}
-          <button {...shortcutActivation('recycle', () => open('computer', 'recycle'))}>
-            <img className="shortcut-icon" src="/icons/recycle-bin.png" alt="" />
-            <span>Recycle Bin</span>
-          </button>
-          {sessionFolders.filter(({ parent }) => parent === 'desktop').map(({ id, name, icon }) => (
-            <button key={id} {...shortcutActivation(id, () => open('computer', id))}>
-              <img className="shortcut-icon" src={'/icons/' + icon + '.png'} alt="" />
-              <span>{name}</span>
+          {desktopItems.filter(({ id }) => !isPhone || (id !== 'about' && id !== 'linkedin')).map((item) => (
+            <button key={item.id} data-app={item.id} {...shortcutActivation(item.id, item.open)}
+              {...(item.movable ? dragItem(item.id) : {})}
+              {...(item.movable && item.folder ? dropItem(item.folder, move) : {})}
+              onKeyDown={(event) => {
+                if (event.key === 'Delete' && selectedShortcut === item.id && item.movable && !item.folder) {
+                  event.preventDefault()
+                  deleteFolder(item.id, Date.now())
+                  setSelectedShortcut(null)
+                }
+              }}>
+              <img className="shortcut-icon" src={item.icon.startsWith('/') ? item.icon : '/icons/' + item.icon + '.png'} alt="" />
+              <span>{item.name}</span>
             </button>
           ))}
         </nav>
@@ -408,7 +451,7 @@ export default function App() {
             <DesktopWindow key={instance} instance={instance} id={app.id} title={entry.caption ?? app.label} icon={app.icon}
               desktop={desktop} depth={index + 1} active={foreground} hidden={hidden}
               onActivate={() => activate(instance)} onMinimize={() => minimize(instance)} onClose={() => close(instance)}>
-              <AppContent entry={entry} sessionFolders={sessionFolders} locationDates={locationDates}
+              <AppContent entry={entry} desktopItems={desktopItems} sessionFolders={sessionFolders} sessionFiles={sessionFiles} move={move} locationDates={locationDates}
                 setCaption={setCaption}
                 addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} recycleBin={recycleBin} open={open} close={() => close(instance)} active={foreground} />
             </DesktopWindow>
@@ -475,7 +518,7 @@ export default function App() {
               </div>
               <div className="start-column start-system-column">
                 <div className="start-folder-links">
-                  {(['documents', 'pictures', 'music', 'computer'] as const).map((id) => (
+                  {(['documents', 'pictures', 'music', 'computer'] as const).filter((id) => id === 'computer' || sessionFolders.some((folder) => folder.id === id)).map((id) => (
                     <button key={id} onClick={() => open(id === 'computer' ? 'computer' : 'documents', id)}>
                       <img className="start-app-icon" src={'/icons/' + locations[id].icon + '.png'} alt="" />
                       {locations[id].name}

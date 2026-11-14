@@ -37,9 +37,7 @@ public static class ComplaintReviewAccess
 
         builder.Services.AddAuthorizationBuilder()
             .AddPolicy("ComplaintReviewer", policy => policy.RequireAuthenticatedUser()
-                .RequireAssertion(context => CanReview(context.User)))
-            .AddPolicy("ComplaintAdmin", policy => policy.RequireAuthenticatedUser()
-                .RequireAssertion(context => CanReview(context.User) && owner.IsAdmin(context.User)));
+                .RequireAssertion(context => CanReview(context.User)));
         builder.Services.AddSingleton(owner);
     }
 
