@@ -930,7 +930,7 @@ a { color: #642989; }
   z-index: 2;
   padding-inline: 4px;
   border-bottom: 1px solid #dcc4da;
-  background: #f8eef4;
+  background: var(--manila-gloss);
 }
 .explorer-menu { position: relative; }
 .explorer-menu button {
