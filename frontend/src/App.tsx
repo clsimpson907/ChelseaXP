@@ -201,7 +201,7 @@ export default function App() {
     if (parent === 'desktop' && desktopShortcuts.some(({ label }) => label.toLowerCase() === normalized)) return true
     return [...Object.entries(locations), ...sessionFolders.map((folder) => [folder.id, folder] as const)]
       .some(([id, folder]) => id !== except && folder.parent === parent && folder.name.toLowerCase() === name.toLowerCase())
-      || (parent === 'documents' && ['résumé.pdf', 'credits.txt'].includes(name.toLowerCase()))
+      || (parent === 'documents' && name.toLowerCase() === 'credits.txt')
   }
 
   function addFolder(parent: FolderId): SessionFolder {
@@ -442,7 +442,18 @@ export default function App() {
       )}
       <footer className="taskbar">
         <button className="start-button" aria-expanded={startOpen} aria-controls={startOpen ? 'start-menu' : undefined}
-          ref={startButton} onClick={() => setStartOpen(!startOpen)}>
+          ref={startButton}
+          onPointerDown={(event) => {
+            if (event.pointerType === 'mouse' && event.button === 0) {
+              event.preventDefault()
+              setStartOpen((open) => !open)
+            }
+          }}
+          onClick={(event) => {
+            if (event.detail === 0 || (event.nativeEvent as PointerEvent).pointerType !== 'mouse') {
+              setStartOpen((open) => !open)
+            }
+          }}>
           <span className="start-logo" aria-hidden="true"><img src="/icons/start-paw.svg" alt="" width="22" height="22" /></span> Start
         </button>
         {apps.filter((app) => windows.some((entry) => entry.id === app.id)).map((app) => (

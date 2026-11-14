@@ -11,7 +11,6 @@ import { locationIds, locations, type FolderId, type SessionFolder } from './exp
 export type DesktopShortcut = { id: string; name: string; icon: string; folder?: FolderId; open: () => void }
 type Entry = { id: string; name: string; icon: string; type: string; folder?: FolderId; open?: () => void }
 const documentEntries: Entry[] = [
-  { id: 'resume', name: 'Résumé.pdf', icon: 'document', type: 'PDF document' },
   { id: 'credits', name: 'Credits.txt', icon: 'document', type: 'Text document' },
 ]
 const views = ['Tiles', 'Icons', 'List', 'Details', 'Thumbnails'] as const
@@ -238,7 +237,7 @@ export default function DocumentExplorer({
 
   const menuActions: Record<string, { label: string; action: () => void; disabled?: boolean }[]> = {
     File: [
-      { label: 'Open', action: () => { if (selected) openEntry(selected) }, disabled: !selected || selected.id === 'resume' },
+      { label: 'Open', action: () => { if (selected) openEntry(selected) }, disabled: !selected },
       { label: 'Make a new folder', action: createFolder, disabled: !canCreate },
     ],
     Edit: [
@@ -279,7 +278,7 @@ export default function DocumentExplorer({
           onDoubleClick={() => openEntry(entry)}>
           <Icon icon={entry.icon} size={view === 'List' || view === 'Details' ? 16 : isDesktop && view === 'Icons' ? 32 : 44} />
           <span className="explorer-item-label">{entry.name}</span>
-          {view === 'Details' ? <small>{entry.type}</small> : entry.id === 'resume' && <small>Coming soon</small>}
+          {view === 'Details' ? <small>{entry.type}</small> : null}
         </button>}
       </li>)}
     </ul>
@@ -392,9 +391,9 @@ export default function DocumentExplorer({
               </TaskSection>}
               {(canCreate || selected) && <TaskSection title="File and Folder Tasks">
                 {selected ? <>
-                  {selected.id !== 'resume' && <button type="button" onClick={() => openEntry(selected)}>
+                  <button type="button" onClick={() => openEntry(selected)}>
                     <Icon icon={selected.icon} /> {selected.type === 'Shortcut' ? 'Open shortcut' : selected.type === 'Removable Drive' || selected.id === 'disk' ? 'Open drive' : selected.folder ? 'Open this folder' : 'Open in Notepad'}
-                  </button>}
+                  </button>
                   {canManageSelection && <>
                     <button type="button" onClick={renameSelection}>
                       <Icon icon="rename" /> Rename this {itemKind}
@@ -403,7 +402,6 @@ export default function DocumentExplorer({
                       <Icon icon="delete" /> Delete this {itemKind}
                     </button>
                   </>}
-                  {selected.id === 'resume' && <p className="task-pane-note">Coming soon</p>}
                 </> : <button type="button" onClick={createFolder}><Icon icon="new-folder" /> Make a new folder</button>}
               </TaskSection>}
               <TaskSection title="Other Places">

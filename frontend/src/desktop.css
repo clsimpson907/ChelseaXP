@@ -114,6 +114,10 @@ a { color: #642989; }
 }
 
 .window-controls button:last-child { background: linear-gradient(#f38f83, #b53943); }
+.window-controls button:hover { background: linear-gradient(#f2c4fb, #a64fc4); }
+.window-controls button:last-child:hover { background: linear-gradient(#ffae95, #dc494c); }
+.window-controls button:active { background: linear-gradient(#804b8e, #5b306a); }
+.window-controls button:last-child:active { background: linear-gradient(#b34851, #802d38); }
 
 .window-body { flex: 1; min-height: 0; overflow: auto; padding: clamp(16px, 3vw, 32px); }
 .window-body--profile { padding: 0; container-type: inline-size; }

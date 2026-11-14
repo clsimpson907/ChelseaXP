@@ -26,7 +26,7 @@ Start in **My Documents** for project notes and credits, or **My Computer** for 
 - Use **Back** to return to a previous location and **Up** to open the parent folder. Click a parent name in the address bar to jump there, or choose a destination from the dropdown and click **Go**.
 - **Other Places** links to nearby folders and common destinations. **Details** shows information about the current folder or selected item. On mobile, tap **Folder tasks** to show the sidebar.
 - To search with Birby, click **Search**, pick a category, enter part of a name, choose where to look, and click **Search** again.
-- Open **Credits.txt** in My Documents to read it in a separate Notepad window. The résumé entry is marked **Coming soon**.
+- Open **Credits.txt** in My Documents to read it in a separate Notepad window.
 - **Local Disk (C:)** has a hidden-files screen. The floppy and CD drives ask you to insert a disk.
 
 ## Making a mess in Explorer
