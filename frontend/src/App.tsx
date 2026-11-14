@@ -166,6 +166,7 @@ export default function App() {
   const [phoneHome, setPhoneHome] = useState(true)
   const [phonePage, setPhonePage] = useState<'today' | 'programs' | 'calendar'>('today')
   const [startOpen, setStartOpen] = useState(false)
+  const [selectedShortcut, setSelectedShortcut] = useState<string | null>(null)
   const desktop = useRef<HTMLElement>(null)
   const startButton = useRef<HTMLButtonElement>(null)
   const phoneStartButton = useRef<HTMLButtonElement>(null)
@@ -234,6 +235,17 @@ export default function App() {
     })
   }
 
+  function shortcutActivation(id: string, launch: () => void) {
+    return {
+      'data-selected': !isPhone && selectedShortcut === id,
+      onClick: (event: React.MouseEvent<HTMLButtonElement>) => {
+        if (!isPhone) setSelectedShortcut(id)
+        if (isPhone || event.detail === 0) launch()
+      },
+      onDoubleClick: () => { if (!isPhone) launch() },
+    }
+  }
+
   function open(id: AppId, folder?: FolderId, controlPage?: 'complaints') {
     setWindows((entries) => {
       const existing = entries.find((entry) => entry.id === id)
@@ -265,7 +277,9 @@ export default function App() {
   }
 
   return (
-    <div className={`shell${phoneApp ? ' shell--app-open' : ''}`} onKeyDown={(event) => {
+    <div className={`shell${phoneApp ? ' shell--app-open' : ''}`} onPointerDown={(event) => {
+      if (!isPhone && !(event.target as Element).closest('.shortcuts > button')) setSelectedShortcut(null)
+    }} onKeyDown={(event) => {
       if (event.key === 'Escape' && startOpen) {
         dismissStart()
       }
@@ -306,18 +320,19 @@ export default function App() {
         )}
         <nav className={isPhone ? "phone-programs" : "shortcuts"} hidden={isPhone && (Boolean(phoneApp) || phonePage !== 'programs')}
           aria-label={isPhone ? "Programs" : "Portfolio apps"}>
-          {desktopShortcuts.map(({ id, label, icon }) => id === 'linkedin' ? <LinkedInShortcut key={id} /> : (
-            <button key={id} data-app={id} onClick={() => {
-              if (id === 'network') open('computer', 'network')
+          {desktopShortcuts.map(({ id, label, icon }) => isPhone && id === 'linkedin' ? <LinkedInShortcut key={id} /> : (
+            <button key={id} data-app={id} {...shortcutActivation(id, () => {
+              if (id === 'linkedin') window.open(linkedInUrl, '_blank', 'noopener,noreferrer')
+              else if (id === 'network') open('computer', 'network')
               else if (id === 'computer' || id === 'documents') open(id, id)
               else open(id)
-            }}>
+            })}>
               <img className="shortcut-icon" src={icon} alt="" />
               <span>{label}</span>
             </button>
           ))}
           {sessionFolders.filter(({ parent }) => parent === 'desktop').map(({ id, name, icon }) => (
-            <button key={id} onClick={() => open('computer', id)}>
+            <button key={id} {...shortcutActivation(id, () => open('computer', id))}>
               <img className="shortcut-icon" src={'/icons/' + icon + '.png'} alt="" />
               <span>{name}</span>
             </button>

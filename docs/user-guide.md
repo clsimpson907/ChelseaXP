@@ -6,7 +6,7 @@ I built ChelseaXP, my portfolio, to feel like a computer from 2006. On a desktop
 
 ## Using the desktop
 
-- Open an app from its desktop shortcut or from **Start** in the lower-left corner.
+- Click a desktop shortcut once to select it. Double-click it or press **Enter** while it has focus to open it. You can also open apps from **Start** in the lower-left corner.
 - Click a window’s button on the taskbar to bring it forward. Click the active window’s taskbar button to minimize it.
 - Drag a window by its title bar to move it. Drag an edge or corner to resize it. The title-bar buttons minimize, maximize or restore, and close the window.
 - As Explorer and Control Panel get narrower, commands move into the **»** menus and the task sidebar can hide automatically. Widen the window to bring it back.

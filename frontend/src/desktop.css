@@ -49,10 +49,7 @@ a { color: #642989; }
   text-shadow: 0 1px 2px #271436, 1px 0 #271436, -1px 0 #271436;
 }
 
-.shortcuts :is(button, a):hover, .shortcuts :is(button, a):focus-visible {
-  background: #46265380;
-  border-color: #fff8;
-}
+.shortcuts :is(button, a):focus-visible { outline: 1px dotted white; outline-offset: -2px; }
 
 .shortcut-icon { width: 36px; height: 36px; }
 
@@ -237,6 +234,13 @@ a { color: #642989; }
   font-style: italic;
   text-shadow: 0 1px 2px #572453;
 }
+.taskbar .start-button:not([aria-expanded="true"]):hover {
+  background: linear-gradient(#f7bde7, #d272b8 48%, #b854a2 51%, #cb70bd);
+}
+.taskbar .start-button[aria-expanded="true"] {
+  background: linear-gradient(#cf83bd, #a4448b 48%, #82316f 51%, #a14890);
+}
+
 .taskbar .start-button { font-size: 14px; }
 .taskbar .start-logo img { width: 17px; height: 17px; }
 .start-logo { display: inline-flex; flex: none; }
@@ -614,7 +618,6 @@ a { color: #642989; }
   font-size: .85rem;
   text-align: center;
 }
-button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 .explorer-item small { color: #634b73; }
 .notepad-text {
   margin: 0;
@@ -987,13 +990,15 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 }
 .xp-file-explorer .explorer-item > img, .explorer-rename > img { flex: none; }
 .explorer-item-label { overflow-wrap: anywhere; }
-.xp-file-explorer .explorer-item[aria-pressed="true"] .explorer-item-label {
-  color: white;
-  background: #76428c;
+:is(.shortcuts [data-selected="true"], .explorer-item[aria-pressed="true"]) > img {
+  filter: saturate(.65) brightness(.90);
 }
-.xp-file-explorer .explorer-item[aria-pressed="true"] img { filter: brightness(.75); }
+:is(.shortcuts [data-selected="true"] > span, .explorer-item[aria-pressed="true"] > .explorer-item-label) {
+  color: white;
+  background: #785b75;
+}
 .xp-file-explorer .explorer-items[data-view="Icons"] { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
-.xp-file-explorer [data-view="Icons"] .explorer-item { flex-direction: column; text-align: center; }
+.xp-file-explorer :is([data-view="Icons"], [data-view="Thumbnails"]) .explorer-item { flex-direction: column; text-align: center; }
 .xp-file-explorer .explorer-items:is([data-view="List"], [data-view="Details"]) { grid-template-columns: 1fr; }
 .xp-file-explorer [data-view="Details"] .explorer-item { display: grid; grid-template-columns: 16px minmax(0, 1fr) minmax(0, 1fr); }
 .explorer-rename input { min-width: 0; width: 100%; font: inherit; }
@@ -1227,19 +1232,6 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
 .xp-file-explorer .explorer-items[data-view="Thumbnails"] {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 104px), 104px));
   align-items: start;
-}
-.xp-file-explorer [data-view="Thumbnails"] .explorer-item {
-  flex-direction: column;
-  text-align: center;
-}
-.xp-file-explorer [data-view="Thumbnails"] .explorer-item > img {
-  width: 88px;
-  max-width: 100%;
-  height: 78px;
-  padding: 15px;
-  border: 1px solid #eadbea;
-  background: #fffdfd;
-  object-fit: contain;
 }
 
 .explorer-file-pane {
@@ -1864,7 +1856,9 @@ button.explorer-item:hover { border-color: #d3aedc; background: #f3dff6; }
   font-weight: normal;
 }
 .taskbar .task-button .window-icon { margin: 0; }
-.taskbar .task-button[aria-pressed="true"] { background: #b982cd; box-shadow: inset 0 1px 3px #60357580; }
+.taskbar .task-button:hover { background: #b982cd; }
+.taskbar .task-button[aria-pressed="true"] { background: #794a90; color: #fff; box-shadow: inset 0 1px 3px #43224799; }
+.taskbar .task-button[aria-pressed="true"]:hover { background: #89589f; }
 .help-topic-group > img { flex: none; object-fit: contain; }
 @container (max-width: 465px) {
   .help-topic-group { gap: 5px; }
