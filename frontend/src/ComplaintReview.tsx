@@ -1,3 +1,4 @@
+import { getPublishedCopies, publishCopy, subscribeToPublishedCopies, type PublicCopy } from './publishedComplaints'
 import NavigationHistory from './NavigationHistory'
 import type { ComponentProps } from 'react'
 import ExplorerMenuBar, { type MenuAction } from './ExplorerMenuBar'
@@ -158,19 +159,7 @@ const sampleComplaints = [
   { submittedAt: '2026-11-11T23:05:00Z', title: 'My new folder disappeared', name: 'Sample Explorer user', email: 'explorer@example.invalid', ip: '203.0.113.42', message: 'I made a folder on the desktop and it was gone after I refreshed. Is there somewhere I can read about how folders work?' },
 ]
 
-type PublicCopy = { subject: string; message: string }
 const savedPreviewDrafts: Record<number, PublicCopy> = {}
-let publishedPreviewCopies: Partial<Record<number, PublicCopy>> = {}
-const previewListeners = new Set<() => void>()
-
-function subscribeToPublishedCopies(listener: () => void) {
-  previewListeners.add(listener)
-  return () => { previewListeners.delete(listener) }
-}
-
-function getPublishedCopies() {
-  return publishedPreviewCopies
-}
 
 function ComplaintReviewPreview({ active, help, navigation }: { active: boolean; help: MenuAction[]; navigation: ComponentProps<typeof NavigationHistory> }) {
   const elementId = useId()
@@ -213,7 +202,7 @@ function ComplaintReviewPreview({ active, help, navigation }: { active: boolean;
   }, [selected])
 
   function redact() {
-    if (publishedPreviewCopies[selected] || !selection || selection.complaint !== selected) return
+    if (getPublishedCopies()[selected] || !selection || selection.complaint !== selected) return
     const { field, start, end } = selection
     const text = publicCopy[field]
     const redactedText = text.slice(0, start) + text.slice(start, end).replace(/\S/gu, '#') + text.slice(end)
@@ -231,7 +220,7 @@ function ComplaintReviewPreview({ active, help, navigation }: { active: boolean;
   const canRedo = !locked && Boolean(redoHistory[selected]?.length)
 
   function restoreHistory(direction: 'undo' | 'redo') {
-    if (publishedPreviewCopies[selected]) return
+    if (getPublishedCopies()[selected]) return
     const [history, setHistory, setOppositeHistory] = direction === 'undo'
       ? [undoHistory, setUndoHistory, setRedoHistory] as const
       : [redoHistory, setRedoHistory, setUndoHistory] as const
@@ -254,10 +243,9 @@ function ComplaintReviewPreview({ active, help, navigation }: { active: boolean;
   const softkeys = active ? document.getElementById('phone-softkeys') : null
 
   function publish() {
-    if (!canPublish || publishedPreviewCopies[selected]) return
-    publishedPreviewCopies = { ...publishedPreviewCopies, [selected]: publicCopy }
+    if (!canPublish || getPublishedCopies()[selected]) return
+    publishCopy(selected, publicCopy)
     delete savedPreviewDrafts[selected]
-    previewListeners.forEach((refresh) => refresh())
   }
 
   return (
@@ -265,7 +253,7 @@ function ComplaintReviewPreview({ active, help, navigation }: { active: boolean;
       <ExplorerMenuBar label="Complaints Department menus" menus={{
         File: [
           { label: 'Save as draft', disabled: locked, action: () => {
-            if (publishedPreviewCopies[selected]) return
+            if (getPublishedCopies()[selected]) return
             savedPreviewDrafts[selected] = publicCopy
           } },
           ...(role === 'admin' ? [{ label: 'Publish', action: publish, disabled: !canPublish }] : []),

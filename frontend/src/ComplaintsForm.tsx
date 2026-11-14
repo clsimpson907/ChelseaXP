@@ -154,7 +154,7 @@ export default function ComplaintsForm({ onClose, active, openPrivacy }: { onClo
 
       if (response.status === 202) {
         form.reset()
-        setFeedback({ text: 'Thanks! Your complaint was accepted for email delivery.', error: false })
+        setFeedback({ text: 'Thanks! Your complaint was submitted.', error: false })
         return
       }
 

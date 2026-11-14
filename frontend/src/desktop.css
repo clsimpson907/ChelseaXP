@@ -855,8 +855,9 @@ a { color: #642989; }
   font-size: .85rem;
   text-align: left;
 }
-.task-pane-actions :is(button, a):hover, .task-pane-actions [aria-current] { border-color: #d3aedc; background: #e8ceef; }
+.task-pane-actions [aria-current] { border-color: #d3aedc; background: #e8ceef; }
 .task-pane-actions a { text-decoration: none; }
+.task-pane-actions :is(button, a):not(:disabled):hover { text-decoration: underline; }
 .task-pane-actions img { flex: none; }
 .task-pane-note { margin: 2px 4px; font-size: .82rem; overflow-wrap: anywhere; }
 .explorer-folders img { width: 16px; height: 16px; }
@@ -2048,7 +2049,7 @@ a { color: #642989; }
   inset-inline-start: 0;
   z-index: 1;
 }
-[data-tooltip]:not(.explorer-history):is(:hover, :focus-visible, :focus-within)::after {
+[data-tooltip]:not(.explorer-history, :disabled, :has(:disabled)):is(:hover, :focus-visible, :focus-within)::after {
   visibility: visible;
   transition: visibility 0s 400ms;
 }
@@ -2059,7 +2060,7 @@ a { color: #642989; }
   inset-inline-end: 0;
   z-index: 1;
 }
-.explorer-history[data-tooltip]:is(:hover, :focus-within)::before {
+.explorer-history[data-tooltip]:not([data-disabled="true"]):is(:hover, :focus-within)::before {
   visibility: visible;
   transition: visibility 0s 400ms;
 }
@@ -2156,6 +2157,7 @@ a { color: #642989; }
   gap: 2px 7px;
   background: #fff9f1;
 }
+.complaint-inbox button:hover strong { text-decoration: underline; }
 .complaint-inbox button img { grid-row: span 2; }
 .complaint-inbox button :is(strong, time), .complaint-inbox-sort {
   overflow: hidden;
@@ -2300,3 +2302,5 @@ a { color: #642989; }
   }
   .help-topic-group button { justify-self: start; max-width: 100%; }
 }
+
+.published-complaint-message { white-space: pre-wrap; overflow-wrap: break-word; }

@@ -357,6 +357,10 @@ export default function App() {
               <span>{label}</span>
             </button>
           ))}
+          <button {...shortcutActivation('recycle', () => open('computer', 'recycle'))}>
+            <img className="shortcut-icon" src="/icons/recycle-bin.png" alt="" />
+            <span>Recycle Bin</span>
+          </button>
           {sessionFolders.filter(({ parent }) => parent === 'desktop').map(({ id, name, icon }) => (
             <button key={id} {...shortcutActivation(id, () => open('computer', id))}>
               <img className="shortcut-icon" src={'/icons/' + icon + '.png'} alt="" />

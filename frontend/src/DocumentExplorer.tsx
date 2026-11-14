@@ -1,6 +1,8 @@
+import ExplorerDialog from './ExplorerDialog'
+import { getPublishedCopies, subscribeToPublishedCopies } from './publishedComplaints'
 import AddressPicker from './AddressPicker'
 import NavigationHistory from './NavigationHistory'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import InsertDiskDialog from './InsertDiskDialog'
 import ExplorerItemDialog from './ExplorerItemDialog'
 import SearchCompanion, { type SearchCriteria } from './SearchCompanion'
@@ -90,7 +92,7 @@ export default function DocumentExplorer({
     return parent ? [id, ...ancestors(parent)] : [id]
   }
   const addressParts = ancestors(addressId).reverse().filter((id) =>
-    id === addressId || (id !== 'computer' && addressId !== 'disk'))
+    id === addressId || (id !== 'desktop' && id !== 'computer' && addressId !== 'disk'))
   function getOtherPlaces(): FolderId[] {
     switch (locationId) {
       case 'documents': return ['desktop', 'computer', 'network']
@@ -109,7 +111,17 @@ export default function DocumentExplorer({
   }
   const otherPlaces = getOtherPlaces()
 
-  const canCreate = !isComputer && !isProtectedDisk && locationId !== 'network'
+  const published = useSyncExternalStore(subscribeToPublishedCopies, getPublishedCopies)
+  const [readingComplaint, setReadingComplaint] = useState<{ subject: string; message: string } | null>(null)
+  const [restoring, setRestoring] = useState<string | null>(null)
+  useEffect(() => {
+    if (!restoring) return
+    const timer = window.setTimeout(() => setRestoring(null), 1000)
+    return () => window.clearTimeout(timer)
+  }, [restoring])
+
+  const isRecycleLocation = locationId === 'recycle' || locationId === 'published-complaints'
+  const canCreate = !isRecycleLocation && !isComputer && !isProtectedDisk && locationId !== 'network'
 
   function folderEntry(id: FolderId): Entry {
     const folder = folders[id]
@@ -126,6 +138,10 @@ export default function DocumentExplorer({
     ...shortcut, id: 'shortcut-' + id, type: 'Shortcut',
   }))
   const folderEntries = folderIds.filter((id) => folders[id].parent === locationId).map(folderEntry)
+  const complaintEntries: Entry[] = Object.entries(published).flatMap(([id, copy]) => copy ? [{
+    id: 'complaint-' + id, name: copy.subject, icon: 'mail', type: 'Published complaint',
+    open: () => setReadingComplaint(copy),
+  }] : [])
   const removableDrives: Entry[] = [
     { id: 'floppy-drive', name: '3½ Floppy (A:)', icon: 'floppy-disk', type: 'Removable Drive', open: () => setEmptyDrive('A:') },
     { id: 'cd-drive', name: 'CD Drive (D:)', icon: 'optical-drive', type: 'Removable Drive', open: () => setEmptyDrive('D:') },
@@ -140,7 +156,9 @@ export default function DocumentExplorer({
   useEffect(() => onCaptionChange(caption), [caption, onCaptionChange])
   const entries = activeSearch ? searchEntries(activeSearch)
     : isComputer ? computerGroups.flatMap((group) => group.entries)
-    : [...(isDesktop ? shortcutEntries : []), ...folderEntries, ...(locationId === 'documents' ? documentEntries : [])]
+    : [...(isDesktop ? shortcutEntries : []), ...folderEntries.filter(({ folder }) => !isDesktop || !desktopShortcuts.some((shortcut) => shortcut.folder === folder)),
+      ...(locationId === 'documents' ? documentEntries : []),
+      ...(locationId === 'published-complaints' ? complaintEntries : [])].filter(({ id }) => id !== restoring)
 
   function searchEntries({ name, scope, category, media }: SearchCriteria) {
     function isWithin(parent: FolderId | null): boolean {
@@ -169,7 +187,15 @@ export default function DocumentExplorer({
 
   const selected = entries.find((entry) => entry.id === selection)
   const editable = sessionFolders.find((folder) => folder.id === selected?.id)
-  const canManageSelection = selected && selected.type !== 'Removable Drive' && selected.id !== 'disk'
+  const canRestore = Boolean(selected && isRecycleLocation && !activeSearch &&
+    (selected.id === 'published-complaints' || selected.type === 'Published complaint'))
+  function restoreSelection() {
+    if (!selected || !canRestore) return
+    setRestoring(selected.id)
+    setSelection(null)
+  }
+
+  const canManageSelection = !isRecycleLocation && selected && selected.id !== 'recycle' && selected.id !== 'published-complaints' && selected.type !== 'Removable Drive' && selected.id !== 'disk'
   const itemKind = selected?.type === 'Shortcut' ? 'shortcut' : selected?.folder ? 'folder' : 'file'
 
   function deleteSelection() {
@@ -216,6 +242,7 @@ export default function DocumentExplorer({
   }
 
   function createFolder() {
+    if (!canCreate) return
     setSidebar('tasks')
     setSearch(null)
     const folder = addFolder(locationId)
@@ -241,6 +268,7 @@ export default function DocumentExplorer({
   const menuActions: Record<string, { label: string; action: () => void; disabled?: boolean }[]> = {
     File: [
       { label: 'Open', action: () => { if (selected) openEntry(selected) }, disabled: !selected },
+      ...(isRecycleLocation ? [{ label: 'Restore', action: restoreSelection, disabled: !canRestore }] : []),
       { label: 'Make a new folder', action: createFolder, disabled: !canCreate },
     ],
     Edit: [
@@ -298,6 +326,9 @@ export default function DocumentExplorer({
       event.preventDefault()
       deleteSelection()
     }}>
+      {readingComplaint && <ExplorerDialog title={readingComplaint.subject} onClose={() => setReadingComplaint(null)}>
+        <div className="published-complaint-message">{readingComplaint.message}</div>
+      </ExplorerDialog>}
       {emptyDrive && <InsertDiskDialog drive={emptyDrive} onClose={() => setEmptyDrive(null)} />}
       {denied && <ExplorerItemDialog name={denied.deniedName} operation={denied.operation} onCancel={() => setItemDialog(null)} />}
       {deleteTarget && <ExplorerItemDialog name={deleteTarget.deleteName} isFolder={deleteTarget.isFolder}
@@ -356,8 +387,7 @@ export default function DocumentExplorer({
             ))}
           </span>
           <AddressPicker value={addressId} onChange={setAddress} entries={folderTree(null)
-            .sort((first, second) => Number(second.id === 'desktop') - Number(first.id === 'desktop'))
-            .map(({ id, depth }) => ({ id, depth: id === 'desktop' ? 0 : depth + 1, name: folders[id].name, icon: folders[id].icon }))} />
+            .map(({ id, depth }) => ({ id, depth, name: folders[id].name, icon: folders[id].icon }))} />
         </span>
         <button className="explorer-go" type="submit"><Icon icon="go" size={18} /> Go</button>
       </form>
@@ -396,8 +426,9 @@ export default function DocumentExplorer({
               {(canCreate || selected) && <TaskSection title="File and Folder Tasks">
                 {selected ? <>
                   <button type="button" onClick={() => openEntry(selected)}>
-                    <Icon icon={selected.icon} /> {selected.type === 'Shortcut' ? 'Open shortcut' : selected.type === 'Removable Drive' || selected.id === 'disk' ? 'Open drive' : selected.folder ? 'Open this folder' : 'Open in Notepad'}
+                    <Icon icon={selected.icon} /> {selected.type === 'Shortcut' ? 'Open shortcut' : selected.type === 'Removable Drive' || selected.id === 'disk' ? 'Open drive' : selected.folder ? 'Open this folder' : selected.type === 'Published complaint' ? 'Open complaint' : 'Open in Notepad'}
                   </button>
+                  {canRestore && <button type="button" onClick={restoreSelection}>Restore</button>}
                   {canManageSelection && <>
                     <button type="button" onClick={renameSelection}>
                       <Icon icon="rename" /> Rename this {itemKind}

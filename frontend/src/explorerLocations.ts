@@ -1,5 +1,5 @@
 export const locations = {
-  computer: { name: 'My Computer', parent: null, icon: 'my-computer' },
+  computer: { name: 'My Computer', parent: 'desktop', icon: 'my-computer' },
   documents: { name: 'My Documents', parent: 'computer', icon: 'my-documents' },
   pictures: { name: 'My Pictures', parent: 'documents', icon: 'my-pictures' },
   music: { name: 'My Music', parent: 'documents', icon: 'my-music' },
@@ -8,7 +8,9 @@ export const locations = {
   downloads: { name: 'Downloads', parent: 'documents', icon: 'folder' },
   notes: { name: 'Project Notes', parent: 'documents', icon: 'folder' },
   desktop: { name: 'Desktop', parent: null, icon: 'desktop' },
-  network: { name: 'My Network Places', parent: null, icon: 'my-network-places' },
+  recycle: { name: 'Recycle Bin', parent: 'desktop', icon: 'recycle-bin' },
+  'published-complaints': { name: 'Complaints', parent: 'recycle', icon: 'folder' },
+  network: { name: 'My Network Places', parent: 'desktop', icon: 'my-network-places' },
 } as const
 
 export type LocationId = keyof typeof locations
