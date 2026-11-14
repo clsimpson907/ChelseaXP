@@ -1,3 +1,4 @@
+import NavigationHistory from './NavigationHistory'
 import { useEffect, useId, useRef, useState } from 'react'
 import InsertDiskDialog from './InsertDiskDialog'
 import ExplorerItemDialog from './ExplorerItemDialog'
@@ -18,22 +19,6 @@ type View = (typeof views)[number]
 
 function Icon({ icon, size = 16 }: { icon: string; size?: number }) {
   return <img src={icon.startsWith('/') ? icon : '/icons/' + icon + '.png'} alt="" width={size} height={size} />
-}
-
-function HistoryDropdown({ label, entries, onSelect }: {
-  label: string
-  entries: { name: string; index: number }[]
-  onSelect: (index: number) => void
-}) {
-  return (
-    <span className="explorer-history" data-disabled={entries.length === 0}>
-      <select aria-label={label} title={label} disabled={entries.length === 0} value=""
-        onChange={(event) => { if (event.target.value) onSelect(Number(event.target.value)) }}>
-        <option value="" disabled>{label}</option>
-        {entries.map(({ name, index }) => <option key={index} value={index}>{name}</option>)}
-      </select>
-    </span>
-  )
 }
 
 export default function DocumentExplorer({
@@ -325,17 +310,7 @@ export default function DocumentExplorer({
         }} />}
       <ExplorerMenuBar label="Explorer menus" menus={menuActions} />
       <div className="explorer-toolbar" role="group" aria-label="Explorer navigation">
-        <div className="explorer-history-group">
-          <button type="button" aria-label="Back" disabled={!back.length} onClick={() => travel(back[0].index)}>
-            <Icon icon="back" size={22} /> Back
-          </button>
-          <HistoryDropdown label="Back history" entries={back} onSelect={travel} />
-        </div>
-        <div className="explorer-history-group">
-          <button type="button" aria-label="Forward" disabled={!forward.length}
-            onClick={() => travel(forward[0].index)}><Icon icon="forward" size={22} /></button>
-          <HistoryDropdown label="Forward history" entries={forward} onSelect={travel} />
-        </div>
+        <NavigationHistory back={back} forward={forward} onSelect={travel} />
         <button type="button" aria-label="Up" title="Up one level" disabled={!location.parent}
           onClick={() => { if (location.parent) openLocation(location.parent) }}><Icon icon="up" size={22} /></button>
         <span className="explorer-toolbar-divider" aria-hidden="true" />

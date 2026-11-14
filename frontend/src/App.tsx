@@ -4,6 +4,7 @@ import PhoneCalendar from './PhoneCalendar'
 import { siteDate } from './siteDate'
 import ComplaintsForm from './ComplaintsForm'
 import ControlPanel from './ControlPanel'
+import HelpCenter from './HelpCenter'
 import DocumentExplorer, { type DesktopShortcut } from './DocumentExplorer'
 import { locations, type FolderId, type SessionFolder } from './explorerLocations'
 import credits from './credits.txt?raw'
@@ -13,17 +14,18 @@ const shortcuts = [
   { id: 'about', label: 'About Me', icon: '/icons/user-accounts.png' },
   { id: 'computer', label: 'My Computer', icon: '/icons/my-computer.png' },
   { id: 'documents', label: 'My Documents', icon: '/icons/my-documents.png' },
-  { id: 'complaints', label: 'Complaints', icon: '/icons/mail.png' },
   { id: 'control', label: 'Control Panel', icon: '/icons/control-panel.png' },
 ] as const
 
 const apps = [
   ...shortcuts,
+  { id: 'complaints', label: 'Complaints', icon: '/icons/mail.png' },
+  { id: 'help', label: 'Help and Support Center', icon: '/icons/help-and-support.png' },
   { id: 'notepad', label: 'Credits.txt - Notepad', icon: '/icons/document.png' },
 ] as const
 
 type AppId = (typeof apps)[number]['id']
-type WindowEntry = { id: AppId; minimized: boolean; folder?: FolderId; navigation?: number; controlPage?: 'feedback' | 'complaints' }
+type WindowEntry = { id: AppId; minimized: boolean; folder?: FolderId; navigation?: number; controlPage?: 'complaints' }
 
 const linkedInUrl = 'https://www.linkedin.com/in/chelsea-simpson-54437215a/'
 const desktopShortcuts = [
@@ -66,7 +68,7 @@ function AppContent({ entry, open, close, active, sessionFolders, addFolder, ren
   addFolder: (parent: FolderId) => SessionFolder
   renameFolder: (id: FolderId, name: string) => string | undefined
   deleteFolder: (id: FolderId) => void
-  open: (id: AppId, folder?: FolderId) => void
+  open: (id: AppId, folder?: FolderId, controlPage?: 'complaints') => void
   close: () => void
   active: boolean
 }) {
@@ -125,8 +127,10 @@ function AppContent({ entry, open, close, active, sessionFolders, addFolder, ren
     case 'notepad':
       return <pre className="notepad-text">{credits}</pre>
     case 'control':
-      return <ControlPanel key={navigation} initialPage={entry.controlPage} openComplaints={() => open('complaints')}
+      return <ControlPanel key={navigation} initialPage={entry.controlPage} openHelp={() => open('help')}
         openFolder={(destination) => open(destination === 'documents' ? 'documents' : 'computer', destination)} />
+    case 'help':
+      return <HelpCenter openComplaints={() => open('complaints')} openDepartment={() => open('control', undefined, 'complaints')} />
     case 'complaints':
       return <ComplaintsForm onClose={close} active={active} />
   }
@@ -230,7 +234,7 @@ export default function App() {
     })
   }
 
-  function open(id: AppId, folder?: FolderId, controlPage?: 'feedback' | 'complaints') {
+  function open(id: AppId, folder?: FolderId, controlPage?: 'complaints') {
     setWindows((entries) => {
       const existing = entries.find((entry) => entry.id === id)
       const entry = { ...existing, id, minimized: false }
@@ -294,9 +298,9 @@ export default function App() {
               <img src="/icons/mail.png" alt="" width="20" height="20" />
               <span>No unread messages</span>
             </div>
-            <button type="button" className="phone-owner" onClick={() => open('control', undefined, 'complaints')}>
-              <img src="/icons/event-viewer.png" alt="" width="20" height="20" />
-              <span>Complaints Department</span>
+            <button type="button" className="phone-owner" onClick={() => open('help')}>
+              <img src="/icons/help-and-support.png" alt="" width="20" height="20" />
+              <span>Help and Support Center</span>
             </button>
           </section>
         )}
@@ -351,6 +355,40 @@ export default function App() {
       {startOpen && (
         <>
           <div className="menu-dismiss" onClick={() => setStartOpen(false)} aria-hidden="true" />
+          {isPhone ? (
+            <nav className="start-menu handheld-start" id="start-menu" aria-label="Start menu">
+              <button type="button" ref={startProfileButton} onClick={() => {
+                setPhoneHome(true)
+                setPhonePage('today')
+                dismissStart()
+              }}>Today</button>
+              <button type="button" onClick={() => {
+                setPhoneHome(true)
+                setPhonePage('calendar')
+                dismissStart()
+              }}>Calendar</button>
+              <button type="button" onClick={() => open('about')}>
+                <img src="/icons/user-accounts.png" alt="" /> About Me
+              </button>
+              <button type="button" onClick={() => open('documents', 'documents')}>
+                <img src="/icons/my-documents.png" alt="" /> My Documents
+              </button>
+              <LinkedInShortcut onClick={dismissStart} />
+              <div className="handheld-start-system">
+                <button type="button" onClick={() => {
+                  setPhoneHome(true)
+                  setPhonePage('programs')
+                  dismissStart()
+                }}>Programs</button>
+                <button type="button" onClick={() => open('control')}>
+                  <img src="/icons/control-panel.png" alt="" /> Control Panel
+                </button>
+                <button type="button" onClick={() => open('help')}>
+                  <img src="/icons/help-and-support.png" alt="" /> Help and Support Center
+                </button>
+              </div>
+            </nav>
+          ) : (
           <nav className="start-menu" id="start-menu" aria-label="Start menu">
             <button className="start-header" ref={startProfileButton} onClick={() => open('about')}>
               <img className="account-picture" src="/chelsea.jpg" alt="" width="44" height="44" />
@@ -358,15 +396,6 @@ export default function App() {
             </button>
             <div className="start-columns">
               <div className="start-column">
-                {isPhone && <button type="button" onClick={() => {
-                  setPhoneHome(true)
-                  setPhonePage('programs')
-                  dismissStart()
-                }}>Programs</button>}
-                <button onClick={() => open('complaints')}>
-                  <img className="start-app-icon" src="/icons/mail.png" alt="" />
-                  Complaints
-                </button>
                 <LinkedInShortcut onClick={dismissStart} />
               </div>
               <div className="start-column start-system-column">
@@ -385,14 +414,15 @@ export default function App() {
                   </button>
                 </div>
                 <div className="start-system-group">
-                  <button onClick={() => open('control', undefined, 'feedback')}>
+                  <button onClick={() => open('help')}>
                     <img className="start-app-icon" src="/icons/help-and-support.png" alt="" />
-                    Help and Support
+                    Help and Support Center
                   </button>
                 </div>
               </div>
             </div>
           </nav>
+          )}
         </>
       )}
       <footer className="taskbar">

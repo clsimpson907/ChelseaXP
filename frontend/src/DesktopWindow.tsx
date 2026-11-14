@@ -134,13 +134,13 @@ export default function DesktopWindow({
         onPointerMove={update} onLostPointerCapture={end}>
         <span id={`window-title-${id}`}><img className="window-icon" src={icon} alt="" />{title}</span>
         <div className="window-controls">
-          <button aria-label={`Minimize ${title}`} onClick={onMinimize}>−</button>
+          <button aria-label={`Minimize ${title}`} onClick={onMinimize}><span className="window-glyph window-glyph--minimize" aria-hidden="true" /></button>
           <button className="window-maximize" aria-label={`${maximized ? 'Restore' : 'Maximize'} ${title}`}
-            onClick={() => setMaximized(!maximized)}>{maximized ? '❐' : '□'}</button>
-          <button aria-label={`Close ${title}`} onClick={onClose}>×</button>
+            onClick={() => setMaximized(!maximized)}><span className="window-glyph" data-restore={maximized} aria-hidden="true" /></button>
+          <button aria-label={`Close ${title}`} onClick={onClose}><span className="window-glyph window-glyph--close" aria-hidden="true" /></button>
         </div>
       </div>
-      <div className={`window-body${id === 'about' ? ' window-body--profile' : isExplorerWindow ? ' window-body--explorer' : ''}`}>
+      <div className={`window-body${id === 'about' ? ' window-body--profile' : isExplorerWindow ? ' window-body--explorer' : id === 'help' ? ' window-body--help' : ''}`}>
         {children}
       </div>
       {resizeEdges.map((edge) => (

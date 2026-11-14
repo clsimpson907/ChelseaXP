@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { explorerPlaces, locations, type LocationId } from './explorerLocations'
 import ChromeOverflow from './ChromeOverflow'
 import ExplorerMenuBar from './ExplorerMenuBar'
+import NavigationHistory from './NavigationHistory'
 import TaskPane, { TaskSection } from './TaskPane'
 
 const categories = [
@@ -15,16 +16,16 @@ const categories = [
 
 type Location = { kind: 'home' } | { kind: 'category'; id: string } | { kind: 'item'; id: string }
 
-export default function ControlPanel({ initialPage, openComplaints, openFolder }: {
-  initialPage?: 'feedback' | 'complaints'
-  openComplaints: () => void
+export default function ControlPanel({ initialPage, openHelp, openFolder }: {
+  initialPage?: 'complaints'
+  openHelp: () => void
   openFolder: (id: LocationId) => void
 }) {
   const [view, setView] = useState<'category' | 'classic'>('category')
   const [history, setHistory] = useState<{ entries: Location[]; index: number }>({
     entries: initialPage ? [{ kind: 'home' }, { kind: 'category', id: 'feedback' },
-      ...(initialPage === 'complaints' ? [{ kind: 'item', id: 'complaints' } as const] : [])] : [{ kind: 'home' }],
-    index: initialPage === 'complaints' ? 2 : initialPage ? 1 : 0,
+      { kind: 'item', id: 'complaints' }] : [{ kind: 'home' }],
+    index: initialPage ? 2 : 0,
   })
   const [pendingAddress, setAddress] = useState<string | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -38,6 +39,11 @@ export default function ControlPanel({ initialPage, openComplaints, openFolder }
     ? categories.find((entry) => entry.id === location.id)
     : undefined
   const items = categories.flatMap((entry) => entry.items)
+  const navigationEntries = history.entries.map((entry, index) => ({
+    index,
+    name: entry.kind === 'home' ? 'Control Panel'
+      : (entry.kind === 'category' ? categories : items).find(({ id }) => id === entry.id)?.label ?? entry.id,
+  }))
   const item = location.kind === 'item' ? items.find((entry) => entry.id === location.id) : undefined
   const address = pendingAddress ?? (location.kind === 'home' ? 'home' : location.id)
   const categoryHome = location.kind === 'home' && view === 'category' && !searchOpen
@@ -91,20 +97,18 @@ export default function ControlPanel({ initialPage, openComplaints, openFolder }
     View: [{ label: switchLabel, action: switchView }],
     Favorites: [{ label: 'My Documents', action: () => openFolder('documents') }],
     Tools: [{ label: 'Folders', action: () => setShowFolders(!showFolders) }],
-    Help: [{ label: 'Help and Support', action: () => navigate({ kind: 'category', id: 'feedback' }) }],
+    Help: [{ label: 'Help and Support Center', action: openHelp }],
   }
 
   return (
     <div className="explorer control-panel">
       <ExplorerMenuBar label="Control Panel menus" menus={menus} />
       <div className="explorer-toolbar control-panel-toolbar" role="group" aria-label="Control Panel navigation">
-        <button type="button" aria-label="Back" disabled={history.index === 0} onClick={() => travel(history.index - 1)}>
-          <img src="/icons/back.png" alt="" width="22" height="22" /> Back
-        </button>
-        <button type="button" aria-label="Forward" disabled={history.index === history.entries.length - 1}
-          onClick={() => travel(history.index + 1)}>
-          <img src="/icons/forward.png" alt="" width="22" height="22" />
-        </button>
+        <NavigationHistory
+          back={navigationEntries.slice(0, history.index).reverse()}
+          forward={navigationEntries.slice(history.index + 1)}
+          onSelect={travel}
+        />
         <button type="button" aria-label="Up" disabled={location.kind === 'home'} onClick={up}>
           <img src="/icons/up.png" alt="" width="22" height="22" />
         </button>
@@ -160,18 +164,16 @@ export default function ControlPanel({ initialPage, openComplaints, openFolder }
       <div className="control-panel-layout">
         <TaskPane label="Control Panel tasks">
           {!showFolders && <>
-<TaskSection title="Control Panel" icon="/icons/control-panel.png">
+            <TaskSection title="Control Panel" icon="/icons/control-panel.png">
             <button onClick={switchView}>
               <img src="/icons/control-panel.png" alt="" width="16" height="16" /> {switchLabel}
             </button>
             </TaskSection>
-            {location.kind !== 'item' && (
             <TaskSection title="See Also">
-              <button onClick={openComplaints}>
-                <img src="/icons/mail.png" alt="" width="16" height="16" /> Submit a complaint
+              <button type="button" onClick={openHelp}>
+                <img src="/icons/help-and-support.png" alt="" width="16" height="16" /> Help and Support
               </button>
             </TaskSection>
-            )}
             </>}
           {showFolders && <TaskSection title="Folders">
             {explorerPlaces.map((id) => (
@@ -214,9 +216,7 @@ export default function ControlPanel({ initialPage, openComplaints, openFolder }
           {searchOpen && !visibleItems.length && <p>No matching Control Panel items.</p>}
           {!searchOpen && item?.id === 'complaints' && (
             <div className="complaints-department">
-              <p>Found a bug, spotted something confusing, or just have a grievance? The Complaints app sends your message privately to Chelsea. She’ll use your email address to reply if needed.</p>
-              <p>The Recycle Bin is planned as a public collection of approved complaints. Before anything appears there, Chelsea will review the text and remove names, email addresses, and other identifying details.</p>
-              <button className="department-action" onClick={openComplaints}>Open Complaints</button>
+              <p>Private complaint review will be available here for authorized reviewers.</p>
             </div>
           )}
         </section>

@@ -13,7 +13,7 @@ const checkingMessages = [
 
 const sendingMessages = [
   'Filing your grievance under Extremely Important…',
-  'Teaching the envelope how to find Chelsea…',
+  'Teaching the envelope how to find me…',
   'Applying one ceremonial postage stamp…',
   'Handing the complaint to a very small courier…',
   'Trying to make the inbox look busy…',
@@ -219,7 +219,7 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
 
       <div hidden={availability.state !== 'available' || sending}>
         <h1>Complaints</h1>
-        <p>Your message goes to Chelsea by email. She’ll use your email address to reply if needed.</p>
+        <p>Your message goes privately to me by email. I’ll use your email address if I need to reply.</p>
         <form className="complaints-form" onSubmit={submit} aria-busy={sending}>
           <label htmlFor="complaint-name">Name (optional)</label>
           <input id="complaint-name" name="name" autoComplete="name" maxLength={100} readOnly={sending} />
