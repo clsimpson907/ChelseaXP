@@ -128,10 +128,15 @@ Availability alone does not verify Resend delivery.
 
 Each request that passes the shared quota reserves a slot before contacting
 Resend. Provider failures still use that slot, and SQL failures stop delivery.
-SQL stores timestamps and keyed hashes of client addresses. Entries older than
-two days are pruned when a new slot is reserved. Complaint text, name, and email
-are sent privately to the configured inbox. A successful response means Resend
-accepted the message for delivery.
+SQL stores quota timestamps and keyed hashes of client addresses. Quota entries older
+than two days are pruned when a new slot is reserved. The same transaction saves the
+complaint for private review, including its IP address. A successful response means
+the complaint was saved. Resend notification failures are logged, and the IP address
+is omitted from the email.
+
+Run `backend/ChelseaXP.Api/Complaints/create-complaints-table.sql` against the
+complaints database before deploying the updated API. Run the backend unit tests
+with `dotnet test backend/ChelseaXP.Api.Tests`.
 
 ## Visual assets
 

@@ -4,10 +4,12 @@ namespace ChelseaXP.Api.Complaints;
 
 public sealed class ComplaintDb(DbContextOptions<ComplaintDb> options) : DbContext(options)
 {
+    public DbSet<Complaint> Complaints => Set<Complaint>();
     public DbSet<ComplaintReservation> Reservations => Set<ComplaintReservation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        Complaint.Configure(modelBuilder);
         var reservation = modelBuilder.Entity<ComplaintReservation>();
         reservation.ToTable("ComplaintReservations", "dbo");
         reservation.Property(row => row.ClientHash).HasMaxLength(64).IsUnicode(false);
@@ -50,7 +52,7 @@ public sealed class ComplaintDb(DbContextOptions<ComplaintDb> options) : DbConte
     }
 
     public async Task<ComplaintQuotaLimit?> TryReserveAsync(
-        string clientHash, ComplaintSettings settings, CancellationToken cancellationToken)
+        string clientHash, ComplaintSettings settings, Complaint complaint, CancellationToken cancellationToken)
     {
         await using var transaction = await Database.BeginTransactionAsync(cancellationToken);
         // Serialize quota decisions across replicas and release the lock at commit or rollback.
@@ -73,6 +75,7 @@ public sealed class ComplaintDb(DbContextOptions<ComplaintDb> options) : DbConte
         var retentionCutoff = now.AddDays(-2);
         await Reservations.Where(row => row.CreatedUtc < retentionCutoff).ExecuteDeleteAsync(cancellationToken);
         Reservations.Add(new ComplaintReservation { ClientHash = clientHash, CreatedUtc = now });
+        Complaints.Add(complaint);
         await SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return null;

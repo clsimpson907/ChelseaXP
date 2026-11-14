@@ -67,8 +67,8 @@ Open **About Me** to read about my background and interests. Use **LinkedIn** to
 
 ## Complaint privacy notice
 
-When you submit a complaint, Resend delivers your subject, message, email address, and any name you enter to my inbox. I use your message to investigate what you reported and your email address to reply if needed. The complaint stays private, and my email copy may be kept so I can follow up.
+When you submit a complaint, Resend delivers your subject, message, email address, and any name you enter to my inbox. I use your message to investigate what you reported and your email address to reply if needed. The complaint is saved for private review. I may publish its subject and message in the Recycle Bin after reviewing them for private details. Your contact details and IP address are kept out of the public complaint record.
 
-When the site checks whether you can submit a complaint or accepts one for sending, the server uses your IP address to check submission limits. For a submission that reserves a slot, the complaints database stores a timestamp and a code derived from your IP address using a secret key. The raw IP address is kept out of the complaint email and quota records. Quota records older than two days are cleared when a new slot is reserved.
+When the site checks whether you can submit a complaint or accepts one for sending, the server uses your IP address to check submission limits. For a submission that reserves a slot, the complaints database stores a timestamp and a code derived from your IP address using a secret key. The raw IP address is stored with the private complaint for investigation and is kept out of the complaint email and quota records. Quota records older than two days are cleared when a new slot is reserved.
 
 If you have a question about a complaint you sent, you can reach me through LinkedIn.

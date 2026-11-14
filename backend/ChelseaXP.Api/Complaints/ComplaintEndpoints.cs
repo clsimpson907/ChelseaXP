@@ -12,7 +12,6 @@ namespace ChelseaXP.Api.Complaints;
 
 public static class ComplaintEndpoints
 {
-    private const int MaxMessageLength = 2000;
     private static readonly TimeZoneInfo EasternTime = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
 
     public static void MapComplaints(this WebApplication app, bool databaseConfigured)
@@ -35,7 +34,7 @@ public static class ComplaintEndpoints
 
             try
             {
-                if (await database.GetLimitAsync(HashClient(context, settings), settings, DateTime.UtcNow, cancellationToken) is { } limit)
+                if (await database.GetLimitAsync(HashClient(GetClientIp(context, settings), settings), settings, DateTime.UtcNow, cancellationToken) is { } limit)
                 {
                     return Results.Ok(new { state = limit.Code, resetAt = limit.ResetAt });
                 }
@@ -67,27 +66,36 @@ public static class ComplaintEndpoints
             var name = submission.Name?.Trim();
             var email = submission.Email?.Trim();
             var subject = submission.Subject?.Trim();
-            if (subject is not { Length: > 0 and <= 120 } || submission.Subject?.Any(char.IsControl) == true)
+            if (!Complaint.IsValidSubject(subject) || submission.Subject?.Any(char.IsControl) == true)
             {
                 return Error(400, "Enter a single-line subject of up to 120 characters.");
             }
 
             var message = submission.Message?.Trim();
-            if (name?.Length > 100 || email is not { Length: > 0 and <= 254 } ||
-                !MailAddress.TryCreate(email, out var address) || address.Address != email ||
-                message is not { Length: > 0 and <= MaxMessageLength })
+            if (name?.Length > 100 || (!string.IsNullOrEmpty(email) &&
+                (email.Length > 254 || !MailAddress.TryCreate(email, out var address) || address.Address != email)) ||
+                !Complaint.IsValidMessage(message))
             {
-                return Error(400, "Enter a valid email and a message of up to 2,000 characters. Name is optional.");
+                return Error(400, "Enter a message of up to 2,000 characters and a valid email if you provide one.");
             }
 
             var submittedAt = DateTimeOffset.UtcNow;
             var easternSubmission = TimeZoneInfo.ConvertTime(submittedAt, EasternTime);
             var zone = EasternTime.IsDaylightSavingTime(submittedAt) ? "EDT" : "EST";
             var submittedLabel = easternSubmission.ToString("MMMM d, yyyy 'at' h:mm tt", System.Globalization.CultureInfo.GetCultureInfo("en-US"));
-            var clientHash = HashClient(context, settings);
+            var complaint = new Complaint
+            {
+                Subject = subject!,
+                Message = message!,
+                SubmittedAt = submittedAt,
+                Name = string.IsNullOrEmpty(name) ? null : name,
+                Email = string.IsNullOrEmpty(email) ? null : email,
+                IpAddress = GetClientIp(context, settings),
+            };
+            var clientHash = HashClient(complaint.IpAddress, settings);
             try
             {
-                if (await database.TryReserveAsync(clientHash, settings, cancellationToken) is { } limit)
+                if (await database.TryReserveAsync(clientHash, settings, complaint, cancellationToken) is { } limit)
                 {
                     context.Response.Headers.RetryAfter = Math.Max(1, Math.Ceiling((limit.ResetAt - DateTime.UtcNow).TotalSeconds))
                         .ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -112,9 +120,12 @@ public static class ComplaintEndpoints
             {
                 from = settings.Sender,
                 to = new[] { settings.Recipient },
-                reply_to = email,
+                reply_to = complaint.Email,
                 subject = $"ChelseaXP complaint: {subject}",
                 text = $"Submitted: {submittedLabel} {zone}\nName: {(string.IsNullOrEmpty(name) ? "Not provided" : name)}\n\n{message}",
+            }, options: new System.Text.Json.JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
             });
 
             try
@@ -134,7 +145,7 @@ public static class ComplaintEndpoints
                 logger.LogWarning("The complaint email request could not be completed.");
             }
 
-            return TemporarilyUnavailable();
+            return Results.Accepted();
         })
         .WithMetadata(new RequestSizeLimitAttribute(24 * 1024))
         .RequireRateLimiting("complaints");
@@ -157,7 +168,7 @@ public static class ComplaintEndpoints
             cause.GetType().Name, codes);
     }
 
-    private static string HashClient(HttpContext context, ComplaintSettings settings)
+    private static string? GetClientIp(HttpContext context, ComplaintSettings settings)
     {
         var ip = context.Connection.RemoteIpAddress;
         if (settings.BehindContainerAppsIngress)
@@ -176,8 +187,13 @@ public static class ComplaintEndpoints
             ip = ip.MapToIPv4();
         }
 
+        return ip?.ToString();
+    }
+
+    private static string HashClient(string? ip, ComplaintSettings settings)
+    {
         var hash = HMACSHA256.HashData(Encoding.UTF8.GetBytes(settings.ClientHashKey!),
-            Encoding.UTF8.GetBytes(ip?.ToString() ?? "unknown"));
+            Encoding.UTF8.GetBytes(ip ?? "unknown"));
         return Convert.ToHexString(hash);
     }
 

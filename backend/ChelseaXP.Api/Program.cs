@@ -40,6 +40,7 @@ app.UseAuthorization();
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 app.MapComplaintReviewAccess();
+app.MapComplaintReview(!string.IsNullOrWhiteSpace(connectionString));
 app.MapComplaints(!string.IsNullOrWhiteSpace(connectionString));
 
 app.Run();

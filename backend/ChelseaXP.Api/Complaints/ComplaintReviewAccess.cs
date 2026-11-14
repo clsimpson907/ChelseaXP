@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace ChelseaXP.Api.Complaints;
@@ -30,28 +31,39 @@ public static class ComplaintReviewAccess
             options.Audience = apiId;
             options.MapInboundClaims = false;
         });
+        var owner = new ComplaintReviewOwner(admin);
+        bool CanReview(ClaimsPrincipal user) =>
+            configured && HasReviewAccess(user, tenantObjectId, browserClientId, owner, moderators);
+
         builder.Services.AddAuthorizationBuilder()
             .AddPolicy("ComplaintReviewer", policy => policy.RequireAuthenticatedUser()
-                .RequireAssertion(context =>
-                    configured && Guid.TryParse(context.User.FindFirst("tid")?.Value, out var tokenTenant) &&
-                    tokenTenant == tenantObjectId &&
-                    Guid.TryParse(context.User.FindFirst("azp")?.Value, out var client) &&
-                    client == browserClientId &&
-                    context.User.FindFirst("scp")?.Value.Split(' ').Contains("ComplaintReview.Access") == true &&
-                    Guid.TryParse(context.User.FindFirst("oid")?.Value, out var user) &&
-                    user != Guid.Empty && (user == admin || moderators.Contains(user))));
-        builder.Services.AddSingleton(new ComplaintReviewOwner(admin));
+                .RequireAssertion(context => CanReview(context.User)))
+            .AddPolicy("ComplaintAdmin", policy => policy.RequireAuthenticatedUser()
+                .RequireAssertion(context => CanReview(context.User) && owner.IsAdmin(context.User)));
+        builder.Services.AddSingleton(owner);
     }
+
+    public static bool HasReviewAccess(ClaimsPrincipal user, Guid tenant, Guid browser, ComplaintReviewOwner owner, IReadOnlyCollection<Guid> moderators) =>
+        user.Identity?.IsAuthenticated == true &&
+        Guid.TryParse(user.FindFirst("tid")?.Value, out var tokenTenant) && tokenTenant == tenant &&
+        Guid.TryParse(user.FindFirst("azp")?.Value, out var client) && client == browser &&
+        user.FindFirst("scp")?.Value.Split(' ').Contains("ComplaintReview.Access") == true &&
+        Guid.TryParse(user.FindFirst("oid")?.Value, out var objectId) && objectId != Guid.Empty &&
+        (owner.IsAdmin(user) || moderators.Contains(objectId));
 
     public static void MapComplaintReviewAccess(this WebApplication app)
     {
         app.MapGet("/api/complaints/review/session", (HttpContext context, ComplaintReviewOwner owner) =>
         {
             context.Response.Headers.CacheControl = "no-store";
-            var user = Guid.Parse(context.User.FindFirst("oid")!.Value);
-            return Results.Ok(new { role = user == owner.ObjectId ? "admin" : "moderator" });
+            return Results.Ok(new { role = owner.IsAdmin(context.User) ? "admin" : "moderator" });
         }).RequireAuthorization("ComplaintReviewer");
     }
 
-    private sealed record ComplaintReviewOwner(Guid ObjectId);
+}
+
+public sealed record ComplaintReviewOwner(Guid ObjectId)
+{
+    public bool IsAdmin(ClaimsPrincipal user) =>
+        ObjectId != Guid.Empty && Guid.TryParse(user.FindFirst("oid")?.Value, out var id) && id == ObjectId;
 }
