@@ -137,3 +137,21 @@ accepted the message for delivery.
 
 The folder, mail, and document icons are from the Windows XP High Resolution Icon Pack by the creator of [GUI Archive](https://guiarchive.blogspot.com/).
 The shortcut uses a vintage LinkedIn icon. LinkedIn branding belongs to LinkedIn. See the [in-site credits source](frontend/src/credits.txt) for the full list.
+
+## Complaints Department sign-in
+
+Use a Microsoft Entra External ID external tenant and separate single-tenant app registrations for the browser and API. Register the browser as a **Single-page application**, with an exact redirect URI of `https://chelseaxp.party/auth-redirect.html` and the corresponding localhost URI for development. Also register the application origin as a redirect URI for the sign-out popup. Serve the sign-in bridge without a Cross-Origin-Opener-Policy header.
+
+Configure the API registration to issue v2 access tokens. Expose the delegated scope `api://<api-client-id>/ComplaintReview.Access` and grant the browser registration that delegated permission. Associate the browser app with the external tenant's sign-in flow, disable self-service sign-up, and create the owner and invited reviewer accounts in the external tenant.
+
+Set `VITE_ENTRA_TENANT_NAME`, `VITE_ENTRA_TENANT_ID`, `VITE_ENTRA_BROWSER_CLIENT_ID`, and `VITE_ENTRA_API_CLIENT_ID` in the frontend build environment. These are public identifiers. For Azure Pipelines, define them as non-secret pipeline variables so the build can read them. Set the matching API environment variables:
+
+- `ComplaintReview__TenantName` and `ComplaintReview__TenantId`
+- `ComplaintReview__BrowserClientId` and `ComplaintReview__ApiClientId`
+- `ComplaintReview__AdminObjectId` and `ComplaintReview__ModeratorObjectIds__0` (add numbered entries for additional moderators)
+
+Use each account's object ID in the external tenant. The API checks the token and the configured object IDs on each review request. Remove a moderator's ID and update the API revision to revoke their review access. Accounts without a review assignment cannot access the review session. Public complaint submission remains anonymous.
+
+### Preview the Complaints Department locally
+
+Open **Help and Support Center > Complaints Department** on the Vite development server. If Entra is unconfigured, the sample queue opens by default. Set `VITE_COMPLAINT_REVIEW_PREVIEW=true` in `frontend/.env.local` to force the preview or set it to `false` to turn it off. Restart Vite after changing environment settings. This opens a sample queue with an Admin and Moderator preview switch. The samples stay in the browser and require no API or Entra setup. Production builds ignore this setting.

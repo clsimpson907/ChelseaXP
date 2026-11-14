@@ -2,11 +2,14 @@ import { useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent, ReactNode, RefObject } from 'react'
 
 type WindowBounds = { x: number; y: number; width: number; height: number }
+const standardMinWidth = 360
+const explorerMinWidth = 136
 const resizeEdges = ['n', 'e', 's', 'w', 'nw', 'ne', 'sw'] as const
 type ResizeEdge = (typeof resizeEdges)[number] | 'se'
 type Interaction = { kind: 'move' | ResizeEdge; pointer: number; x: number; y: number; bounds: WindowBounds }
 type Props = {
   id: string
+  instance: number
   title: string
   icon: string
   desktop: RefObject<HTMLElement | null>
@@ -24,7 +27,7 @@ function clamp(value: number, minimum: number, maximum: number) {
 }
 
 export default function DesktopWindow({
-  id, title, icon, desktop, depth, active, hidden, children, onActivate, onMinimize, onClose,
+  id, instance, title, icon, desktop, depth, active, hidden, children, onActivate, onMinimize, onClose,
 }: Props) {
   const isExplorerWindow = id === 'computer' || id === 'documents' || id === 'control'
   const panel = useRef<HTMLElement>(null)
@@ -49,8 +52,9 @@ export default function DesktopWindow({
     const bottom = start.y + start.height
     const maxWidth = fromLeft ? right : workspace.clientWidth - start.x
     const maxHeight = fromTop ? bottom : workspace.clientHeight - start.y
+    const minWidth = id === 'computer' || id === 'documents' ? explorerMinWidth : standardMinWidth
     const width = fromLeft || edge.includes('e')
-      ? clamp(start.width + (fromLeft ? -dx : dx), Math.min(isExplorerWindow ? 136 : 360, maxWidth), maxWidth)
+      ? clamp(start.width + (fromLeft ? -dx : dx), Math.min(minWidth, maxWidth), maxWidth)
       : start.width
     const height = fromTop || edge.includes('s')
       ? clamp(start.height + (fromTop ? -dy : dy), Math.min(220, maxHeight), maxHeight)
@@ -111,10 +115,10 @@ export default function DesktopWindow({
 
   return (
     <article
-      id={`window-${id}`}
+      id={`window-${instance}`}
       className={`app-window${active ? '' : ' app-window--inactive'}${maximized ? ' app-window--maximized' : ''}`}
       data-window={id}
-      aria-labelledby={`window-title-${id}`}
+      aria-labelledby={`window-title-${instance}`}
       ref={panel}
       tabIndex={-1}
       hidden={hidden}
@@ -132,7 +136,7 @@ export default function DesktopWindow({
     >
       <div className="title-bar" onPointerDown={(event) => begin(event, 'move')}
         onPointerMove={update} onLostPointerCapture={end}>
-        <span id={`window-title-${id}`}><img className="window-icon" src={icon} alt="" />{title}</span>
+        <span id={`window-title-${instance}`}><img className="window-icon" src={icon} alt="" />{title}</span>
         <div className="window-controls">
           <button aria-label={`Minimize ${title}`} onClick={onMinimize}><span className="window-glyph window-glyph--minimize" aria-hidden="true" /></button>
           <button className="window-maximize" aria-label={`${maximized ? 'Restore' : 'Maximize'} ${title}`}

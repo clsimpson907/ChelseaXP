@@ -1,5 +1,6 @@
+import AddressPicker from './AddressPicker'
 import NavigationHistory from './NavigationHistory'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import InsertDiskDialog from './InsertDiskDialog'
 import ExplorerItemDialog from './ExplorerItemDialog'
 import SearchCompanion, { type SearchCriteria } from './SearchCompanion'
@@ -21,8 +22,9 @@ function Icon({ icon, size = 16 }: { icon: string; size?: number }) {
 }
 
 export default function DocumentExplorer({
-  initialFolder, openCredits, openControlPanel, sessionFolders, addFolder, renameFolder, deleteFolder, desktopShortcuts,
+  onCaptionChange, initialFolder, openCredits, openControlPanel, sessionFolders, addFolder, renameFolder, deleteFolder, desktopShortcuts,
 }: {
+  onCaptionChange: (caption: string) => void
   initialFolder: FolderId
   openCredits: () => void
   openControlPanel: () => void
@@ -32,7 +34,6 @@ export default function DocumentExplorer({
   renameFolder: (id: FolderId, name: string) => string | undefined
   deleteFolder: (id: FolderId) => void
 }) {
-  const explorerId = useId()
   const [history, setHistory] = useState<{ entries: FolderId[][]; index: number }>(() => {
     const path = [initialFolder]
     let parent = sessionFolders.find((folder) => folder.id === initialFolder)?.parent
@@ -57,9 +58,9 @@ export default function DocumentExplorer({
   const [showMobileTasks, setShowMobileTasks] = useState(false)
   const [sidebar, setSidebar] = useState<'tasks' | 'folders' | 'search'>('tasks')
   const [search, setSearch] = useState<SearchCriteria | null>(null)
-  const [folderView, setFolderView] = useState<View>('Tiles')
+  const [folderView, setFolderView] = useState<View>('Icons')
   const [desktopView, setDesktopView] = useState<View>('Icons')
-  const [picturesView, setPicturesView] = useState<View>('Thumbnails')
+  const [picturesView, setPicturesView] = useState<View>('Icons')
   const files = useRef<HTMLElement>(null)
   const lastPointer = useRef('')
   const renameInput = useRef<HTMLInputElement>(null)
@@ -135,6 +136,8 @@ export default function DocumentExplorer({
     { title: 'Devices with Removable Storage', entries: removableDrives },
   ]
   const activeSearch = sidebar === 'search' ? search : null
+  const caption = activeSearch ? 'Search Results' : location.name
+  useEffect(() => onCaptionChange(caption), [caption, onCaptionChange])
   const entries = activeSearch ? searchEntries(activeSearch)
     : isComputer ? computerGroups.flatMap((group) => group.entries)
     : [...(isDesktop ? shortcutEntries : []), ...folderEntries, ...(locationId === 'documents' ? documentEntries : [])]
@@ -254,13 +257,14 @@ export default function DocumentExplorer({
   }
 
   function renderEntries(items: Entry[]) {
+    const iconSize = view === 'List' || view === 'Details' ? 16 : isDesktop && view === 'Icons' ? 32 : 44
     return <ul className="explorer-items" data-view={view} data-desktop={isDesktop && !activeSearch}>
       {items.map((entry) => <li key={entry.id}>
-        {editing === entry.id && entry.folder ? <form className="explorer-rename" onSubmit={(event) => {
+        {editing === entry.id && entry.folder ? <form className="explorer-item explorer-rename" onSubmit={(event) => {
           event.preventDefault()
           finishName(entry.folder!, String(new FormData(event.currentTarget).get('name')))
         }}>
-          <Icon icon={entry.icon} size={40} />
+          <Icon icon={entry.icon} size={iconSize} />
           <input name="name" aria-label="Folder name" defaultValue={entry.name} maxLength={80}
             ref={renameInput}
             onBlur={(event) => {
@@ -269,6 +273,7 @@ export default function DocumentExplorer({
             onKeyDown={(event) => {
               if (event.key === 'Escape') { setEditing(null); setNameError(''); files.current?.focus() }
             }} />
+          {view === 'Details' && <small>{entry.type}</small>}
         </form> : <button type="button" className="explorer-item" aria-pressed={selection === entry.id}
           onPointerDown={(event) => { lastPointer.current = event.pointerType }}
           onClick={(event) => {
@@ -276,9 +281,9 @@ export default function DocumentExplorer({
             if (event.detail === 0 || lastPointer.current === 'touch') openEntry(entry)
           }}
           onDoubleClick={() => openEntry(entry)}>
-          <Icon icon={entry.icon} size={view === 'List' || view === 'Details' ? 16 : isDesktop && view === 'Icons' ? 32 : 44} />
+          <Icon icon={entry.icon} size={iconSize} />
           <span className="explorer-item-label">{entry.name}</span>
-          {view === 'Details' ? <small>{entry.type}</small> : null}
+          {view === 'Details' && <small>{entry.type}</small>}
         </button>}
       </li>)}
     </ul>
@@ -310,7 +315,7 @@ export default function DocumentExplorer({
       <ExplorerMenuBar label="Explorer menus" menus={menuActions} />
       <div className="explorer-toolbar" role="group" aria-label="Explorer navigation">
         <NavigationHistory back={back} forward={forward} onSelect={travel} />
-        <button type="button" aria-label="Up" title="Up one level" disabled={!location.parent}
+        <button type="button" aria-label="Up" data-tooltip="Up one level" disabled={!location.parent}
           onClick={() => { if (location.parent) openLocation(location.parent) }}><Icon icon="up" size={22} /></button>
         <span className="explorer-toolbar-divider" aria-hidden="true" />
         <button type="button" aria-pressed={sidebar === 'search'} onClick={() => toggleSidebar('search')}>
@@ -320,7 +325,7 @@ export default function DocumentExplorer({
           <Icon icon="explorer-folders" size={22} /> Folders
         </button>
         <span className="explorer-toolbar-divider" aria-hidden="true" />
-        <label className="explorer-view-picker">
+        <label className="explorer-view-picker" data-tooltip="View">
           <Icon icon="explorer-view" size={22} /><span aria-hidden="true">▾</span>
           <select aria-label="View" disabled={isProtectedDisk && !activeSearch} value={view} onChange={(event) => setView(event.target.value as View)}>
             {views.map((option) => <option key={option}>{option}</option>)}
@@ -338,7 +343,7 @@ export default function DocumentExplorer({
         event.preventDefault()
         openLocation(addressId)
       }}>
-        <label htmlFor={explorerId + '-address'}>Address</label>
+        <span>Address</span>
         <span className="explorer-address explorer-address--icon">
           <span className="explorer-address-parts">
             <Icon icon={folders[addressId].icon} />
@@ -350,10 +355,9 @@ export default function DocumentExplorer({
               </span>
             ))}
           </span>
-          <select id={explorerId + '-address'} value={addressId}
-            onChange={(event) => setAddress(event.target.value as FolderId)}>
-            {folderIds.map((id) => <option key={id} value={id}>{folderPath(id)}</option>)}
-          </select>
+          <AddressPicker value={addressId} onChange={setAddress} entries={folderTree(null)
+            .sort((first, second) => Number(second.id === 'desktop') - Number(first.id === 'desktop'))
+            .map(({ id, depth }) => ({ id, depth: id === 'desktop' ? 0 : depth + 1, name: folders[id].name, icon: folders[id].icon }))} />
         </span>
         <button className="explorer-go" type="submit"><Icon icon="go" size={18} /> Go</button>
       </form>
@@ -456,8 +460,7 @@ export default function DocumentExplorer({
               <h2>{group.title}</h2>
               {renderEntries(group.entries)}
             </section>
-          )) : entries.length ? renderEntries(entries) : <p className="explorer-empty">{activeSearch ? 'No matching files or folders.'
-            : locationId === 'notes' ? 'No project notes published yet.' : 'This folder is empty.'}</p>}
+          )) : entries.length ? renderEntries(entries) : activeSearch ? <p className="explorer-empty">No matching files or folders.</p> : null}
           {nameError && <p className="explorer-empty" role="status">{nameError}</p>}
         </section>
         </div>

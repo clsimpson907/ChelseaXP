@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { reviewReturnKey } from './ComplaintReview'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import DesktopWindow from './DesktopWindow'
 import PhoneCalendar from './PhoneCalendar'
 import { siteDate } from './siteDate'
@@ -25,7 +26,9 @@ const apps = [
 ] as const
 
 type AppId = (typeof apps)[number]['id']
-type WindowEntry = { id: AppId; minimized: boolean; folder?: FolderId; navigation?: number; controlPage?: 'complaints' }
+type WindowEntry = { id: AppId; instance: number; caption?: string; minimized: boolean; folder?: FolderId; navigation?: number; controlPage?: 'complaints'; helpTopic?: string }
+
+let nextWindowInstance = 2
 
 const linkedInUrl = 'https://www.linkedin.com/in/chelsea-simpson-54437215a/'
 const desktopShortcuts = [
@@ -62,17 +65,19 @@ function LinkedInShortcut({ onClick }: { onClick?: () => void }) {
   )
 }
 
-function AppContent({ entry, open, close, active, sessionFolders, addFolder, renameFolder, deleteFolder }: {
+function AppContent({ entry, setCaption, open, close, active, sessionFolders, addFolder, renameFolder, deleteFolder }: {
   entry: WindowEntry
+  setCaption: (instance: number, caption: string) => void
   sessionFolders: SessionFolder[]
   addFolder: (parent: FolderId) => SessionFolder
   renameFolder: (id: FolderId, name: string) => string | undefined
   deleteFolder: (id: FolderId) => void
-  open: (id: AppId, folder?: FolderId, controlPage?: 'complaints') => void
+  open: (id: AppId, folder?: FolderId, controlPage?: 'complaints', helpTopic?: string) => void
   close: () => void
   active: boolean
 }) {
-  const { id, folder, navigation } = entry
+  const { id, folder, navigation, instance } = entry
+  const updateCaption = useCallback((caption: string) => setCaption(instance, caption), [instance, setCaption])
   function launchShortcut(shortcutId: DesktopShortcutId) {
     if (shortcutId === 'linkedin') window.open(linkedInUrl, '_blank', 'noopener,noreferrer')
     else if (shortcutId === 'network') open('computer', 'network')
@@ -121,18 +126,18 @@ function AppContent({ entry, open, close, active, sessionFolders, addFolder, ren
       )
     case 'computer':
     case 'documents':
-      return <DocumentExplorer key={navigation} initialFolder={folder ?? id} desktopShortcuts={explorerShortcuts}
+      return <DocumentExplorer onCaptionChange={updateCaption} key={navigation} initialFolder={folder ?? id} desktopShortcuts={explorerShortcuts}
         sessionFolders={sessionFolders} addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder}
         openCredits={() => open('notepad')} openControlPanel={() => open('control')} />
     case 'notepad':
       return <pre className="notepad-text">{credits}</pre>
     case 'control':
-      return <ControlPanel key={navigation} initialPage={entry.controlPage} openHelp={() => open('help')}
+      return <ControlPanel active={active} onCaptionChange={updateCaption} key={navigation} initialPage={entry.controlPage} openHelp={() => open('help')}
         openFolder={(destination) => open(destination === 'documents' ? 'documents' : 'computer', destination)} />
     case 'help':
-      return <HelpCenter openComplaints={() => open('complaints')} openDepartment={() => open('control', undefined, 'complaints')} />
+      return <HelpCenter onCaptionChange={updateCaption} key={navigation} initialTopic={entry.helpTopic} openComplaints={() => open('complaints')} openDepartment={() => open('control', undefined, 'complaints')} />
     case 'complaints':
-      return <ComplaintsForm onClose={close} active={active} />
+      return <ComplaintsForm onClose={close} active={active} openPrivacy={() => open('help', undefined, undefined, 'Complaint privacy notice')} />
   }
 }
 
@@ -166,9 +171,12 @@ function LocalClock({ showDate = false, compact = false }: { showDate?: boolean;
 }
 
 export default function App() {
-  const [windows, setWindows] = useState<WindowEntry[]>([{ id: 'about', minimized: false }])
+  const [returningToReview] = useState(() => sessionStorage.getItem(reviewReturnKey) !== null)
+  const [windows, setWindows] = useState<WindowEntry[]>(() => returningToReview
+    ? [{ id: 'about', instance: 0, minimized: false }, { id: 'control', instance: 1, minimized: false, controlPage: 'complaints' }]
+    : [{ id: 'about', instance: 0, minimized: false }])
   const [sessionFolders, setSessionFolders] = useState<SessionFolder[]>([])
-  const [phoneHome, setPhoneHome] = useState(true)
+  const [phoneHome, setPhoneHome] = useState(!returningToReview)
   const [phonePage, setPhonePage] = useState<'today' | 'programs' | 'calendar'>('today')
   const [startOpen, setStartOpen] = useState(false)
   const [selectedShortcut, setSelectedShortcut] = useState<string | null>(null)
@@ -178,7 +186,7 @@ export default function App() {
   const startProfileButton = useRef<HTMLButtonElement>(null)
   const isPhone = useSyncExternalStore(subscribeToPhoneLayout, isPhoneLayout)
 
-  const active = windows.findLast((entry) => !entry.minimized)?.id
+  const active = windows.findLast((entry) => !entry.minimized)?.instance
   const phoneApp = isPhone && !phoneHome ? active : undefined
 
   useEffect(() => {
@@ -193,11 +201,11 @@ export default function App() {
     button?.focus()
   }
 
-  function activate(id: AppId) {
+  function activate(instance: number) {
     setWindows((entries) => {
-      const entry = entries.find((item) => item.id === id)
-      if (!entry || entry.minimized || entries.at(-1)?.id === id) return entries
-      return [...entries.filter((item) => item.id !== id), entry]
+      const entry = entries.find((item) => item.instance === instance)
+      if (!entry || entry.minimized || entries.at(-1)?.instance === instance) return entries
+      return [...entries.filter((item) => item.instance !== instance), entry]
     })
   }
 
@@ -251,22 +259,26 @@ export default function App() {
     }
   }
 
-  function open(id: AppId, folder?: FolderId, controlPage?: 'complaints') {
-    setWindows((entries) => {
-      const existing = entries.find((entry) => entry.id === id)
-      const entry = { ...existing, id, minimized: false }
-      return [
-        ...entries.filter((item) => item.id !== id),
-        folder || controlPage ? { ...entry, folder, controlPage, navigation: (entry.navigation ?? 0) + 1 } : entry,
-      ]
-    })
+  function open(id: AppId, folder?: FolderId, controlPage?: 'complaints', helpTopic?: string) {
+    const existing = isPhone ? windows.findLast((entry) => entry.id === id) : undefined
+    const instance = existing?.instance ?? nextWindowInstance++
+    const entry = { ...existing, id, instance, minimized: false }
+    const destination = folder || controlPage || helpTopic
+      ? { ...entry, folder, controlPage, helpTopic, caption: undefined, navigation: (entry.navigation ?? 0) + 1 }
+      : entry
+    setWindows((entries) => [...entries.filter((item) => item.instance !== instance), destination])
     setPhoneHome(false)
     setStartOpen(false)
-    requestAnimationFrame(() => document.getElementById(`window-${id}`)?.focus())
+    focusWindow(instance)
   }
 
-  function close(id: AppId) {
-    setWindows((entries) => entries.filter((entry) => entry.id !== id))
+  function focusWindow(instance: number) {
+    requestAnimationFrame(() => document.getElementById(`window-${instance}`)?.focus())
+  }
+
+  function close(instance: number) {
+    const id = windows.find((entry) => entry.instance === instance)?.id
+    setWindows((entries) => entries.filter((entry) => entry.instance !== instance))
     if (isPhone) {
       setPhoneHome(true)
       setPhonePage('today')
@@ -276,13 +288,22 @@ export default function App() {
     })
   }
 
-  function minimize(id: AppId) {
-    setWindows((entries) => entries.map((entry) => entry.id === id ? { ...entry, minimized: true } : entry))
-    document.getElementById(`task-${id}`)?.focus()
+  function minimize(instance: number) {
+    setWindows((entries) => entries.map((entry) => entry.instance === instance ? { ...entry, minimized: true } : entry))
+    document.getElementById(`task-${instance}`)?.focus()
+  }
+
+  const setCaption = useCallback((instance: number, caption: string) => {
+    setWindows((entries) => entries.map((entry) => entry.instance === instance ? { ...entry, caption } : entry))
+  }, [])
+
+  function restore(entry: WindowEntry) {
+    setWindows((entries) => [...entries.filter((item) => item.instance !== entry.instance), { ...entry, minimized: false }])
+    focusWindow(entry.instance)
   }
 
   return (
-    <div className={`shell${phoneApp ? ' shell--app-open' : ''}`} onPointerDown={(event) => {
+    <div className={`shell${phoneApp !== undefined ? ' shell--app-open' : ''}`} onPointerDown={(event) => {
       if (!isPhone && !(event.target as Element).closest('.shortcuts > button')) setSelectedShortcut(null)
     }} onKeyDown={(event) => {
       if (event.key === 'Escape' && startOpen) {
@@ -306,7 +327,7 @@ export default function App() {
             <LocalClock compact />
           </div>
         </header>
-        {isPhone && !phoneApp && phonePage === 'today' && (
+        {isPhone && phoneApp === undefined && phonePage === 'today' && (
           <section className="phone-today" aria-label="Today">
             <LocalClock showDate />
             <button type="button" className="phone-owner" onClick={() => open('about')}>
@@ -323,7 +344,7 @@ export default function App() {
             </button>
           </section>
         )}
-        <nav className={isPhone ? "phone-programs" : "shortcuts"} hidden={isPhone && (Boolean(phoneApp) || phonePage !== 'programs')}
+        <nav className={isPhone ? "phone-programs" : "shortcuts"} hidden={isPhone && (phoneApp !== undefined || phonePage !== 'programs')}
           aria-label={isPhone ? "Programs" : "Portfolio apps"}>
           {desktopShortcuts.map(({ id, label, icon }) => isPhone && id === 'linkedin' ? <LinkedInShortcut key={id} /> : (
             <button key={id} data-app={id} {...shortcutActivation(id, () => {
@@ -344,24 +365,25 @@ export default function App() {
           ))}
         </nav>
 
-        {apps.map((app) => {
-          const index = windows.findIndex((entry) => entry.id === app.id)
-          if (index === -1) return null
-          const hidden = windows[index].minimized || (isPhone && phoneApp !== app.id)
-          const foreground = !hidden && active === app.id
+        {windows.map((entry, index) => {
+          const app = apps.find(({ id }) => id === entry.id)!
+          const { instance } = entry
+          const hidden = entry.minimized || (isPhone && phoneApp !== instance)
+          const foreground = !hidden && active === instance
 
           return (
-            <DesktopWindow key={app.id} id={app.id} title={app.label} icon={app.icon}
+            <DesktopWindow key={instance} instance={instance} id={app.id} title={entry.caption ?? app.label} icon={app.icon}
               desktop={desktop} depth={index + 1} active={foreground} hidden={hidden}
-              onActivate={() => activate(app.id)} onMinimize={() => minimize(app.id)} onClose={() => close(app.id)}>
-              <AppContent entry={windows[index]} sessionFolders={sessionFolders}
-                addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} open={open} close={() => close(app.id)} active={foreground} />
+              onActivate={() => activate(instance)} onMinimize={() => minimize(instance)} onClose={() => close(instance)}>
+              <AppContent entry={entry} sessionFolders={sessionFolders}
+                setCaption={setCaption}
+                addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} open={open} close={() => close(instance)} active={foreground} />
             </DesktopWindow>
           )
         })}
-        {isPhone && !phoneApp && phonePage === 'calendar' && <PhoneCalendar />}
-        <footer className="phone-softkeys">
-          {phoneApp ? (
+        {isPhone && phoneApp === undefined && phonePage === 'calendar' && <PhoneCalendar />}
+        <footer className="phone-softkeys" id="phone-softkeys">
+          {phoneApp !== undefined ? (
             <button onClick={() => close(phoneApp)}>Today</button>
           ) : (
             <button onClick={() => setPhonePage(phonePage === 'today' ? 'calendar' : 'today')}>
@@ -461,13 +483,17 @@ export default function App() {
           }}>
           <span className="start-logo" aria-hidden="true"><img src="/icons/start-paw.svg" alt="" width="22" height="22" /></span> Start
         </button>
-        {apps.filter((app) => windows.some((entry) => entry.id === app.id)).map((app) => (
-          <button key={app.id} id={`task-${app.id}`} className="task-button"
-            aria-pressed={active === app.id} aria-controls={`window-${app.id}`}
-            onClick={() => active === app.id ? minimize(app.id) : open(app.id)}>
-            <img className="window-icon" src={app.icon} alt="" /><span>{app.label}</span>
-          </button>
-        ))}
+        {windows.toSorted((left, right) => left.instance - right.instance).map((entry) => {
+          const app = apps.find(({ id }) => id === entry.id)!
+          const { instance } = entry
+          return (
+            <button key={instance} id={`task-${instance}`} className="task-button"
+              aria-pressed={active === instance} aria-controls={`window-${instance}`}
+              onClick={() => active === instance ? minimize(instance) : restore(entry)}>
+              <img className="window-icon" src={app.icon} alt="" /><span>{entry.caption ?? app.label}</span>
+            </button>
+          )
+        })}
         <LocalClock />
       </footer>
     </div>

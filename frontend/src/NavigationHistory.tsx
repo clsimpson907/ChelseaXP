@@ -4,8 +4,8 @@ function HistoryDropdown({ label, entries, onSelect }: {
   onSelect: (index: number) => void
 }) {
   return (
-    <span className="explorer-history" data-disabled={entries.length === 0}>
-      <select aria-label={label} title={label} disabled={entries.length === 0} value=""
+    <span className="explorer-history" data-disabled={entries.length === 0} data-tooltip={label}>
+      <select aria-label={label} disabled={entries.length === 0} value=""
         onChange={(event) => { if (event.target.value) onSelect(Number(event.target.value)) }}>
         <option value="" disabled>{label}</option>
         {entries.map(({ name, index }) => <option key={index} value={index}>{name}</option>)}
@@ -26,7 +26,7 @@ export default function NavigationHistory({ back, forward, onSelect }: {
     { label: 'Forward', icon: 'forward', entries: forward },
   ].map(({ label, icon, entries }) => (
     <div className="explorer-history-group" key={icon}>
-      <button type="button" aria-label={label} disabled={!entries.length} onClick={() => onSelect(entries[0].index)}>
+      <button type="button" aria-label={label} data-tooltip={entries.length ? label + ' to ' + entries[0].name : undefined} disabled={!entries.length} onClick={() => onSelect(entries[0].index)}>
         <img src={'/icons/' + icon + '.png'} alt="" width="22" height="22" />
         {icon === 'back' && 'Back'}
       </button>

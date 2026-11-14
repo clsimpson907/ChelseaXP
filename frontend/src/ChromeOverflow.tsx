@@ -40,7 +40,8 @@ export default function ChromeOverflow({ kind, commands }: {
   return (
     <div className={`chrome-overflow ${kind}-overflow`}>
       <button className="overflow-trigger" ref={trigger} type="button" popoverTarget={id}
-        aria-label={kind === 'menu' ? 'More menu commands' : 'More navigation controls'}>»</button>
+        aria-label={kind === 'menu' ? 'More menu commands' : 'More navigation controls'}
+        data-tooltip={kind === 'toolbar' ? 'More navigation controls' : undefined}>»</button>
       <div className="xp-overflow-popup" id={id} popover="auto" ref={popup} data-left={left}
         onToggle={(event) => {
           if (event.newState === 'open') position()

@@ -13,6 +13,7 @@ namespace ChelseaXP.Api.Complaints;
 public static class ComplaintEndpoints
 {
     private const int MaxMessageLength = 2000;
+    private static readonly TimeZoneInfo EasternTime = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
 
     public static void MapComplaints(this WebApplication app, bool databaseConfigured)
     {
@@ -65,6 +66,12 @@ public static class ComplaintEndpoints
 
             var name = submission.Name?.Trim();
             var email = submission.Email?.Trim();
+            var subject = submission.Subject?.Trim();
+            if (subject is not { Length: > 0 and <= 120 } || submission.Subject?.Any(char.IsControl) == true)
+            {
+                return Error(400, "Enter a single-line subject of up to 120 characters.");
+            }
+
             var message = submission.Message?.Trim();
             if (name?.Length > 100 || email is not { Length: > 0 and <= 254 } ||
                 !MailAddress.TryCreate(email, out var address) || address.Address != email ||
@@ -73,6 +80,10 @@ public static class ComplaintEndpoints
                 return Error(400, "Enter a valid email and a message of up to 2,000 characters. Name is optional.");
             }
 
+            var submittedAt = DateTimeOffset.UtcNow;
+            var easternSubmission = TimeZoneInfo.ConvertTime(submittedAt, EasternTime);
+            var zone = EasternTime.IsDaylightSavingTime(submittedAt) ? "EDT" : "EST";
+            var submittedLabel = easternSubmission.ToString("MMMM d, yyyy 'at' h:mm tt", System.Globalization.CultureInfo.GetCultureInfo("en-US"));
             var clientHash = HashClient(context, settings);
             try
             {
@@ -102,8 +113,8 @@ public static class ComplaintEndpoints
                 from = settings.Sender,
                 to = new[] { settings.Recipient },
                 reply_to = email,
-                subject = "New ChelseaXP complaint",
-                text = $"Name: {(string.IsNullOrEmpty(name) ? "Not provided" : name)}\n\n{message}",
+                subject = $"ChelseaXP complaint: {subject}",
+                text = $"Submitted: {submittedLabel} {zone}\nName: {(string.IsNullOrEmpty(name) ? "Not provided" : name)}\n\n{message}",
             });
 
             try
@@ -176,4 +187,4 @@ public static class ComplaintEndpoints
         Error(503, "Complaints is temporarily unavailable. Please try again later.");
 }
 
-public sealed record ComplaintSubmission(string? Name, string? Email, string? Message);
+public sealed record ComplaintSubmission(string? Name, string? Email, string? Message, string? Subject = null);

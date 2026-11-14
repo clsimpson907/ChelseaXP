@@ -1,5 +1,5 @@
 import NavigationHistory from './NavigationHistory'
-import { Fragment, useRef, useState } from 'react'
+import { Fragment, useEffect, useId, useRef, useState } from 'react'
 import ChromeOverflow from './ChromeOverflow'
 import guide from '../../docs/user-guide.md?raw'
 
@@ -58,15 +58,18 @@ function GuideArticle({ body }: { body: string }) {
   })
 }
 
-export default function HelpCenter({ openComplaints, openDepartment }: {
+export default function HelpCenter({ openComplaints, openDepartment, initialTopic, onCaptionChange }: {
+  onCaptionChange: (caption: string) => void
+  initialTopic?: string
   openComplaints: () => void
   openDepartment: () => void
 }) {
-  const [history, setHistory] = useState<{ entries: string[]; index: number }>({ entries: [''], index: 0 })
+  const [history, setHistory] = useState<{ entries: string[]; index: number }>(initialTopic ? { entries: ['', initialTopic], index: 1 } : { entries: [''], index: 0 })
   const [catFact] = useState(() => catFacts[Math.floor(Math.random() * catFacts.length)])
   const [search, setSearch] = useState('')
   const [keyword, setKeyword] = useState('')
   const [selection, setSelection] = useState('')
+  const searchId = useId()
   const heading = useRef<HTMLHeadingElement>(null)
   const page = history.entries[history.index]
   const topic = topics.find(({ title }) => title === page)
@@ -98,6 +101,8 @@ export default function HelpCenter({ openComplaints, openDepartment }: {
   const showHistory = page === 'history'
   const showSupport = page === 'support'
   const sectionTitle = showIndex ? 'Index' : showFavorites ? 'Favorites' : showHistory ? 'History' : 'Support'
+  const caption = topic?.title ?? (query ? 'Search results' : page ? sectionTitle : 'Help and Support Center')
+  useEffect(() => onCaptionChange(caption), [caption, onCaptionChange])
   const sectionTopics = showIndex
     ? topics.map(({ title }) => title).filter((title) => title.toLowerCase().includes(keyword.trim().toLowerCase())).sort()
     : showFavorites ? favorites
@@ -138,7 +143,7 @@ export default function HelpCenter({ openComplaints, openDepartment }: {
           forward={navigationEntries.slice(history.index + 1)}
           onSelect={travel}
         />
-        <button type="button" onClick={() => navigate('')} aria-label="Home" title="Home"><img width="22" height="22" src="/icons/help-home.png" alt="" /></button>
+        <button type="button" onClick={() => navigate('')} aria-label="Home" data-tooltip="Home"><img width="22" height="22" src="/icons/help-home.png" alt="" /></button>
         <span className="explorer-toolbar-divider" aria-hidden="true" />
         <button type="button" onClick={() => navigate('index')}><img width="22" height="22" src="/icons/help-index.png" alt="" /> Index</button>
         <button type="button" onClick={() => navigate('favorites')}><img width="22" height="22" src="/icons/help-favorites.png" alt="" /> Favorites</button>
@@ -156,9 +161,9 @@ export default function HelpCenter({ openComplaints, openDepartment }: {
           event.preventDefault()
           if (search.trim()) navigate('?' + search.trim())
         }}>
-          <label htmlFor="help-search">Search</label>
-          <input id="help-search" type="search" required value={search} onChange={(event) => setSearch(event.target.value)} />
-          <button type="submit" aria-label="Search"><img src="/icons/go.png" alt="" width="24" height="24" /></button>
+          <label htmlFor={searchId}>Search</label>
+          <input id={searchId} type="search" required value={search} onChange={(event) => setSearch(event.target.value)} />
+          <button type="submit" aria-label="Search" data-tooltip="Search"><img src="/icons/go.png" alt="" width="24" height="24" /></button>
         </form>
         <div className="help-brand">
           <p><img src="/icons/help-and-support.png" alt="" width="24" height="24" /> Help and Support Center</p>
