@@ -1,3 +1,5 @@
+export const premadeModifiedAt = new Date(2005, 6, 30).getTime()
+
 export const locations = {
   computer: { name: 'My Computer', parent: 'desktop', icon: 'my-computer' },
   documents: { name: 'My Documents', parent: 'computer', icon: 'my-documents' },
@@ -15,6 +17,6 @@ export const locations = {
 
 export type LocationId = keyof typeof locations
 export type FolderId = LocationId | `folder-${string}`
-export type SessionFolder = { id: FolderId; name: string; parent: FolderId; icon: 'folder'; renamed?: boolean }
+export type SessionFolder = { id: FolderId; name: string; parent: FolderId; icon: 'folder'; modifiedAt: number; renamed?: boolean }
 export const locationIds = Object.keys(locations) as LocationId[]
 export const explorerPlaces = ['computer', 'documents', 'pictures', 'music', 'videos', 'downloads'] as const

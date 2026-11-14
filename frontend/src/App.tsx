@@ -1,3 +1,4 @@
+import { recycleFolder, restoreFolder, touchFolderPath, type FolderState } from './recycleFolders'
 import { reviewReturnKey } from './ComplaintReview'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import DesktopWindow from './DesktopWindow'
@@ -65,13 +66,21 @@ function LinkedInShortcut({ onClick }: { onClick?: () => void }) {
   )
 }
 
-function AppContent({ entry, setCaption, open, close, active, sessionFolders, addFolder, renameFolder, deleteFolder }: {
+function AppContent({ entry, setCaption, open, close, active, sessionFolders, locationDates, addFolder, renameFolder, deleteFolder, recycleBin }: {
   entry: WindowEntry
   setCaption: (instance: number, caption: string) => void
   sessionFolders: SessionFolder[]
+  locationDates: FolderState['locationDates']
   addFolder: (parent: FolderId) => SessionFolder
   renameFolder: (id: FolderId, name: string) => string | undefined
   deleteFolder: (id: FolderId) => void
+  recycleBin: {
+    trash: FolderState['trash']
+    restore: (id: FolderId) => void
+    restoreAll: () => void
+    empty: () => void
+    hidingComplaints: boolean
+  }
   open: (id: AppId, folder?: FolderId, controlPage?: 'complaints', helpTopic?: string) => void
   close: () => void
   active: boolean
@@ -127,7 +136,7 @@ function AppContent({ entry, setCaption, open, close, active, sessionFolders, ad
     case 'computer':
     case 'documents':
       return <DocumentExplorer onCaptionChange={updateCaption} key={navigation} initialFolder={folder ?? id} desktopShortcuts={explorerShortcuts}
-        sessionFolders={sessionFolders} addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder}
+        sessionFolders={sessionFolders} locationDates={locationDates} addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} recycleBin={recycleBin}
         openCredits={() => open('notepad')} openControlPanel={() => open('control')} />
     case 'notepad':
       return <pre className="notepad-text">{credits}</pre>
@@ -175,7 +184,33 @@ export default function App() {
   const [windows, setWindows] = useState<WindowEntry[]>(() => returningToReview
     ? [{ id: 'about', instance: 0, minimized: false }, { id: 'control', instance: 1, minimized: false, controlPage: 'complaints' }]
     : [{ id: 'about', instance: 0, minimized: false }])
-  const [sessionFolders, setSessionFolders] = useState<SessionFolder[]>([])
+  const [{ folders: sessionFolders, trash, locationDates }, setFolderState] = useState<FolderState>({ folders: [], trash: [], locationDates: {} })
+  const [hidingComplaints, setHidingComplaints] = useState(false)
+  useEffect(() => {
+    if (!hidingComplaints) return
+    const timer = window.setTimeout(() => setHidingComplaints(false), 1000)
+    return () => window.clearTimeout(timer)
+  }, [hidingComplaints])
+
+  const recycleBin = {
+    trash,
+    restore: (id: FolderId) => {
+      const now = Date.now()
+      setFolderState((state) => restoreFolder(state, id, now))
+    },
+    restoreAll: () => {
+      const now = Date.now()
+      setFolderState((state) => state.trash.reduceRight(
+        (current, { root }) => restoreFolder(current, root.id, now), state,
+      ))
+      setHidingComplaints(true)
+    },
+    empty: () => {
+      setFolderState((state) => ({ ...state, trash: [] }))
+      setHidingComplaints(true)
+    },
+    hidingComplaints,
+  }
   const [phoneHome, setPhoneHome] = useState(!returningToReview)
   const [phonePage, setPhonePage] = useState<'today' | 'programs' | 'calendar'>('today')
   const [startOpen, setStartOpen] = useState(false)
@@ -220,8 +255,8 @@ export default function App() {
   function addFolder(parent: FolderId): SessionFolder {
     let name = 'New Folder'
     for (let number = 2; folderNameExists(parent, name); number += 1) name = 'New Folder (' + number + ')'
-    const folder: SessionFolder = { id: ('folder-' + crypto.randomUUID()) as FolderId, name, parent, icon: 'folder' }
-    setSessionFolders((current) => [...current, folder])
+    const folder: SessionFolder = { id: ('folder-' + crypto.randomUUID()) as FolderId, name, parent, icon: 'folder', modifiedAt: Date.now() }
+    setFolderState((state) => touchFolderPath({ ...state, folders: [...state.folders, folder] }, folder.id, folder.modifiedAt))
     return folder
   }
 
@@ -231,21 +266,15 @@ export default function App() {
     const name = input.trim()
     if (!name || name === '.' || name === '..' || /[\\/:*?"<>|]/.test(name)) return 'Enter a valid folder name.'
     if (folderNameExists(folder.parent, name, id)) return 'A file or folder already has that name.'
-    setSessionFolders((current) => current.map((entry) => entry.id === id && entry.name !== name ? { ...entry, name, renamed: true } : entry))
+    if (folder.name === name) return
+    const now = Date.now()
+    setFolderState((state) => touchFolderPath({ ...state, folders: state.folders
+      .map((entry) => entry.id === id ? { ...entry, name, renamed: true } : entry) }, id, now))
   }
 
   function deleteFolder(id: FolderId) {
-    setSessionFolders((current) => {
-      if (!current.some((folder) => folder.id === id)) return current
-      const parents = new Map(current.map((folder) => [folder.id, folder.parent]))
-
-      function isDeleted(folder: FolderId): boolean {
-        const parent = parents.get(folder)
-        return folder === id || (parent !== undefined && isDeleted(parent))
-      }
-
-      return current.filter((folder) => !isDeleted(folder.id))
-    })
+    const now = Date.now()
+    setFolderState((state) => recycleFolder(state, id, now))
   }
 
   function shortcutActivation(id: string, launch: () => void) {
@@ -379,9 +408,9 @@ export default function App() {
             <DesktopWindow key={instance} instance={instance} id={app.id} title={entry.caption ?? app.label} icon={app.icon}
               desktop={desktop} depth={index + 1} active={foreground} hidden={hidden}
               onActivate={() => activate(instance)} onMinimize={() => minimize(instance)} onClose={() => close(instance)}>
-              <AppContent entry={entry} sessionFolders={sessionFolders}
+              <AppContent entry={entry} sessionFolders={sessionFolders} locationDates={locationDates}
                 setCaption={setCaption}
-                addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} open={open} close={() => close(instance)} active={foreground} />
+                addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} recycleBin={recycleBin} open={open} close={() => close(instance)} active={foreground} />
             </DesktopWindow>
           )
         })}
