@@ -1,18 +1,15 @@
-import { getPublishedCopies, publishCopy, subscribeToPublishedCopies, type PublicCopy } from './publishedComplaints'
+import { complaintApiOrigin as apiOrigin, reviewConfigured as configured, localComplaintPreview as localPreview, getPublishedCopies, publishCopy, refreshPublishedCopies, subscribeToPublishedCopies, type PublicCopy } from './publishedComplaints'
 import NavigationHistory from './NavigationHistory'
 import type { ComponentProps } from 'react'
 import ExplorerMenuBar, { type MenuAction } from './ExplorerMenuBar'
 import { createPortal } from 'react-dom'
 import type { PublicClientApplication, AccountInfo } from '@azure/msal-browser'
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
 
 const tenant = import.meta.env.VITE_ENTRA_TENANT_NAME
 const tenantId = import.meta.env.VITE_ENTRA_TENANT_ID
 const browserId = import.meta.env.VITE_ENTRA_BROWSER_CLIENT_ID
 const apiId = import.meta.env.VITE_ENTRA_API_CLIENT_ID
-const configured = Boolean(tenant && tenantId && browserId && apiId)
-const apiOrigin = import.meta.env.VITE_API_ORIGIN || 'http://localhost:5080'
-
 let client: Promise<PublicClientApplication> | undefined
 
 function signInClient() {
@@ -41,17 +38,22 @@ export const reviewReturnKey = 'chelseaxp-review-signin'
 const scopes = ['api://' + apiId + '/ComplaintReview.Access']
 let redirectResult: ReturnType<PublicClientApplication['handleRedirectPromise']> | undefined
 
-const previewSetting = import.meta.env.VITE_COMPLAINT_REVIEW_PREVIEW
-const localPreview = import.meta.env.DEV &&
-  (previewSetting === 'true' || (previewSetting !== 'false' && !configured))
+type ReviewRole = 'admin' | 'moderator'
+type ReviewProps = { active: boolean; help: MenuAction[]; navigation: ComponentProps<typeof NavigationHistory> }
+type InboxItem = { id: number; subject: string; submittedAt: string; publishedAt: string | null }
+type ComplaintDetail = PublicCopy & {
+  id: number; submittedAt: string; name: string | null; email: string | null; ipAddress: string | null
+  draft: PublicCopy | null; published: PublicCopy | null
+}
+type ReviewRequest = (path: string, options?: RequestInit) => Promise<Response>
 
-export default function ComplaintReview({ active, help, navigation }: { active: boolean; help: MenuAction[]; navigation: ComponentProps<typeof NavigationHistory> }) {
-  return localPreview ? <ComplaintReviewPreview active={active} help={help} navigation={navigation} /> : <EntraReview />
+export default function ComplaintReview(props: ReviewProps) {
+  return localPreview ? <ComplaintWorkspace {...props} /> : <EntraReview {...props} />
 }
 
-function EntraReview() {
+function EntraReview(props: ReviewProps) {
   const [account, setAccount] = useState<AccountInfo | null>(null)
-  const [role, setRole] = useState<'admin' | 'moderator' | null>(null)
+  const [role, setRole] = useState<ReviewRole | null>(null)
   const [busy, setBusy] = useState(false)
   const [feedback, setFeedback] = useState('')
 
@@ -114,6 +116,7 @@ function EntraReview() {
   }, [])
 
   async function signOut() {
+    setRole(null)
     setBusy(true)
     setFeedback('')
     try {
@@ -131,15 +134,18 @@ function EntraReview() {
 
   if (!configured) return <p>Private review sign-in is currently unavailable.</p>
 
-  return (
-    <>
-      {role ? <>
-        <p>Signed in as {role === 'admin' ? 'Admin' : 'Moderator'}.</p>
-        <button type="button" disabled={busy} onClick={signOut}>Sign out</button>
-      </> : busy ? <p role="status">Opening sign-in…</p> : null}
-      <p role="status">{feedback}</p>
-    </>
-  )
+  if (role && account) {
+    const request: ReviewRequest = async (path, options) => {
+      const auth = await signInClient()
+      const token = await auth.acquireTokenSilent({ scopes, account })
+      const headers = new Headers(options?.headers)
+      headers.set('Authorization', 'Bearer ' + token.accessToken)
+      return fetch(new URL('/api/complaints/review' + path, apiOrigin), { ...options, headers, cache: 'no-store' })
+    }
+    return <ComplaintWorkspace {...props} live={{ role, request, signOut }} />
+  }
+  return <p role="status">{busy ? 'Opening sign-in…' : feedback}</p>
+
 }
 
 
@@ -159,25 +165,85 @@ const sampleComplaints = [
   { submittedAt: '2026-11-11T23:05:00Z', title: 'My new folder disappeared', name: 'Sample Explorer user', email: 'explorer@example.invalid', ip: '203.0.113.42', message: 'I made a folder on the desktop and it was gone after I refreshed. Is there somewhere I can read about how folders work?' },
 ]
 
+const sampleInbox: InboxItem[] = sampleComplaints.map((complaint, id) => ({
+  id, subject: complaint.title, submittedAt: complaint.submittedAt, publishedAt: null,
+}))
+const sampleDetails: ComplaintDetail[] = sampleComplaints.map((complaint, id) => ({
+  ...complaint, id, subject: complaint.title, ipAddress: complaint.ip, draft: null, published: null,
+}))
+
 const savedPreviewDrafts: Record<number, PublicCopy> = {}
 
-function ComplaintReviewPreview({ active, help, navigation }: { active: boolean; help: MenuAction[]; navigation: ComponentProps<typeof NavigationHistory> }) {
+function ComplaintWorkspace({ active, help, navigation, live }: ReviewProps & {
+  live?: { role: ReviewRole; request: ReviewRequest; signOut: () => void }
+}) {
   const elementId = useId()
+  const request = live?.request
+  const [inbox, setInbox] = useState<InboxItem[]>(() => live ? [] : sampleInbox)
   const [selected, setSelected] = useState(0)
   const [reading, setReading] = useState(false)
-  const [role, setRole] = useState<'admin' | 'moderator'>('admin')
-  const [drafts, setDrafts] = useState(() => ({ ...savedPreviewDrafts }))
+  const [previewRole, setRole] = useState<ReviewRole>('admin')
+  const role = live?.role ?? previewRole
+  const [drafts, setDrafts] = useState<Partial<Record<number, PublicCopy>>>(() => live ? {} : { ...savedPreviewDrafts })
   const [undoHistory, setUndoHistory] = useState<Record<number, (PublicCopy | undefined)[]>>({})
   const [redoHistory, setRedoHistory] = useState<Record<number, (PublicCopy | undefined)[]>>({})
   const publishedCopies = useSyncExternalStore(subscribeToPublishedCopies, getPublishedCopies)
-  const complaint = sampleComplaints[selected]
-  const draft = drafts[selected]
+  const [detail, setDetail] = useState<ComplaintDetail | null>(null)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [loadingInbox, setLoadingInbox] = useState(Boolean(live))
+  const [more, setMore] = useState(false)
+  const complaint = live ? (detail?.id === selected ? detail : null) : sampleDetails[selected]
+  const draft = drafts[selected] ?? complaint?.draft ?? undefined
+
+  const loadInbox = useCallback(async (signal?: AbortSignal, beforeId?: number) => {
+    if (!request) return
+    try {
+      const response = await request('/inbox' + (beforeId === undefined ? '' : '?beforeId=' + beforeId), { signal })
+      if (!response.ok) throw new Error()
+      const rows: InboxItem[] = await response.json()
+      if (signal?.aborted) return
+      setInbox((current) => beforeId === undefined ? rows : [...current, ...rows])
+      setMore(rows.length === 50)
+      if (beforeId === undefined) setSelected(rows[0]?.id ?? 0)
+    } catch {
+      if (!signal?.aborted) setError('Couldn’t load the inbox.')
+    } finally {
+      if (!signal?.aborted) setLoadingInbox(false)
+    }
+  }, [request])
+
+  useEffect(() => {
+    if (!request) return
+    const controller = new AbortController()
+    void Promise.resolve().then(() => { if (!controller.signal.aborted) return loadInbox(controller.signal) })
+    return () => controller.abort()
+  }, [request, loadInbox])
+
+  useEffect(() => {
+    if (!request || !selected) return
+    const controller = new AbortController()
+    void (async () => {
+      try {
+        const response = await request('/' + selected, { signal: controller.signal })
+        if (!response.ok) throw new Error()
+        const row: ComplaintDetail = await response.json()
+        if (!controller.signal.aborted) setDetail(row)
+      } catch {
+        if (!controller.signal.aborted) setError('Couldn’t open this complaint.')
+      }
+    })()
+    return () => controller.abort()
+  }, [request, selected])
+
   const subjectRef = useRef<HTMLHeadingElement>(null)
   const messageRef = useRef<HTMLParagraphElement>(null)
   const [selection, setSelection] = useState<{ complaint: number; field: 'subject' | 'message'; start: number; end: number } | null>(null)
-  const locked = Boolean(publishedCopies[selected])
-  const canRedact = !locked && selection?.complaint === selected
-  const publicCopy = publishedCopies[selected] ?? draft ?? { subject: complaint.title, message: complaint.message }
+  const published = live ? complaint?.published : publishedCopies[selected]
+  const locked = Boolean(published || inbox.find((row) => row.id === selected)?.publishedAt)
+  const canEdit = Boolean(complaint) && !locked && !busy
+  const canRedact = canEdit && selection?.complaint === selected
+  const publicCopy = published ?? draft ?? { subject: complaint?.subject ?? '', message: complaint?.message ?? '' }
 
   useEffect(() => {
     function captureSelection() {
@@ -202,7 +268,7 @@ function ComplaintReviewPreview({ active, help, navigation }: { active: boolean;
   }, [selected])
 
   function redact() {
-    if (getPublishedCopies()[selected] || !selection || selection.complaint !== selected) return
+    if (!canEdit || (!live && getPublishedCopies()[selected]) || !selection || selection.complaint !== selected) return
     const { field, start, end } = selection
     const text = publicCopy[field]
     const redactedText = text.slice(0, start) + text.slice(start, end).replace(/\S/gu, '#') + text.slice(end)
@@ -216,11 +282,11 @@ function ComplaintReviewPreview({ active, help, navigation }: { active: boolean;
     setSelection(null)
     window.getSelection()?.removeAllRanges()
   }
-  const canUndo = !locked && Boolean(undoHistory[selected]?.length)
-  const canRedo = !locked && Boolean(redoHistory[selected]?.length)
+  const canUndo = canEdit && Boolean(undoHistory[selected]?.length)
+  const canRedo = canEdit && Boolean(redoHistory[selected]?.length)
 
   function restoreHistory(direction: 'undo' | 'redo') {
-    if (getPublishedCopies()[selected]) return
+    if (!canEdit || (!live && getPublishedCopies()[selected])) return
     const [history, setHistory, setOppositeHistory] = direction === 'undo'
       ? [undoHistory, setUndoHistory, setRedoHistory] as const
       : [redoHistory, setRedoHistory, setUndoHistory] as const
@@ -239,24 +305,61 @@ function ComplaintReviewPreview({ active, help, navigation }: { active: boolean;
     window.getSelection()?.removeAllRanges()
   }
 
-  const canPublish = role === 'admin' && !locked
+  const canPublish = role === 'admin' && canEdit
   const softkeys = active ? document.getElementById('phone-softkeys') : null
 
-  function publish() {
-    if (!canPublish || getPublishedCopies()[selected]) return
-    publishCopy(selected, publicCopy)
-    delete savedPreviewDrafts[selected]
+  async function save(publish = false) {
+    if (!canEdit || (publish && !canPublish)) return
+    if (!request) {
+      if (getPublishedCopies()[selected]) return
+      if (publish) {
+        publishCopy(selected, publicCopy)
+        delete savedPreviewDrafts[selected]
+      } else savedPreviewDrafts[selected] = publicCopy
+      return
+    }
+
+    setBusy(true)
+    setError('')
+    try {
+      const path = '/' + selected
+      if (!publish || drafts[selected]) {
+        const response = await request(path + '/draft', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(publicCopy),
+        })
+        if (!response.ok) throw new Error()
+      }
+      if (publish) {
+        const response = await request(path + '/publish', { method: 'POST' })
+        if (!response.ok) throw new Error()
+        setInbox((current) => current.map((row) => row.id === selected
+          ? { ...row, publishedAt: new Date().toISOString() } : row))
+        void refreshPublishedCopies(true).catch(() => {})
+        try {
+          const detailResponse = await request(path)
+          if (!detailResponse.ok) throw new Error()
+          setDetail(await detailResponse.json())
+        } catch {
+          setDetail(null)
+          setError('Published. Reopen the department to reload the published copy.')
+        }
+      }
+    } catch {
+      setError(publish ? 'Couldn’t publish this complaint. Reopen it before trying again.' : 'Couldn’t save the draft.')
+    } finally {
+      setBusy(false)
+    }
   }
+
+  const publish = () => { void save(true) }
 
   return (
     <div className="complaint-review-preview" data-reading={reading}>
       <ExplorerMenuBar label="Complaints Department menus" menus={{
         File: [
-          { label: 'Save as draft', disabled: locked, action: () => {
-            if (getPublishedCopies()[selected]) return
-            savedPreviewDrafts[selected] = publicCopy
-          } },
+          { label: 'Save as draft', disabled: !canEdit, action: () => { void save() } },
           ...(role === 'admin' ? [{ label: 'Publish', action: publish, disabled: !canPublish }] : []),
+          ...(live ? [{ label: 'Sign out', action: live.signOut }] : []),
         ],
         Edit: [
           { label: 'Redact', action: redact, disabled: !canRedact },
@@ -275,50 +378,58 @@ function ComplaintReviewPreview({ active, help, navigation }: { active: boolean;
           {role === 'admin' && <button className="complaint-desktop-publish" type="button" disabled={!canPublish} onClick={publish} aria-label="Publish" data-tooltip="Publish"><img src="/icons/complaint-publish.png" alt="" width="20" height="20" /></button>}
         </div>
         <button className="complaint-inbox-back" type="button" onClick={() => setReading(false)}>Back to Inbox</button>
+        {live ? <button type="button" onClick={live.signOut}>Sign out</button> : <>
         <p>Local preview · Sample complaints</p>
         <label>Preview role <select value={role} onChange={(event) => {
           setRole(event.target.value === 'moderator' ? 'moderator' : 'admin')
         }}>
           <option value="admin">Admin</option>
           <option value="moderator">Moderator</option>
-        </select></label>
+        </select></label></>}
+        {error && <p role="alert">{error}</p>}
       </div>
       <div className="complaint-review-panes">
         <section className="complaint-inbox" aria-labelledby={elementId + '-inbox'}>
           <h2 id={elementId + '-inbox'}>Inbox</h2>
           <p className="complaint-inbox-sort">Arranged by: Submitted</p>
-          <ul>{sampleComplaints.map(({ title, submittedAt }, index) => {
-            const isPublished = Boolean(publishedCopies[index])
+          <ul>{inbox.map(({ id, subject, submittedAt, publishedAt }) => {
+            const isPublished = Boolean(live ? publishedAt : publishedCopies[id])
             const icon = isPublished ? 'help-favorites' : 'mail'
             return (
-            <li key={title}>
-              <button type="button" aria-pressed={selected === index} onClick={() => {
-                setSelected(index)
+            <li key={id}>
+              <button type="button" disabled={busy} aria-pressed={selected === id} onClick={() => {
+                setError('')
+                if (id !== selected) setDetail(null)
+                setSelected(id)
                 setSelection(null)
                 setReading(true)
               }}>
                 <img src={`/icons/${icon}.png`} alt={isPublished ? "Published" : ""} title={isPublished ? "Published" : undefined} width="18" height="18" />
-                <strong>{title}</strong>
+                <strong>{subject}</strong>
                 <time dateTime={submittedAt}>{submissionFormat.format(new Date(submittedAt))}</time>
               </button>
             </li>
             )
           })}</ul>
+          {loadingInbox && <p role="status">Loading complaints…</p>}
+          {more && !loadingInbox && <button type="button" onClick={() => { setLoadingInbox(true); setError(''); void loadInbox(undefined, inbox.at(-1)?.id) }}>Load more</button>}
         </section>
         <article className="complaint-reading-pane" aria-labelledby={elementId + '-detail'}>
+          {complaint ? <>
           <h2 ref={subjectRef} id={elementId + '-detail'} title={publicCopy.subject}>{publicCopy.subject}</h2>
           <dl>
             <dt>From</dt><dd title={complaint.name || 'Anonymous'}>{complaint.name || 'Anonymous'}</dd>
             <dt>Submitted</dt><dd title={submissionFormat.format(new Date(complaint.submittedAt))}><time dateTime={complaint.submittedAt}>{submissionFormat.format(new Date(complaint.submittedAt))}</time></dd>
             {role === 'admin' && <>
-              <dt>Email</dt><dd title={complaint.email}>{complaint.email}</dd>
-              <dt>IP address</dt><dd title={complaint.ip}>{complaint.ip}</dd>
+              <dt>Email</dt><dd title={complaint.email ?? undefined}>{complaint.email}</dd>
+              <dt>IP address</dt><dd title={complaint.ipAddress ?? undefined}>{complaint.ipAddress}</dd>
             </>}
           </dl>
           <div className="complaint-message-sheet">
             <img className="complaint-message-icon" src={locked ? '/icons/help-favorites.png' : '/icons/mail.png'} alt={locked ? 'Published' : ''} title={locked ? 'Published' : undefined} width="24" height="24" />
             <p ref={messageRef} className="complaint-original-message">{publicCopy.message}</p>
           </div>
+          </> : <h2 id={elementId + '-detail'}>{error ? 'Complaint unavailable' : selected ? 'Loading complaint…' : 'Inbox'}</h2>}
         </article>
       </div>
       {softkeys && createPortal(

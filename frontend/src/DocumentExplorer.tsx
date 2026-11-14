@@ -1,5 +1,5 @@
 import ExplorerDialog from './ExplorerDialog'
-import { getPublishedCopies, subscribeToPublishedCopies } from './publishedComplaints'
+import { getPublishedCopies, refreshPublishedCopies, subscribeToPublishedCopies } from './publishedComplaints'
 import AddressPicker from './AddressPicker'
 import NavigationHistory from './NavigationHistory'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
@@ -112,6 +112,16 @@ export default function DocumentExplorer({
   const otherPlaces = getOtherPlaces()
 
   const published = useSyncExternalStore(subscribeToPublishedCopies, getPublishedCopies)
+  const [publishedError, setPublishedError] = useState(false)
+  useEffect(() => {
+    if (locationId !== 'published-complaints') return
+    let active = true
+    void refreshPublishedCopies().then(
+      () => { if (active) setPublishedError(false) },
+      () => { if (active) setPublishedError(true) },
+    )
+    return () => { active = false }
+  }, [locationId])
   const [readingComplaint, setReadingComplaint] = useState<{ subject: string; message: string } | null>(null)
   const [restoring, setRestoring] = useState<string | null>(null)
   useEffect(() => {
@@ -492,6 +502,7 @@ export default function DocumentExplorer({
               {renderEntries(group.entries)}
             </section>
           )) : entries.length ? renderEntries(entries) : activeSearch ? <p className="explorer-empty">No matching files or folders.</p> : null}
+          {locationId === 'published-complaints' && publishedError && <p role="alert">Couldn’t load published complaints. Reopen the folder to try again.</p>}
           {nameError && <p className="explorer-empty" role="status">{nameError}</p>}
         </section>
         </div>
