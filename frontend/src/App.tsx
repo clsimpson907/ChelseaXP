@@ -157,7 +157,12 @@ function LocalClock({ showDate = false, compact = false }: { showDate?: boolean;
       .map(({ value }) => value).join('').trim()
     : taskbarTimeFormat.format(now)
 
-  return <span className={showDate ? 'phone-date' : 'taskbar-clock'}>{time}</span>
+  return (
+    <span className={showDate ? 'phone-date' : 'taskbar-clock'}>
+      {time}
+      {!showDate && !compact && <span className="taskbar-date-tooltip">{todayFormat.format(siteDate(now))}</span>}
+    </span>
+  )
 }
 
 export default function App() {
