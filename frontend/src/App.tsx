@@ -1,6 +1,6 @@
 import BlueScreen from './BlueScreen'
 import { dragItem, dropItem } from './explorerDrag'
-import { moveItem, recycleFolder, restoreFolder, touchFolderPath, type FolderState, type SessionFile } from './recycleFolders'
+import { getFavoriteTarget, moveItem, recycleFolder, restoreFolder, touchFolderPath, type ExplorerFavorites, type FolderState, type SessionFile } from './recycleFolders'
 import { reviewReturnKey } from './ComplaintReview'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import DesktopWindow from './DesktopWindow'
@@ -74,9 +74,10 @@ function LinkedInShortcut({ onClick }: { onClick?: () => void }) {
   )
 }
 
-function AppContent({ entry, setCaption, open, close, active, desktopItems, sessionFolders, sessionFiles, move, locationDates, addFolder, renameFolder, deleteFolder, recycleBin }: {
+function AppContent({ entry, setCaption, open, close, active, desktopItems, sessionFolders, sessionFiles, move, locationDates, addFolder, renameFolder, deleteFolder, recycleBin, favorites }: {
   entry: WindowEntry
   desktopItems: DesktopItem[]
+  favorites: ExplorerFavorites
   setCaption: (instance: number, caption: string) => void
   sessionFolders: SessionFolder[]
   sessionFiles: SessionFile[]
@@ -132,13 +133,16 @@ function AppContent({ entry, setCaption, open, close, active, desktopItems, sess
       )
     case 'computer':
     case 'documents':
-      return <DocumentExplorer onCaptionChange={updateCaption} key={navigation} initialFolder={folder ?? id} desktopItems={desktopItems}
+      return <DocumentExplorer onCaptionChange={updateCaption} key={navigation} favorites={favorites} initialFolder={folder ?? id} desktopItems={desktopItems}
         sessionFolders={sessionFolders} sessionFiles={sessionFiles} move={move} locationDates={locationDates} addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} recycleBin={recycleBin}
         openCredits={() => open('notepad')} openControlPanel={() => open('control')} />
     case 'notepad':
       return <pre className="notepad-text">{credits}</pre>
     case 'control':
-      return <ControlPanel active={active} onCaptionChange={updateCaption} key={navigation} initialPage={entry.controlPage} openHelp={() => open('help')}
+      return <ControlPanel onClose={close} active={active} onCaptionChange={updateCaption} key={navigation} initialPage={entry.controlPage} openHelp={() => open('help')}
+        favoriteCommands={favorites.items.map(({ name, folder }) => ({
+          label: name, action: () => folder ? open('computer', folder) : open('notepad'),
+        }))}
         openFolder={(destination) => open(destination === 'documents' ? 'documents' : 'computer', destination)} />
     case 'help':
       return <HelpCenter onCaptionChange={updateCaption} key={navigation} initialTopic={entry.helpTopic} openComplaints={() => open('complaints')} openDepartment={() => open('control', undefined, 'complaints')} />
@@ -193,7 +197,29 @@ function DesktopSession({ crash }: { crash: () => void }) {
   const [windows, setWindows] = useState<WindowEntry[]>(() => returningToReview
     ? [{ id: 'about', instance: 0, minimized: false }, { id: 'control', instance: 1, minimized: false, controlPage: 'complaints' }]
     : [{ id: 'about', instance: 0, minimized: false }])
-  const [{ folders: sessionFolders, files: sessionFiles, trash, locationDates }, setFolderState] = useState<FolderState>({ folders: movableLocations.map((id) => ({ id, ...locations[id], modifiedAt: premadeModifiedAt })), files: [{ id: 'credits', name: 'Credits.txt', parent: 'documents', icon: 'document', modifiedAt: premadeModifiedAt }], trash: [], locationDates: {} })
+  const [folderState, setFolderState] = useState<FolderState>({ folders: movableLocations.map((id) => ({ id, ...locations[id], modifiedAt: premadeModifiedAt })), files: [{ id: 'credits', name: 'Credits.txt', parent: 'documents', icon: 'document', modifiedAt: premadeModifiedAt }], trash: [], locationDates: {}, favoriteIds: ['documents'] })
+  const { folders: sessionFolders, files: sessionFiles, trash, locationDates } = folderState
+  const [copiedItem, setCopiedItem] = useState<string | null>(null)
+
+  function addFavorite(id: string, now: number) {
+    setFolderState((state) => {
+      if (state.favoriteIds.includes(id) || !getFavoriteTarget(state, id)) return state
+      return touchFolderPath({ ...state, favoriteIds: [...state.favoriteIds, id] }, 'favorites', now)
+    })
+  }
+
+  const favorites = {
+    items: folderState.favoriteIds.flatMap((id) => {
+      const item = getFavoriteTarget(folderState, id)
+      return item ? [item] : []
+    }),
+    copy: setCopiedItem,
+    clipboardReady: Boolean(copiedItem && getFavoriteTarget(folderState, copiedItem)),
+    paste: (now: number) => { if (copiedItem) addFavorite(copiedItem, now) },
+    remove: (id: string, now: number) => setFolderState((state) =>
+      touchFolderPath({ ...state, favoriteIds: state.favoriteIds.filter((item) => item !== id) }, 'favorites', now)),
+  }
+
   const [hidingComplaints, setHidingComplaints] = useState(false)
   useEffect(() => {
     if (!hidingComplaints) return
@@ -290,6 +316,10 @@ function DesktopSession({ crash }: { crash: () => void }) {
   }
 
   function move(id: string, parent: FolderId, now: number) {
+    if (parent === 'favorites') {
+      addFavorite(id, now)
+      return
+    }
     if (parent === 'desktop' && startingDesktop.some(({ label }) =>
       [...sessionFolders, ...sessionFiles].some((item) => item.id === id && item.name.toLowerCase() === label.toLowerCase()))) return
     setFolderState((state) => moveItem(state, id, parent, now))
@@ -441,7 +471,8 @@ function DesktopSession({ crash }: { crash: () => void }) {
           ))}
         </nav>
 
-        {windows.map((entry, index) => {
+        {windows.map((entry, index) => ({ entry, depth: index + 1 }))
+          .sort((first, second) => first.entry.instance - second.entry.instance).map(({ entry, depth }) => {
           const app = apps.find(({ id }) => id === entry.id)!
           const { instance } = entry
           const hidden = entry.minimized || (isPhone && phoneApp !== instance)
@@ -449,9 +480,9 @@ function DesktopSession({ crash }: { crash: () => void }) {
 
           return (
             <DesktopWindow key={instance} instance={instance} id={app.id} title={entry.caption ?? app.label} icon={app.icon}
-              desktop={desktop} depth={index + 1} active={foreground} hidden={hidden}
+              desktop={desktop} depth={depth} active={foreground} hidden={hidden}
               onActivate={() => activate(instance)} onMinimize={() => minimize(instance)} onClose={() => close(instance)}>
-              <AppContent entry={entry} desktopItems={desktopItems} sessionFolders={sessionFolders} sessionFiles={sessionFiles} move={move} locationDates={locationDates}
+              <AppContent entry={entry} favorites={favorites} desktopItems={desktopItems} sessionFolders={sessionFolders} sessionFiles={sessionFiles} move={move} locationDates={locationDates}
                 setCaption={setCaption}
                 addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} recycleBin={recycleBin} open={open} close={() => close(instance)} active={foreground} />
             </DesktopWindow>

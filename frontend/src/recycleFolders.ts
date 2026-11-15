@@ -2,7 +2,26 @@ import { fixedLocations, type FolderId, type LocationId, type SessionFolder } fr
 
 export type SessionFile = { id: 'credits'; name: string; parent: FolderId; icon: 'document'; modifiedAt: number }
 export type DeletedFolder = { root: SessionFolder | SessionFile; isFile: boolean; descendants: SessionFolder[]; files: SessionFile[]; ancestors: SessionFolder[] }
-export type FolderState = { folders: SessionFolder[]; files: SessionFile[]; trash: DeletedFolder[]; locationDates: Partial<Record<LocationId, number>> }
+export type FavoriteTarget = { id: string; name: string; icon: string; folder?: FolderId }
+export type ExplorerFavorites = {
+  items: FavoriteTarget[]
+  copy: (id: string) => void
+  clipboardReady: boolean
+  paste: (now: number) => void
+  remove: (id: string, now: number) => void
+}
+export type FolderState = { favoriteIds: string[]; folders: SessionFolder[]; files: SessionFile[]; trash: DeletedFolder[]; locationDates: Partial<Record<LocationId, number>> }
+
+export function getFavoriteTarget(state: FolderState, id: string): FavoriteTarget | undefined {
+  const file = state.files.find((item) => item.id === id)
+  if (file) return { id, name: file.name, icon: file.icon }
+  const folder = state.folders.find((item) => item.id === id)
+  const fixed = fixedLocations[id as LocationId]
+  if (folder) return { id, name: folder.name, icon: folder.icon, folder: folder.id }
+  if (fixed && !['favorites', 'birby', 'chelseaxp-system'].includes(id)) {
+    return { id, name: fixed.name, icon: fixed.icon, folder: id as LocationId }
+  }
+}
 
 export function touchFolderPath(state: FolderState, id: FolderId, modifiedAt: number): FolderState {
   const byId = new Map(state.folders.map((folder) => [folder.id, folder]))
@@ -48,12 +67,17 @@ export function recycleFolder(state: FolderState, id: string, now: number): Fold
     }
   }
 
-  return touchFolderPath({
+  const files = state.files.filter((file) => file.id !== id && !removed.has(file.parent))
+  const favoriteIds = state.favoriteIds.filter((favorite) => !removed.has(favorite) &&
+    !state.files.some((file) => file.id === favorite && removed.has(file.parent)))
+  const recycled = touchFolderPath({
     ...state,
     folders: state.folders.filter((folder) => !removed.has(folder.id)),
-    files: state.files.filter((file) => file.id !== id && !removed.has(file.parent)),
+    files,
+    favoriteIds,
     trash: [...state.trash, { root, isFile: Boolean(file), descendants, ancestors, files: state.files.filter((file) => removed.has(file.parent)) }],
   }, root.parent, now)
+  return favoriteIds.length === state.favoriteIds.length ? recycled : touchFolderPath(recycled, 'favorites', now)
 }
 
 export function restoreFolder(state: FolderState, id: string, now: number): FolderState {

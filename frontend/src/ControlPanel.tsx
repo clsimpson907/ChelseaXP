@@ -4,14 +4,16 @@ import ComplaintReview from './ComplaintReview'
 import { useEffect, useId, useRef, useState } from 'react'
 import { explorerPlaces, locations, type LocationId } from './explorerLocations'
 import ChromeOverflow from './ChromeOverflow'
-import ExplorerMenuBar from './ExplorerMenuBar'
+import ExplorerMenuBar, { type MenuAction } from './ExplorerMenuBar'
 import NavigationHistory from './NavigationHistory'
 import TaskPane, { TaskSection } from './TaskPane'
 
 const department = { id: 'complaints', label: 'Complaints Department', icon: '/icons/event-viewer.png' } as const
 type Location = { kind: 'home' } | { kind: 'item'; id: typeof department.id }
 
-export default function ControlPanel({ initialPage, openHelp, openFolder, onCaptionChange, active }: {
+export default function ControlPanel({ initialPage, openHelp, openFolder, favoriteCommands, onCaptionChange, onClose, active }: {
+  favoriteCommands: MenuAction[]
+  onClose: () => void
   active: boolean
   onCaptionChange: (caption: string) => void
   initialPage?: 'complaints'
@@ -83,7 +85,7 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, onCapt
     File: [{ label: 'Control Panel Home', action: () => navigate({ kind: 'home' }) }],
     Edit: [{ label: 'Search', action: toggleSearch }],
     View: [{ label: switchLabel, action: switchView }],
-    Favorites: [{ label: 'My Documents', action: () => openFolder('documents') }],
+    Favorites: favoriteCommands,
     Tools: [{ label: 'Folders', action: () => setShowFolders(!showFolders) }],
     Help: [{ label: 'Help and Support Center', action: openHelp }],
   }
@@ -185,7 +187,7 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, onCapt
           {searchOpen && !matchesSearch && <p>No matching Control Panel items.</p>}
           {!searchOpen && item?.id === 'complaints' && (
             <div className="complaints-department">
-              <ComplaintReview active={active} help={menus.Help} navigation={navigation} />
+              <ComplaintReview onClose={onClose} active={active} help={menus.Help} navigation={navigation} />
             </div>
           )}
         </section>

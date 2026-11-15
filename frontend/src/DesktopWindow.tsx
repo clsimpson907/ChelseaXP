@@ -124,6 +124,8 @@ export default function DesktopWindow({
       hidden={hidden}
       onPointerDown={onActivate}
       onFocus={onActivate}
+      onPointerUp={end}
+      onPointerCancel={end}
       style={{
         zIndex: depth,
         ...(bounds && {

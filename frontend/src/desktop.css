@@ -730,20 +730,20 @@ a { color: #642989; }
 
 .xp-progress {
   display: grid;
-  gap: 16px;
-  padding: 18px 20px;
+  gap: 12px;
+  padding: 12px 14px;
   color: #381553;
 }
 
-.xp-progress-row { display: flex; align-items: center; gap: 12px; }
+.xp-progress-row { display: flex; align-items: center; gap: 10px; }
 .xp-progress-row img { flex: none; object-fit: contain; }
 .xp-progress-details { flex: 1; min-width: 0; }
-.xp-progress-details p { min-height: 3em; margin: 0 0 5px; font-weight: bold; }
+.xp-progress-details p { min-height: 2.5em; margin: 0 0 4px; font-size: .875rem; line-height: 1.25; font-weight: bold; }
 .xp-progress-track {
   display: grid;
   grid-template-columns: repeat(18, minmax(0, 1fr));
   gap: 2px;
-  height: 18px;
+  height: 14px;
   padding: 2px;
   border: 1px solid #9f78ad;
   border-radius: 3px;
@@ -758,21 +758,23 @@ a { color: #642989; }
 
 .xp-progress > button {
   justify-self: center;
-  min-width: 116px;
-  min-height: 34px;
+  min-width: 80px;
+  min-height: 24px;
   border: 1px solid #9867ad;
   border-radius: 4px;
   background: var(--lavender-gloss);
   color: #381553;
+  font-size: .8rem;
   font-weight: bold;
 }
 
 @media not all and (max-width: 700px) and (pointer: coarse) and (hover: none) {
   .app-window:has(.xp-progress) {
-    left: max(0px, calc((100% - 440px) / 2)) !important;
-    top: max(0px, calc((100% - 225px) / 2)) !important;
-    width: min(440px, 100%) !important;
-    height: min(225px, 100%) !important;
+    inset: 0 !important;
+    margin: auto;
+    width: min(370px, 100%) !important;
+    height: fit-content !important;
+    max-height: 100%;
   }
   .app-window:has(.xp-progress) .title-bar { cursor: default; }
   .app-window:has(.xp-progress) :is(.window-resize, .window-resize-edge) { display: none; }
@@ -1154,6 +1156,12 @@ a { color: #642989; }
 
 .folder-delete-error { display: flex; align-items: center; gap: 12px; }
 .folder-delete-error img { flex: none; }
+.insert-disk-message {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+}
+.insert-disk-message p { margin: 0; text-align: center; }
 .folder-delete-actions[data-denied="true"] { justify-content: center; }
 
 .xp-file-explorer .explorer-items[data-desktop="true"][data-view="Icons"] {
@@ -2086,7 +2094,7 @@ a { color: #642989; }
     font-size: .875rem;
   }
   .complaints-department { padding: 12px; }
-  .complaints-department button {
+  .complaints-department button:not(.xp-progress > button) {
     width: 100%;
     min-height: 44px;
     padding: 6px 12px;
@@ -2198,10 +2206,10 @@ a { color: #642989; }
   .phone-softkeys > .complaint-phone-actions { display: inline-flex; }
 }
 
-.control-panel:has(.complaint-review-preview) > :is(.explorer-toolbar, .explorer-address-row),
-.control-panel-content:has(.complaint-review-preview) > h1 { display: none; }
-.control-panel-content:has(.complaint-review-preview),
-.complaints-department:has(.complaint-review-preview) { padding: 0; }
+.control-panel:has(.complaint-review-preview, .xp-progress) > :is(.explorer-toolbar, .explorer-address-row),
+.control-panel-content:has(.complaint-review-preview, .xp-progress) > h1 { display: none; }
+.control-panel-content:has(.complaint-review-preview, .xp-progress),
+.complaints-department:has(.complaint-review-preview, .xp-progress) { padding: 0; }
 .complaint-review-preview { margin: 0; background: #b78dca; }
 .complaint-review-preview-header {
   gap: 4px 10px;
@@ -2269,7 +2277,7 @@ a { color: #642989; }
 .complaint-phone-actions button:disabled { opacity: .65; cursor: default; }
 .complaint-reading-pane > h2, .complaint-original-message { user-select: text; -webkit-user-select: text; }
 
-.control-panel:has(.complaint-review-preview) > .explorer-menu-bar { display: none; }
+.control-panel:has(.complaint-review-preview, .xp-progress) > .explorer-menu-bar { display: none; }
 .complaint-review-preview > .explorer-menu-bar { flex: none; }
 @media (max-width: 700px) and (pointer: coarse) and (hover: none) {
   .complaint-review-preview > .explorer-menu-bar { display: none; }
