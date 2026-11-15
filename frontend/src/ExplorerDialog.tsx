@@ -1,10 +1,10 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type MouseEventHandler, type ReactNode } from 'react'
 
 export default function ExplorerDialog({ title, children, onClose, onConfirm }: {
   title: string
   children: ReactNode
   onClose: () => void
-  onConfirm?: () => void
+  onConfirm?: MouseEventHandler<HTMLButtonElement>
 }) {
   const id = useId()
   const dialog = useRef<HTMLDialogElement>(null)

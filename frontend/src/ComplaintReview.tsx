@@ -1,3 +1,6 @@
+import { showProgressUntil } from './progressTiming'
+import XpProgress from './XpProgress'
+import BlueScreen from './BlueScreen'
 import { complaintApiOrigin as apiOrigin, reviewConfigured as configured, localComplaintPreview as localPreview, getPublishedCopies, publishCopy, refreshPublishedCopies, subscribeToPublishedCopies, type PublicCopy } from './publishedComplaints'
 import NavigationHistory from './NavigationHistory'
 import type { ComponentProps } from 'react'
@@ -39,13 +42,20 @@ const scopes = ['api://' + apiId + '/ComplaintReview.Access']
 let redirectResult: ReturnType<PublicClientApplication['handleRedirectPromise']> | undefined
 
 type ReviewRole = 'admin' | 'moderator'
-type ReviewProps = { active: boolean; help: MenuAction[]; navigation: ComponentProps<typeof NavigationHistory> }
+type ReviewProps = { active: boolean; onClose: () => void; help: MenuAction[]; navigation: ComponentProps<typeof NavigationHistory> }
 type InboxItem = { id: number; subject: string; submittedAt: string; publishedAt: string | null }
 type ComplaintDetail = PublicCopy & {
   id: number; submittedAt: string; name: string | null; email: string | null; ipAddress: string | null
   draft: PublicCopy | null; published: PublicCopy | null
 }
 type ReviewRequest = (path: string, options?: RequestInit) => Promise<Response>
+
+type ReviewFailure = { code: string; explanation: string }
+
+function ReviewBlueScreen({ failure, onContinue }: { failure: ReviewFailure; onContinue: () => void }) {
+  return <BlueScreen message="An error has occurred. The Complaints Department could not continue."
+    code={failure.code} explanation={failure.explanation} onContinue={onContinue} />
+}
 
 export default function ComplaintReview(props: ReviewProps) {
   return localPreview ? <ComplaintWorkspace {...props} /> : <EntraReview {...props} />
@@ -54,15 +64,17 @@ export default function ComplaintReview(props: ReviewProps) {
 function EntraReview(props: ReviewProps) {
   const [account, setAccount] = useState<AccountInfo | null>(null)
   const [role, setRole] = useState<ReviewRole | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [feedback, setFeedback] = useState('')
+  const [pending, setPending] = useState<'sign-in' | 'sign-out' | null>(configured ? 'sign-in' : null)
+  const [signedOut, setSignedOut] = useState(false)
+  const [failure, setFailure] = useState<ReviewFailure | null>(() => configured ? null : {
+    code: '0007 : REVIEW_UNAVAILABLE', explanation: 'Private review sign-in is currently unavailable.',
+  })
 
   useEffect(() => {
     if (!configured) return
     let active = true
 
     async function signIn() {
-      setBusy(true)
       try {
         const auth = await signInClient()
         const returning = sessionStorage.getItem(reviewReturnKey) !== null
@@ -87,9 +99,9 @@ function EntraReview(props: ReviewProps) {
       } catch {
         if (!active) return
         sessionStorage.removeItem(reviewReturnKey)
-        setFeedback('Sign-in couldn’t be completed. Close and reopen the department to try again.')
+        setFailure({ code: '0008 : REVIEW_SIGN_IN_FAILED', explanation: 'Sign-in couldn’t be completed. Close and reopen the department to try again.' })
       } finally {
-        if (active) setBusy(false)
+        if (active) setPending(null)
       }
     }
 
@@ -100,7 +112,7 @@ function EntraReview(props: ReviewProps) {
       })
       if (!active) return
       if (response.status === 401 || response.status === 403) {
-        setFeedback('This account doesn’t have access to the Complaints Department.')
+        setFailure({ code: '0009 : REVIEW_ACCESS_DENIED', explanation: 'This account doesn’t have access to the Complaints Department.' })
         return
       }
       if (!response.ok) throw new Error('Access check failed')
@@ -117,22 +129,20 @@ function EntraReview(props: ReviewProps) {
 
   async function signOut() {
     setRole(null)
-    setBusy(true)
-    setFeedback('')
+    setPending('sign-out')
+    setFailure(null)
     try {
       const auth = await signInClient()
       await auth.logoutPopup({ account, postLogoutRedirectUri: window.location.origin })
     } catch {
-      setFeedback('The sign-out window couldn’t finish. You’re signed out of the department.')
+      setFailure({ code: '0010 : REVIEW_SIGN_OUT_FAILED', explanation: 'The sign-out window couldn’t finish. You’re signed out of the department.' })
     } finally {
       setRole(null)
-      setFeedback((message) => message || 'Signed out. Close and reopen the department to sign in again.')
+      setSignedOut(true)
       setAccount(null)
-      setBusy(false)
+      setPending(null)
     }
   }
-
-  if (!configured) return <p>Private review sign-in is currently unavailable.</p>
 
   if (role && account) {
     const request: ReviewRequest = async (path, options) => {
@@ -144,7 +154,14 @@ function EntraReview(props: ReviewProps) {
     }
     return <ComplaintWorkspace {...props} live={{ role, request, signOut }} />
   }
-  return <p role="status">{busy ? 'Opening sign-in…' : feedback}</p>
+  return <>
+    {props.active && failure && <ReviewBlueScreen failure={failure} onContinue={() => setFailure(null)} />}
+    {pending && <XpProgress label={pending === 'sign-in' ? 'Opening sign-in' : 'Signing out'}
+      icon="/icons/connection-status.png"
+      messages={pending === 'sign-in' ? ['Opening sign-in…'] : ['Signing out…']}
+      reverseMessages={['Waiting for Microsoft Entra…']} complete={false} onCancel={props.onClose} />}
+    {signedOut && !pending && <p role="status">Signed out. Close and reopen the department to sign in again.</p>}
+  </>
 
 }
 
@@ -172,9 +189,11 @@ const sampleDetails: ComplaintDetail[] = sampleComplaints.map((complaint, id) =>
   ...complaint, id, subject: complaint.title, ipAddress: complaint.ip, draft: null, published: null,
 }))
 
+const loadingComplaintMessages = ['Loading complaints…'] as const
+
 const savedPreviewDrafts: Record<number, PublicCopy> = {}
 
-function ComplaintWorkspace({ active, help, navigation, live }: ReviewProps & {
+function ComplaintWorkspace({ active, help, navigation, onClose, live }: ReviewProps & {
   live?: { role: ReviewRole; request: ReviewRequest; signOut: () => void }
 }) {
   const elementId = useId()
@@ -189,9 +208,12 @@ function ComplaintWorkspace({ active, help, navigation, live }: ReviewProps & {
   const [redoHistory, setRedoHistory] = useState<Record<number, (PublicCopy | undefined)[]>>({})
   const publishedCopies = useSyncExternalStore(subscribeToPublishedCopies, getPublishedCopies)
   const [detail, setDetail] = useState<ComplaintDetail | null>(null)
-  const [error, setError] = useState('')
+  const [failure, setFailure] = useState<ReviewFailure | null>(null)
+  const [detailAttempt, setDetailAttempt] = useState(0)
   const [busy, setBusy] = useState(false)
   const [loadingInbox, setLoadingInbox] = useState(Boolean(live))
+  const [openingInbox, setOpeningInbox] = useState(Boolean(live))
+  const [progressComplete, setProgressComplete] = useState(false)
   const [more, setMore] = useState(false)
   const complaint = live ? (detail?.id === selected ? detail : null) : sampleDetails[selected]
   const draft = drafts[selected] ?? complaint?.draft ?? undefined
@@ -199,17 +221,25 @@ function ComplaintWorkspace({ active, help, navigation, live }: ReviewProps & {
   const loadInbox = useCallback(async (signal?: AbortSignal, beforeId?: number) => {
     if (!request) return
     try {
-      const response = await request('/inbox' + (beforeId === undefined ? '' : '?beforeId=' + beforeId), { signal })
-      if (!response.ok) throw new Error()
-      const rows: InboxItem[] = await response.json()
+      const task = request('/inbox' + (beforeId === undefined ? '' : '?beforeId=' + beforeId), { signal })
+        .then(async (response): Promise<InboxItem[]> => {
+          if (!response.ok) throw new Error()
+          return response.json()
+        })
+      const rows = beforeId === undefined ? await showProgressUntil(task, () => {
+        if (!signal?.aborted) setProgressComplete(true)
+      }) : await task
       if (signal?.aborted) return
       setInbox((current) => beforeId === undefined ? rows : [...current, ...rows])
       setMore(rows.length === 50)
       if (beforeId === undefined) setSelected(rows[0]?.id ?? 0)
     } catch {
-      if (!signal?.aborted) setError('Couldn’t load the inbox.')
+      if (!signal?.aborted) setFailure({ code: '0011 : REVIEW_INBOX_FAILED', explanation: 'Couldn’t load the inbox. Close and reopen the department to try again.' })
     } finally {
-      if (!signal?.aborted) setLoadingInbox(false)
+      if (!signal?.aborted) {
+        setLoadingInbox(false)
+        if (beforeId === undefined) setOpeningInbox(false)
+      }
     }
   }, [request])
 
@@ -230,11 +260,11 @@ function ComplaintWorkspace({ active, help, navigation, live }: ReviewProps & {
         const row: ComplaintDetail = await response.json()
         if (!controller.signal.aborted) setDetail(row)
       } catch {
-        if (!controller.signal.aborted) setError('Couldn’t open this complaint.')
+        if (!controller.signal.aborted) setFailure({ code: '0012 : REVIEW_DETAIL_FAILED', explanation: 'Couldn’t open this complaint. Select it again to retry.' })
       }
     })()
     return () => controller.abort()
-  }, [request, selected])
+  }, [request, selected, detailAttempt])
 
   const subjectRef = useRef<HTMLHeadingElement>(null)
   const messageRef = useRef<HTMLParagraphElement>(null)
@@ -320,7 +350,7 @@ function ComplaintWorkspace({ active, help, navigation, live }: ReviewProps & {
     }
 
     setBusy(true)
-    setError('')
+    setFailure(null)
     try {
       const path = '/' + selected
       if (!publish || drafts[selected]) {
@@ -341,11 +371,13 @@ function ComplaintWorkspace({ active, help, navigation, live }: ReviewProps & {
           setDetail(await detailResponse.json())
         } catch {
           setDetail(null)
-          setError('Published. Reopen the department to reload the published copy.')
+          setFailure({ code: '0013 : REVIEW_PUBLISHED_COPY_FAILED', explanation: 'The complaint was published, but its published copy couldn’t be loaded. Select it again to retry.' })
         }
       }
     } catch {
-      setError(publish ? 'Couldn’t publish this complaint. Reopen it before trying again.' : 'Couldn’t save the draft.')
+      setFailure(publish
+        ? { code: '0014 : REVIEW_PUBLISH_FAILED', explanation: 'Couldn’t publish this complaint. Reopen it before trying again.' }
+        : { code: '0015 : REVIEW_DRAFT_FAILED', explanation: 'Couldn’t save the draft. Your edits are still open.' })
     } finally {
       setBusy(false)
     }
@@ -361,8 +393,13 @@ function ComplaintWorkspace({ active, help, navigation, live }: ReviewProps & {
   }]
   const toolbarCommands = [...editCommands, ...publishCommands]
 
+  if (openingInbox) return <XpProgress label="Loading complaints" icon="/icons/connection-status.png"
+    messages={loadingComplaintMessages} reverseMessages={loadingComplaintMessages}
+    complete={progressComplete} onCancel={onClose} />
+
   return (
     <div className="complaint-review-preview" data-reading={reading}>
+      {active && failure && <ReviewBlueScreen failure={failure} onContinue={() => setFailure(null)} />}
       <ExplorerMenuBar label="Complaints Department menus" menus={{
         File: [
           { label: 'Save as draft', disabled: !canEdit, action: () => { void save() } },
@@ -394,7 +431,6 @@ function ComplaintWorkspace({ active, help, navigation, live }: ReviewProps & {
           <option value="admin">Admin</option>
           <option value="moderator">Moderator</option>
         </select></label></>}
-        {error && <p role="alert">{error}</p>}
       </div>
       <div className="complaint-review-panes">
         <section className="complaint-inbox" aria-labelledby={elementId + '-inbox'}>
@@ -406,8 +442,9 @@ function ComplaintWorkspace({ active, help, navigation, live }: ReviewProps & {
             return (
             <li key={id}>
               <button type="button" disabled={busy} aria-pressed={selected === id} onClick={() => {
-                setError('')
+                setFailure(null)
                 if (id !== selected) setDetail(null)
+                else if (!complaint) setDetailAttempt((attempt) => attempt + 1)
                 setSelected(id)
                 setSelection(null)
                 setReading(true)
@@ -420,7 +457,7 @@ function ComplaintWorkspace({ active, help, navigation, live }: ReviewProps & {
             )
           })}</ul>
           {loadingInbox && <p role="status">Loading complaints…</p>}
-          {more && !loadingInbox && <button type="button" onClick={() => { setLoadingInbox(true); setError(''); void loadInbox(undefined, inbox.at(-1)?.id) }}>Load more</button>}
+          {more && !loadingInbox && <button type="button" onClick={() => { setLoadingInbox(true); setFailure(null); void loadInbox(undefined, inbox.at(-1)?.id) }}>Load more</button>}
         </section>
         <article className="complaint-reading-pane" aria-labelledby={elementId + '-detail'}>
           {complaint ? <>
@@ -437,7 +474,7 @@ function ComplaintWorkspace({ active, help, navigation, live }: ReviewProps & {
             <img className="complaint-message-icon" src={locked ? '/icons/help-favorites.png' : '/icons/mail.png'} alt={locked ? 'Published' : ''} title={locked ? 'Published' : undefined} width="24" height="24" />
             <p ref={messageRef} className="complaint-original-message">{publicCopy.message}</p>
           </div>
-          </> : <h2 id={elementId + '-detail'}>{error ? 'Complaint unavailable' : selected ? 'Loading complaint…' : 'Inbox'}</h2>}
+          </> : <h2 id={elementId + '-detail'}>{selected ? 'Complaint' : 'Inbox'}</h2>}
         </article>
       </div>
       {softkeys && createPortal(

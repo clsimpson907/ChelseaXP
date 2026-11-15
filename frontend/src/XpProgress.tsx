@@ -53,7 +53,7 @@ export default function XpProgress({ label, icon, messages, reverseMessages, com
   return (
     <section className="xp-progress" aria-label={label}>
       <div className="xp-progress-row">
-        <img src={icon} alt="" width="42" height="42" />
+        <img src={icon} alt="" width="32" height="32" />
         <div className="xp-progress-details">
           <p role="status">{complete ? 'Putting everything back where we found it…' : step.reverseMessage || messages[step.message]}</p>
           <div className="xp-progress-track" role="progressbar" aria-label={label}>

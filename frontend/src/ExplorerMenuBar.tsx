@@ -18,7 +18,7 @@ export default function ExplorerMenuBar({ label, menus }: {
       }}>
       {entries.map(([name, actions]) => (
         <div className="explorer-menu" key={name} data-menu={name}>
-          <button type="button" aria-expanded={openMenu === name}
+          <button type="button" disabled={!actions.length} aria-expanded={openMenu === name}
             onClick={() => setOpenMenu(openMenu === name ? null : name)}>{name}</button>
           {openMenu === name && <div className="explorer-menu-options">
             {actions.map(({ label, action, disabled }) => (
@@ -29,7 +29,7 @@ export default function ExplorerMenuBar({ label, menus }: {
         </div>
       ))}
       {/* File and Edit always fit. CSS selects which remaining menus move into overflow. */}
-      <ChromeOverflow kind="menu" commands={entries.slice(2).map(([label, children]) => ({ label, children }))} />
+      <ChromeOverflow kind="menu" commands={entries.slice(2).map(([label, children]) => ({ label, children, disabled: !children.length }))} />
     </div>
   )
 }

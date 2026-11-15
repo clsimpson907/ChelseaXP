@@ -116,7 +116,7 @@ export default function DesktopWindow({
   return (
     <article
       id={`window-${instance}`}
-      className={`app-window${active ? '' : ' app-window--inactive'}${maximized ? ' app-window--maximized' : ''}`}
+      className={`app-window${active ? '' : ' app-window--inactive'}${maximized ? ' app-window--maximized' : ''}${id === 'about' && !bounds && !maximized ? ' app-window--fit-profile' : ''}`}
       data-window={id}
       aria-labelledby={`window-title-${instance}`}
       ref={panel}
@@ -124,6 +124,8 @@ export default function DesktopWindow({
       hidden={hidden}
       onPointerDown={onActivate}
       onFocus={onActivate}
+      onPointerUp={end}
+      onPointerCancel={end}
       style={{
         zIndex: depth,
         ...(bounds && {
