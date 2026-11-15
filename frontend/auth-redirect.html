@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Complaints Department sign-in</title>
+</head>
+<body>
+  <p id="status">Completing sign-in…</p>
+  <script type="module">
+    import { broadcastResponseToMainFrame } from '@azure/msal-browser/redirect-bridge'
+
+    broadcastResponseToMainFrame().catch(() => {
+      document.getElementById('status').textContent = 'Sign-in could not finish. Close this window and try again.'
+    })
+  </script>
+</body>
+</html>

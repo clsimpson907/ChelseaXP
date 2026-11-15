@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { complaintApiOrigin as apiOrigin } from './publishedComplaints'
+import BlueScreen from './BlueScreen'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import XpProgress from './XpProgress'
 import { showProgressUntil } from './progressTiming'
@@ -13,7 +15,7 @@ const checkingMessages = [
 
 const sendingMessages = [
   'Filing your grievance under Extremely Important…',
-  'Teaching the envelope how to find Chelsea…',
+  'Teaching the envelope how to find me…',
   'Applying one ceremonial postage stamp…',
   'Handing the complaint to a very small courier…',
   'Trying to make the inbox look busy…',
@@ -31,7 +33,6 @@ const sendingReverseMessages = [
   'Refolding the complaint with more conviction…',
 ] as const
 
-const apiOrigin = import.meta.env.VITE_API_ORIGIN || 'http://localhost:5080'
 const maxMessageLength = 2000
 
 const quotaErrors = {
@@ -55,12 +56,12 @@ function blockedState(code: unknown, resetAt: unknown): Blocked | null {
   return null
 }
 
-export default function ComplaintsForm({ onClose, active }: { onClose: () => void; active: boolean }) {
+export default function ComplaintsForm({ onClose, active, openPrivacy }: { onClose: () => void; active: boolean; openPrivacy: () => void }) {
+  const elementId = useId()
   const [availability, setAvailability] = useState<Availability>({ state: 'checking' })
   const [sending, setSending] = useState(false)
   const [progressComplete, setProgressComplete] = useState(false)
   const [feedback, setFeedback] = useState<{ text: string; error: boolean } | null>(null)
-  const crashDialog = useRef<HTMLDialogElement>(null)
   const hasOpenedForm = useRef(false)
   const messageInput = useRef<HTMLTextAreaElement>(null)
 
@@ -93,23 +94,10 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
   }, [])
 
   useEffect(() => {
-    if (availability.state === 'available') {
-      hasOpenedForm.current = true
-      return
-    }
-
-    const dialog = crashDialog.current
-    if (!active || !dialog || availability.state === 'checking') return
-
-    dialog.showModal()
-    return () => {
-      if (dialog.open) dialog.close()
-    }
-  }, [active, availability.state])
+    if (availability.state === 'available') hasOpenedForm.current = true
+  }, [availability.state])
 
   function dismissCrash() {
-    if (!crashDialog.current?.open) return
-    crashDialog.current.close()
     if (hasOpenedForm.current) {
       setFeedback({ text: explanation, error: true })
       setAvailability({ state: 'available' })
@@ -127,7 +115,13 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
     const fields = new FormData(form)
     const name = String(fields.get('name') ?? '').trim()
     const email = String(fields.get('email') ?? '').trim()
+    const subject = String(fields.get('subject') ?? '').trim()
     const message = String(fields.get('message') ?? '').trim()
+    if (!subject) {
+      form.querySelector<HTMLInputElement>('[name="subject"]')?.focus()
+      setFeedback({ text: 'Enter a subject.', error: true })
+      return
+    }
     if (!message) {
       setFeedback({ text: 'Please enter a message.', error: true })
       form.querySelector('textarea')?.focus()
@@ -141,13 +135,13 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
       const response = await showProgressUntil(fetch(new URL('/api/complaints', apiOrigin), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, message }),
+        body: JSON.stringify({ name, email, subject, message }),
         signal: AbortSignal.timeout(45000),
       }), () => setProgressComplete(true))
 
       if (response.status === 202) {
         form.reset()
-        setFeedback({ text: 'Thanks! Your complaint was accepted for email delivery.', error: false })
+        setFeedback({ text: 'Thanks! Your complaint was submitted.', error: false })
         return
       }
 
@@ -181,32 +175,9 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
   const crashCode = quota?.error ?? (availability.state === 'paused' ? '0001 : COMPLAINTS_PAUSED' : '0003 : STATUS_CHECK_FAILED')
   return (
     <>
-      <dialog
-        className="complaints-blue-screen"
-        ref={crashDialog}
-        aria-labelledby="complaints-crash-title"
-        aria-describedby="complaints-crash-message"
-        onClick={dismissCrash}
-        onKeyDown={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-          dismissCrash()
-        }}
-        onCancel={(event) => {
-          event.preventDefault()
-          dismissCrash()
-        }}
-      >
-        {blocked && (
-          <div className="crash-content">
-            <h1 id="complaints-crash-title">ChelseaXP</h1>
-            <p>An error has occurred. Complaints could not continue.</p>
-            <p id="complaints-crash-message">{explanation}</p>
-            <p>Error: CXP : {crashCode}</p>
-            <button type="button">Press any key or click to continue <span aria-hidden="true">_</span></button>
-          </div>
-        )}
-      </dialog>
+      {active && blocked && <BlueScreen
+        message="An error has occurred. Complaints could not continue."
+        explanation={explanation} code={crashCode} onContinue={dismissCrash} />}
 
       {availability.state === 'checking' && (
         <XpProgress label="Checking Complaints availability" icon="/icons/connection-status.png"
@@ -219,14 +190,16 @@ export default function ComplaintsForm({ onClose, active }: { onClose: () => voi
 
       <div hidden={availability.state !== 'available' || sending}>
         <h1>Complaints</h1>
-        <p>Your message goes to Chelsea by email. She’ll use your email address to reply if needed.</p>
+        <p>Your message goes privately to me by email. I’ll use your email address if I need to reply. <button className="complaint-privacy-link" type="button" onClick={openPrivacy}>Read the privacy notice</button></p>
         <form className="complaints-form" onSubmit={submit} aria-busy={sending}>
-          <label htmlFor="complaint-name">Name (optional)</label>
-          <input id="complaint-name" name="name" autoComplete="name" maxLength={100} readOnly={sending} />
-          <label htmlFor="complaint-email">Email address</label>
-          <input id="complaint-email" name="email" type="email" autoComplete="email" maxLength={254} required readOnly={sending} />
-          <label htmlFor="complaint-message">Message</label>
-          <textarea ref={messageInput} id="complaint-message" name="message" rows={6} maxLength={maxMessageLength} required readOnly={sending} />
+          <label htmlFor={elementId + '-complaint-name'}>Name (optional)</label>
+          <input id={elementId + '-complaint-name'} name="name" autoComplete="name" maxLength={100} readOnly={sending} />
+          <label htmlFor={elementId + '-complaint-email'}>Email address</label>
+          <input id={elementId + '-complaint-email'} name="email" type="email" autoComplete="email" maxLength={254} required readOnly={sending} />
+          <label htmlFor={elementId + '-complaint-subject'}>Subject</label>
+          <input id={elementId + '-complaint-subject'} name="subject" required maxLength={120} readOnly={sending} />
+          <label htmlFor={elementId + '-complaint-message'}>Message</label>
+          <textarea ref={messageInput} id={elementId + '-complaint-message'} name="message" rows={6} maxLength={maxMessageLength} required readOnly={sending} />
           <button type="submit" disabled={sending}>{sending ? 'Sending…' : 'Send complaint'}</button>
         </form>
         <p className="complaint-feedback" role="status">

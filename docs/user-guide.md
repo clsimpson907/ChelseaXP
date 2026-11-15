@@ -2,12 +2,12 @@
 
 [Open ChelseaXP](https://chelseaxp.party)
 
-ChelseaXP is Chelsea Simpson’s portfolio, built to feel like a computer from 2006. On a desktop, **About Me** opens first. On a phone, you’ll usually start on **Today**, the Windows Mobile–style home screen.
+I built ChelseaXP, my portfolio, to feel like a computer from 2006. On a desktop, **About Me** opens first. On a phone, you’ll usually start on **Today**, the Windows Mobile–style home screen.
 
 ## Using the desktop
 
-- Open an app from its desktop shortcut or from **Start** in the lower-left corner.
-- Click a window’s button on the taskbar to bring it forward. Click the active window’s taskbar button to minimize it.
+- Click a desktop shortcut once to select it. Double-click it or press **Enter** while it has focus to open it. You can also open apps from **Start** in the lower-left corner.
+- Click a window’s button on the taskbar to bring it forward. Click the active window’s taskbar button to minimize it. Each desktop window has its own taskbar button, and its label follows the folder or page you open.
 - Drag a window by its title bar to move it. Drag an edge or corner to resize it. The title-bar buttons minimize, maximize or restore, and close the window.
 - As Explorer and Control Panel get narrower, commands move into the **»** menus and the task sidebar can hide automatically. Widen the window to bring it back.
 
@@ -26,7 +26,7 @@ Start in **My Documents** for project notes and credits, or **My Computer** for 
 - Use **Back** to return to a previous location and **Up** to open the parent folder. Click a parent name in the address bar to jump there, or choose a destination from the dropdown and click **Go**.
 - **Other Places** links to nearby folders and common destinations. **Details** shows information about the current folder or selected item. On mobile, tap **Folder tasks** to show the sidebar.
 - To search with Birby, click **Search**, pick a category, enter part of a name, choose where to look, and click **Search** again.
-- Open **Credits.txt** in My Documents to read it in a separate Notepad window. The résumé entry is marked **Coming soon**.
+- Open **Credits.txt** in My Documents to read it in a separate Notepad window.
 - **Local Disk (C:)** has a hidden-files screen. The floppy and CD drives ask you to insert a disk.
 
 ## Making a mess in Explorer
@@ -39,11 +39,15 @@ Temporary folders are shared across open Explorer windows. A folder created in E
 
 ## Using Control Panel
 
-Open **Control Panel** from Start. Use the sidebar to switch between **Category View** and **Classic View**. In Category View, open **Help and Support → Complaints Department**. The Start menu’s **Help and Support** shortcut goes straight to that category. On a phone, the **Complaints Department** row on Today opens the department directly.
+Open **Control Panel** from Start. Use the sidebar to switch between **Category View** and **Classic View**. Choose **Complaints Department** directly from either view. To open the Help and Support Center, choose **Help and Support** under **See Also**.
+
+## Getting help
+
+Open **Help and Support Center** from Start or tap its row on Today. Choose a guide topic or search the guide. Under **Ask for assistance**, choose **Submit a complaint** to open the form. **Complaints Department** is under **Pick a task**.
 
 ## Sending a complaint
 
-Open **Complaints** from Start or choose **Open Complaints** in the department. Enter your email address and message, then select **Send complaint**. Your name is optional. The message goes privately to Chelsea by email, and she can use your address to reply.
+Open **Help and Support Center** and choose **Submit a complaint**. Enter your email address, subject, and message, then select **Send complaint**. Your name is optional. Your message goes privately to me by email. I’ll use your address if I need to reply.
 
 A slow check or send may make the progress bar lose ground and start filling again. If a **ChelseaXP** blue screen appears, read the explanation and press a key or click or tap the screen to continue. A blue screen during the initial check closes Complaints. A quota blue screen during submission returns you to your draft.
 
@@ -59,4 +63,12 @@ Quota messages give a retry time in your local time zone. By default, each visit
 
 ## About, contact, and credits
 
-Open **About Me** for Chelsea’s background and interests. Use **LinkedIn** to visit her profile in a new tab. For artwork and icon credits, open **My Documents → Credits.txt**.
+Open **About Me** to read about my background and interests. Use **LinkedIn** to open my profile in a new tab. For artwork and icon credits, open **My Documents → Credits.txt**.
+
+## Complaint privacy notice
+
+When you submit a complaint, Resend delivers your subject, message, email address, and any name you enter to my inbox. I use your message to investigate what you reported and your email address to reply if needed. The complaint is saved for private review. I may publish its subject and message in the Recycle Bin after reviewing them for private details. Your contact details and IP address are kept out of the public complaint record.
+
+When the site checks whether you can submit a complaint or accepts one for sending, the server uses your IP address to check submission limits. For a submission that reserves a slot, the complaints database stores a timestamp and a code derived from your IP address using a secret key. The raw IP address is stored with the private complaint for investigation and is kept out of the complaint email and quota records. Quota records older than two days are cleared when a new slot is reserved.
+
+If you have a question about a complaint you sent, you can reach me through LinkedIn.

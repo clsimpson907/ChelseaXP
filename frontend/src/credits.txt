@@ -1,5 +1,5 @@
 ChelseaXP credits
-Built by Chelsea Simpson (me) with help from Charlie (OpenAI Codex).
+I built ChelseaXP with help from Charlie (OpenAI Codex).
 
 Wallpaper
 Sunset, original Bryce artwork by me.
