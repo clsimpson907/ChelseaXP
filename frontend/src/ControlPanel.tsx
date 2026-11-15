@@ -87,7 +87,7 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, favori
     View: [{ label: switchLabel, action: switchView }],
     Favorites: favoriteCommands,
     Tools: [{ label: 'Folders', action: () => setShowFolders(!showFolders) }],
-    Help: [{ label: 'Help and Support Center', action: openHelp }],
+    Help: [{ label: 'Help and Support', action: openHelp }],
   }
 
   return (

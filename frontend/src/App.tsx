@@ -1,6 +1,7 @@
+import ExplorerItemDialog from './ExplorerItemDialog'
 import BlueScreen from './BlueScreen'
 import { dragItem, dropItem } from './explorerDrag'
-import { getFavoriteTarget, moveItem, recycleFolder, restoreFolder, touchFolderPath, type ExplorerFavorites, type FolderState, type SessionFile } from './recycleFolders'
+import { deleteConfirmationIcon, favoriteShortcutId, favoriteTargetId, getDragActions, getFavoriteTarget, moveItem, recycleFolder, restoreFolder, touchFolderPath, type ExplorerFavorites, type FolderState, type SessionFile } from './recycleFolders'
 import { reviewReturnKey } from './ComplaintReview'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import DesktopWindow from './DesktopWindow'
@@ -41,11 +42,11 @@ const desktopShortcuts = [
 ] as const
 type DesktopShortcutId = (typeof desktopShortcuts)[number]['id']
 
-const startingDesktop = [
-  shortcuts[0],
-  { id: 'linkedin', label: 'LinkedIn', icon: '/icons/linkedin.png' },
-  { id: 'recycle', label: locations.recycle.name, icon: '/icons/recycle-bin.png' },
-] as const
+const initialFiles: SessionFile[] = [
+  { id: 'about', name: shortcuts[0].label, icon: shortcuts[0].icon, parent: 'desktop', type: 'Application', modifiedAt: premadeModifiedAt },
+  { id: 'linkedin', name: 'LinkedIn', icon: '/icons/linkedin.png', parent: 'desktop', type: 'Internet link', modifiedAt: premadeModifiedAt },
+  { id: 'credits', name: 'Credits.txt', icon: 'document', parent: 'documents', type: 'Text document', modifiedAt: premadeModifiedAt },
+]
 
 const phoneLayout = '(max-width: 700px) and (pointer: coarse) and (hover: none)'
 
@@ -74,13 +75,15 @@ function LinkedInShortcut({ onClick }: { onClick?: () => void }) {
   )
 }
 
-function AppContent({ entry, setCaption, open, close, active, desktopItems, sessionFolders, sessionFiles, move, locationDates, addFolder, renameFolder, deleteFolder, recycleBin, favorites }: {
+function AppContent({ entry, setCaption, open, close, active, desktopItems, sessionFolders, sessionFiles, openFile, move, locationDates, addFolder, renameFolder, deleteFolder, recycleBin, favorites, drag }: {
   entry: WindowEntry
   desktopItems: DesktopItem[]
+  drag: (id: string) => ReturnType<typeof dragItem>
   favorites: ExplorerFavorites
   setCaption: (instance: number, caption: string) => void
   sessionFolders: SessionFolder[]
   sessionFiles: SessionFile[]
+  openFile: (id: SessionFile['id']) => void
   move: (id: string, parent: FolderId, now: number) => void
   locationDates: FolderState['locationDates']
   addFolder: (parent: FolderId) => SessionFolder
@@ -109,20 +112,14 @@ function AppContent({ entry, setCaption, open, close, active, desktopItems, sess
           <div className="profile-main">
             <h1>Hi, I’m Chelsea Simpson!</h1>
             <p className="profile-role">Software Developer</p>
-            <p>I spent five years developing and supporting C# and .NET applications for state and local government clients at Selectron Technologies. I started on the support team, where I used SQL Server to track down bugs, then moved to customer development, where I built a text messaging service for municipal utilities. I have a bachelor’s degree in computer science from Portland State University.</p>
             <div className="profile-details">
               <section>
-                <h2>Technical skills</h2>
-                <ul>
-                  <li>C#, .NET, and ASP.NET</li>
-                  <li>Microsoft SQL Server</li>
-                  <li>REST and SOAP integrations</li>
-                  <li>Azure DevOps</li>
-                </ul>
+                <h2>About ChelseaXP</h2>
+                <p>I don't know what you're doing on my computer from 2006, but please try not to make a mess or break anything! Just kidding, this is my Windows XP tribute/parody site. I'm very fond of the Windows XP/98 era of tech. The internet felt like it was so full of possibilities, and personal computers felt like their own magical micro-universe. I'm trying to capture some of that feeling bit by bit. Please take a look around and make yourself at home.</p>
               </section>
               <section>
-                <h2>Off the clock</h2>
-                <p>I adore my sweet little kitty Birby, and I carry a Magic 8 Ball in case I need a second opinion. I love <i>Dwarf Fortress</i>, <i>Crusader Kings</i>, and <i>The Sims</i>, and taking my three-year-old daughter out for rides on my e-bike.</p>
+                <h2>About me</h2>
+                <p>I’m Chelsea. I like tinkering with old computers, playing games that eat up an entire afternoon, and bothering my cat Birby. Lately I've been keeping a Magic 8 Ball in my bag in case I need reassurance. It always agrees with me as long as I shake it enough times.</p>
               </section>
             </div>
             <div className="profile-actions">
@@ -133,15 +130,15 @@ function AppContent({ entry, setCaption, open, close, active, desktopItems, sess
       )
     case 'computer':
     case 'documents':
-      return <DocumentExplorer onCaptionChange={updateCaption} key={navigation} favorites={favorites} initialFolder={folder ?? id} desktopItems={desktopItems}
-        sessionFolders={sessionFolders} sessionFiles={sessionFiles} move={move} locationDates={locationDates} addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} recycleBin={recycleBin}
-        openCredits={() => open('notepad')} openControlPanel={() => open('control')} />
+      return <DocumentExplorer onCaptionChange={updateCaption} key={navigation} favorites={favorites} initialFolder={folder ?? id} desktopItems={desktopItems} drag={drag}
+        sessionFolders={sessionFolders} sessionFiles={sessionFiles} openFile={openFile} move={move} locationDates={locationDates} addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} recycleBin={recycleBin}
+        openHelp={() => open('help')} openControlPanel={() => open('control')} />
     case 'notepad':
       return <pre className="notepad-text">{credits}</pre>
     case 'control':
       return <ControlPanel onClose={close} active={active} onCaptionChange={updateCaption} key={navigation} initialPage={entry.controlPage} openHelp={() => open('help')}
-        favoriteCommands={favorites.items.map(({ name, folder }) => ({
-          label: name, action: () => folder ? open('computer', folder) : open('notepad'),
+        favoriteCommands={favorites.items.map((target) => ({
+          label: target.name, action: () => favorites.open(target, (folder) => open('computer', folder)),
         }))}
         openFolder={(destination) => open(destination === 'documents' ? 'documents' : 'computer', destination)} />
     case 'help':
@@ -197,28 +194,47 @@ function DesktopSession({ crash }: { crash: () => void }) {
   const [windows, setWindows] = useState<WindowEntry[]>(() => returningToReview
     ? [{ id: 'about', instance: 0, minimized: false }, { id: 'control', instance: 1, minimized: false, controlPage: 'complaints' }]
     : [{ id: 'about', instance: 0, minimized: false }])
-  const [folderState, setFolderState] = useState<FolderState>({ folders: movableLocations.map((id) => ({ id, ...locations[id], modifiedAt: premadeModifiedAt })), files: [{ id: 'credits', name: 'Credits.txt', parent: 'documents', icon: 'document', modifiedAt: premadeModifiedAt }], trash: [], locationDates: {}, favoriteIds: ['documents'] })
+  const [folderState, setFolderState] = useState<FolderState>(() => ({
+    folders: movableLocations.map((id) => ({ id, ...locations[id], modifiedAt: premadeModifiedAt })),
+    files: initialFiles,
+    trash: [],
+    locationDates: {},
+    favorites: [
+      { id: 'documents', folder: 'documents', name: locations.documents.name, icon: locations.documents.icon },
+      ...initialFiles.filter(({ id }) => id !== 'linkedin').map(({ id, name, icon }) => ({ id, name, icon })),
+    ],
+  }))
   const { folders: sessionFolders, files: sessionFiles, trash, locationDates } = folderState
+  const [pendingRecycle, setPendingRecycle] = useState<string | null>(null)
+  const [brokenShortcut, setBrokenShortcut] = useState<string | null>(null)
   const [copiedItem, setCopiedItem] = useState<string | null>(null)
 
   function addFavorite(id: string, now: number) {
     setFolderState((state) => {
-      if (state.favoriteIds.includes(id) || !getFavoriteTarget(state, id)) return state
-      return touchFolderPath({ ...state, favoriteIds: [...state.favoriteIds, id] }, 'favorites', now)
+      const target = getFavoriteTarget(state, id)
+      if (!target || state.favorites.some((favorite) => favorite.id === id)) return state
+      return touchFolderPath({ ...state, favorites: [...state.favorites, target] }, 'favorites', now)
     })
   }
 
-  const favorites = {
-    items: folderState.favoriteIds.flatMap((id) => {
-      const item = getFavoriteTarget(folderState, id)
-      return item ? [item] : []
-    }),
+  const favorites: ExplorerFavorites = {
+    items: folderState.favorites.map((favorite) => getFavoriteTarget(folderState, favorite.id) ??
+      { ...favorite, broken: true, icon: deleteConfirmationIcon }),
+    open: (target, openFolder) => {
+      if (target.broken) setBrokenShortcut(target.name)
+      else if (target.folder) openFolder(target.folder)
+      else {
+        const file = sessionFiles.find(({ id }) => id === target.id)
+        if (file) openFile(file.id)
+      }
+    },
     copy: setCopiedItem,
     clipboardReady: Boolean(copiedItem && getFavoriteTarget(folderState, copiedItem)),
     paste: (now: number) => { if (copiedItem) addFavorite(copiedItem, now) },
-    remove: (id: string, now: number) => setFolderState((state) =>
-      touchFolderPath({ ...state, favoriteIds: state.favoriteIds.filter((item) => item !== id) }, 'favorites', now)),
   }
+  const recycleTarget = sessionFolders.find(({ id }) => id === pendingRecycle) ?? sessionFiles.find(({ id }) => id === pendingRecycle)
+    ?? favorites.items.map((item) => ({ ...item, id: favoriteShortcutId(item.id), shortcut: true }))
+      .find(({ id }) => id === pendingRecycle)
 
   const [hidingComplaints, setHidingComplaints] = useState(false)
   useEffect(() => {
@@ -281,7 +297,6 @@ function DesktopSession({ crash }: { crash: () => void }) {
 
   function folderNameExists(parent: FolderId, name: string, except?: FolderId) {
     const normalized = name.toLowerCase()
-    if (parent === 'desktop' && startingDesktop.some(({ label }) => label.toLowerCase() === normalized)) return true
     return [...Object.entries(fixedLocations), ...sessionFolders.map((folder) => [folder.id, folder] as const)]
       .some(([id, folder]) => id !== except && folder.parent === parent && folder.name.toLowerCase() === name.toLowerCase())
       || sessionFiles.some((file) => file.parent === parent && file.name.toLowerCase() === normalized)
@@ -315,13 +330,19 @@ function DesktopSession({ crash }: { crash: () => void }) {
     setFolderState((state) => recycleFolder(state, id, now))
   }
 
+  function drag(id: string) {
+    return dragItem(id, getDragActions(folderState, id))
+  }
+
   function move(id: string, parent: FolderId, now: number) {
-    if (parent === 'favorites') {
-      addFavorite(id, now)
+    if (parent === 'recycle') {
+      if (getDragActions(folderState, id).recyclable) setPendingRecycle(id)
       return
     }
-    if (parent === 'desktop' && startingDesktop.some(({ label }) =>
-      [...sessionFolders, ...sessionFiles].some((item) => item.id === id && item.name.toLowerCase() === label.toLowerCase()))) return
+    if (parent === 'favorites') {
+      addFavorite(favoriteTargetId(folderState, id), now)
+      return
+    }
     setFolderState((state) => moveItem(state, id, parent, now))
   }
 
@@ -388,14 +409,19 @@ function DesktopSession({ crash }: { crash: () => void }) {
     else open(id)
   }
 
+  function openFile(id: SessionFile['id']) {
+    if (id === 'credits') open('notepad')
+    else launchShortcut(id)
+  }
+
+  const desktopFiles = sessionFiles.filter(({ parent }) => parent === 'desktop').map((file) => ({
+    ...file, movable: true, open: () => openFile(file.id),
+  }))
   const desktopItems: DesktopItem[] = [
-    ...startingDesktop.map(({ id, label, icon }) => ({
-      id, name: label, icon, type: id === 'recycle' ? 'System Folder' : 'Shortcut',
-      folder: id === 'recycle' ? id : undefined, open: () => launchShortcut(id),
-    })),
-    ...sessionFiles.filter(({ parent }) => parent === 'desktop').map((file) => ({
-      ...file, type: 'Text document', movable: true, open: () => open('notepad'),
-    })),
+    ...desktopFiles.filter(({ id }) => id !== 'credits'),
+    { id: 'recycle', name: locations.recycle.name, icon: '/icons/recycle-bin.png',
+      type: 'System Folder', folder: 'recycle', open: () => launchShortcut('recycle') },
+    ...desktopFiles.filter(({ id }) => id === 'credits'),
     ...sessionFolders.filter(({ parent }) => parent === 'desktop').map((folder) => ({
       ...folder, type: 'File Folder', movable: true, folder: folder.id,
       open: () => open('computer', folder.id),
@@ -410,6 +436,17 @@ function DesktopSession({ crash }: { crash: () => void }) {
         dismissStart()
       }
     }}>
+      {brokenShortcut && <BlueScreen
+        message="An error has occurred. The shortcut could not be opened."
+        explanation={`“${brokenShortcut}” points to an item that is no longer available.`}
+        code="0016 : SHORTCUT_TARGET_MISSING" onContinue={() => setBrokenShortcut(null)} />}
+      {recycleTarget && <ExplorerItemDialog name={recycleTarget.name} isFolder={!('shortcut' in recycleTarget) && !('type' in recycleTarget)}
+        onCancel={() => setPendingRecycle(null)}
+        onConfirm={(event) => {
+          deleteFolder(recycleTarget.id, Math.round(performance.timeOrigin + event.timeStamp))
+          setSelectedShortcut(null)
+          setPendingRecycle(null)
+        }} />}
       <main className="desktop" ref={desktop}
         onDragOver={(event) => { if (!isPhone && !(event.target as Element).closest('.app-window, button')) dropItem('desktop', move).onDragOver(event) }}
         onDrop={(event) => { if (!isPhone && !(event.target as Element).closest('.app-window, button')) dropItem('desktop', move).onDrop(event) }}>
@@ -442,7 +479,7 @@ function DesktopSession({ crash }: { crash: () => void }) {
             </div>
             <button type="button" className="phone-owner" onClick={() => open('help')}>
               <img src="/icons/help-and-support.png" alt="" width="20" height="20" />
-              <span>Help and Support Center</span>
+              <span>Help and Support</span>
             </button>
           </section>
         )}
@@ -456,13 +493,17 @@ function DesktopSession({ crash }: { crash: () => void }) {
           ))}
           {desktopItems.filter(({ id }) => !isPhone || (id !== 'about' && id !== 'linkedin')).map((item) => (
             <button key={item.id} data-app={item.id} {...shortcutActivation(item.id, item.open)}
-              {...(item.movable ? dragItem(item.id) : {})}
-              {...(item.movable && item.folder ? dropItem(item.folder, move) : {})}
+              {...drag(item.id)}
+              {...(item.folder ? dropItem(item.folder, move) : {})}
               onKeyDown={(event) => {
-                if (event.key === 'Delete' && selectedShortcut === item.id && item.movable && !item.folder) {
+                if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c' &&
+                    getFavoriteTarget(folderState, item.id)) {
                   event.preventDefault()
-                  deleteFolder(item.id, Date.now())
-                  setSelectedShortcut(null)
+                  favorites.copy(item.id)
+                }
+                if (event.key === 'Delete' && selectedShortcut === item.id && (item.movable || item.recyclable)) {
+                  event.preventDefault()
+                  setPendingRecycle(item.id)
                 }
               }}>
               <img className="shortcut-icon" src={item.icon.startsWith('/') ? item.icon : '/icons/' + item.icon + '.png'} alt="" />
@@ -482,7 +523,7 @@ function DesktopSession({ crash }: { crash: () => void }) {
             <DesktopWindow key={instance} instance={instance} id={app.id} title={entry.caption ?? app.label} icon={app.icon}
               desktop={desktop} depth={depth} active={foreground} hidden={hidden}
               onActivate={() => activate(instance)} onMinimize={() => minimize(instance)} onClose={() => close(instance)}>
-              <AppContent entry={entry} favorites={favorites} desktopItems={desktopItems} sessionFolders={sessionFolders} sessionFiles={sessionFiles} move={move} locationDates={locationDates}
+              <AppContent entry={entry} favorites={favorites} drag={drag} desktopItems={desktopItems} sessionFolders={sessionFolders} sessionFiles={sessionFiles} openFile={openFile} move={move} locationDates={locationDates}
                 setCaption={setCaption}
                 addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} recycleBin={recycleBin} open={open} close={() => close(instance)} active={foreground} />
             </DesktopWindow>
@@ -533,16 +574,18 @@ function DesktopSession({ crash }: { crash: () => void }) {
                   <img src="/icons/control-panel.png" alt="" /> Control Panel
                 </button>
                 <button type="button" onClick={() => open('help')}>
-                  <img src="/icons/help-and-support.png" alt="" /> Help and Support Center
+                  <img src="/icons/help-and-support.png" alt="" /> Help and Support
                 </button>
               </div>
             </nav>
           ) : (
           <nav className="start-menu" id="start-menu" aria-label="Start menu">
-            <button className="start-header" ref={startProfileButton} onClick={() => open('about')}>
-              <img className="account-picture" src="/chelsea.jpg" alt="" width="44" height="44" />
+            <div className="start-header">
+              <button type="button" className="start-portrait" ref={startProfileButton} aria-label="Open About Me" onClick={() => open('about')}>
+                <img className="account-picture" src="/chelsea.jpg" alt="" width="40" height="40" />
+              </button>
               <span>Chelsea Simpson</span>
-            </button>
+            </div>
             <div className="start-columns">
               <div className="start-column">
                 <LinkedInShortcut onClick={dismissStart} />
@@ -565,7 +608,7 @@ function DesktopSession({ crash }: { crash: () => void }) {
                 <div className="start-system-group">
                   <button onClick={() => open('help')}>
                     <img className="start-app-icon" src="/icons/help-and-support.png" alt="" />
-                    Help and Support Center
+                    Help and Support
                   </button>
                 </div>
               </div>
