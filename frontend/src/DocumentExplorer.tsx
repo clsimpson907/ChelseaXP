@@ -16,6 +16,10 @@ import TaskPane, { TaskSection } from './TaskPane'
 import { fixedLocationIds, locations, premadeModifiedAt, type FolderId, type SessionFolder } from './explorerLocations'
 
 type Entry = { recyclable?: boolean; favoriteId?: string; modifiedAt?: number; id: string; name: string; icon: string; type: string; folder?: FolderId; open?: () => void }
+function isDrive(entry: Entry) {
+  return entry.id === 'disk' || entry.type === 'Removable Drive'
+}
+
 export type DesktopItem = Entry & { open: () => void; movable?: boolean }
 const modifiedDateFormat = new Intl.DateTimeFormat('en-US', { dateStyle: 'long' })
 const modifiedTimeFormat = new Intl.DateTimeFormat('en-US', { timeStyle: 'short' })
@@ -258,7 +262,7 @@ export default function DocumentExplorer({
     else recycleBin.restoreAll()
   }
 
-  const canManageSelection = !isRecycleLocation && selected && selected.id !== 'recycle' && selected.id !== 'published-complaints' && selected.type !== 'Removable Drive' && selected.id !== 'disk'
+  const canManageSelection = !isRecycleLocation && selected && selected.id !== 'recycle' && selected.id !== 'published-complaints' && !isDrive(selected)
   const copyId = !isRecycleLocation && selected
     ? selected.favoriteId ?? selected.folder ?? (selected.recyclable || sessionFiles.some((file) => file.id === selected.id) ? selected.id : undefined)
     : undefined
@@ -422,6 +426,7 @@ export default function DocumentExplorer({
             }} />
           {view === 'Details' && <small>{entry.type}</small>}
         </form> : <button type="button" className="explorer-item" aria-pressed={selection === entry.id}
+          data-drive={isDrive(entry) || undefined}
           {...(!isRecycleLocation ? drag(entry.folder ?? entry.id) : {})}
           {...(entry.folder ? dropItem(entry.folder, move) : {})}
           onPointerDown={(event) => { lastPointer.current = event.pointerType }}
@@ -572,7 +577,7 @@ export default function DocumentExplorer({
               {!isComputer && !isRecycleLocation && (canCreate || selected) && <TaskSection title="File and Folder Tasks">
                 {selected ? <>
                   {!selected.type.startsWith('Deleted ') && <button type="button" onClick={() => openEntry(selected)}>
-                    <Icon icon={selected.icon} /> {selected.type === 'Shortcut' ? 'Open shortcut' : selected.type === 'Removable Drive' || selected.id === 'disk' ? 'Open drive' : selected.folder ? 'Open this folder' : selected.type === 'Published complaint' ? 'Open complaint' : selected.type === 'Text document' ? 'Open in Notepad' : 'Open this item'}
+                    <Icon icon={selected.icon} /> {selected.type === 'Shortcut' ? 'Open shortcut' : isDrive(selected) ? 'Open drive' : selected.folder ? 'Open this folder' : selected.type === 'Published complaint' ? 'Open complaint' : selected.type === 'Text document' ? 'Open in Notepad' : 'Open this item'}
                   </button>}
                   {canManageSelection && <>
                     {!selected.favoriteId && <button type="button" onClick={renameSelection}>

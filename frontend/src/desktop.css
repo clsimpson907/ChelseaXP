@@ -1019,6 +1019,7 @@ a { color: #642989; }
 }
 .xp-file-explorer .explorer-item > img { flex: none; }
 .explorer-item-label { overflow-wrap: anywhere; }
+.explorer-item[data-drive][aria-pressed="true"]:focus-visible { outline: none; }
 :is(.shortcuts [data-selected="true"], .explorer-item[aria-pressed="true"]) > img {
   filter: saturate(.65) brightness(.90);
 }
@@ -1027,14 +1028,12 @@ a { color: #642989; }
   background: #785b75;
 }
 .app-window--inactive .explorer-item[aria-pressed="true"] > img {
-  filter: none;
-  outline: 2px solid #e4dcc7;
-  outline-offset: 2px;
+  filter: saturate(.35) brightness(.96);
 }
 
 .app-window--inactive .explorer-item[aria-pressed="true"] > .explorer-item-label {
   color: inherit;
-  background: var(--manila-gloss);
+  background: #e8e5e9;
 }
 
 .xp-file-explorer .explorer-items[data-view="Icons"] { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
