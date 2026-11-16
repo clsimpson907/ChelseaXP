@@ -1,6 +1,6 @@
 import { fixedLocations, type FolderId, type LocationId, type SessionFolder } from './explorerLocations'
 
-export type SessionFile = { id: 'credits' | 'about' | 'linkedin'; name: string; parent: FolderId; icon: string; type: string; modifiedAt: number }
+export type SessionFile = { id: 'credits' | 'about' | 'linkedin' | 'forkbomb'; name: string; parent: FolderId; icon: string; type: string; modifiedAt: number }
 export type DeletedFolder = { root: SessionFolder | SessionFile | FavoriteShortcut; isFile: boolean; descendants: SessionFolder[]; files: SessionFile[]; ancestors: SessionFolder[] }
 export const deleteConfirmationIcon = '/icons/delete-confirmation.png'
 

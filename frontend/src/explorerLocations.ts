@@ -33,3 +33,7 @@ export const movableLocations = ['documents', 'pictures', 'music', 'videos', 'do
 export const fixedLocationIds = locationIds.filter((id) => !movableLocations.some((movable) => movable === id))
 export const fixedLocations: Partial<Record<LocationId, { name: string; parent: FolderId | null; icon: string }>> =
   Object.fromEntries(fixedLocationIds.map((id) => [id, locations[id]]))
+
+export function canCreateFolder(id: FolderId, hiddenContents: boolean) {
+  return !hiddenContents && !['favorites', 'recycle', 'published-complaints', 'computer', 'network', 'birby'].includes(id)
+}

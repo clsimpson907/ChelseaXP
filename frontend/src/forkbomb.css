@@ -1,0 +1,78 @@
+.forkbomb {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+.forkbomb::backdrop { background: #43224738; }
+
+.forkbomb-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.forkbomb-popup { position: absolute; }
+
+.forkbomb-popup .title-bar {
+  min-height: 0;
+  height: 30px;
+  padding-block: 1px;
+  cursor: default;
+}
+
+.forkbomb-popup img {
+  display: block;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  object-fit: cover;
+  object-position: center bottom;
+}
+
+.forkbomb-popup[data-maximized] {
+  inset: 0;
+  border-radius: 0;
+}
+
+.forkbomb-popup[data-maximized] img { object-fit: contain; }
+
+.forkbomb-restore-strip {
+  position: absolute;
+  z-index: 1;
+  inset: auto 0 0;
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 6px;
+  background: var(--pink-gloss);
+}
+
+.forkbomb-restore-strip .task-button {
+  flex: 0 0 auto;
+  min-height: 36px;
+}
+
+.forkbomb-popup .window-controls { display: flex; }
+
+.forkbomb-popup .window-controls button {
+  width: 24px;
+  height: 24px;
+}
+
+@media (pointer: coarse) {
+  .forkbomb-popup .title-bar { height: 42px; padding-inline: 4px; gap: 3px; }
+  .forkbomb-popup .window-controls { gap: 2px; }
+
+  .forkbomb-popup .window-controls button {
+    width: 30px;
+    height: 36px;
+  }
+}

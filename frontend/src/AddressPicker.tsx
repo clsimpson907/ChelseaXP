@@ -1,7 +1,8 @@
 import { useId, useRef } from 'react'
 
-export default function AddressPicker<Id extends string>({ entries, value, onChange }: {
+export default function AddressPicker<Id extends string>({ entries, value, onChange, label = 'Address' }: {
   entries: { id: Id; name: string; icon: string; depth: number }[]
+  label?: string
   value: Id
   onChange: (id: Id) => void
 }) {
@@ -9,7 +10,7 @@ export default function AddressPicker<Id extends string>({ entries, value, onCha
   const trigger = useRef<HTMLButtonElement>(null)
 
   return <>
-    <button ref={trigger} type="button" className="explorer-address-toggle" popoverTarget={id} aria-label="Address" />
+    <button ref={trigger} type="button" className="explorer-address-toggle" popoverTarget={id} aria-label={label} />
     <div id={id} className="explorer-address-popup" popover="auto"
       onToggle={(event) => {
         if (event.newState !== 'open') return

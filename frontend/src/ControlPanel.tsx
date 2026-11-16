@@ -6,6 +6,7 @@ import { explorerPlaces, locations, type LocationId } from './explorerLocations'
 import ChromeOverflow from './ChromeOverflow'
 import ExplorerMenuBar, { type MenuAction } from './ExplorerMenuBar'
 import NavigationHistory from './NavigationHistory'
+import ToolbarDropdown from './ToolbarDropdown'
 import TaskPane, { TaskSection } from './TaskPane'
 
 const department = { id: 'complaints', label: 'Complaints Department', icon: '/icons/event-viewer.png' } as const
@@ -18,7 +19,7 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, favori
   onCaptionChange: (caption: string) => void
   initialPage?: 'complaints'
   openHelp: () => void
-  openFolder: (id: LocationId) => void
+  openFolder?: (id: LocationId) => void
 }) {
   const [view, setView] = useState<'category' | 'classic'>('category')
   const history = useNavigation<Location>(() => initialPage
@@ -86,7 +87,7 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, favori
     Edit: [{ label: 'Search', action: toggleSearch }],
     View: [{ label: switchLabel, action: switchView }],
     Favorites: favoriteCommands,
-    Tools: [{ label: 'Folders', action: () => setShowFolders(!showFolders) }],
+    Tools: openFolder ? [{ label: 'Folders', action: () => setShowFolders(!showFolders) }] : [],
     Help: [{ label: 'Help and Support', action: openHelp }],
   }
 
@@ -102,23 +103,20 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, favori
         <button type="button" aria-pressed={searchOpen} onClick={toggleSearch}>
           <img src="/icons/explorer-search.png" alt="" width="22" height="22" /> Search
         </button>
-        <button type="button" aria-pressed={showFolders} onClick={() => setShowFolders(!showFolders)}>
+        {openFolder && <button type="button" aria-pressed={showFolders} onClick={() => setShowFolders(!showFolders)}>
           <img src="/icons/explorer-folders.png" alt="" width="22" height="22" /> Folders
-        </button>
+        </button>}
         <span className="explorer-toolbar-divider" aria-hidden="true" />
-        <label className="explorer-view-picker" data-tooltip="Control Panel view">
-          <img src="/icons/explorer-view.png" alt="" width="22" height="22" />
-          <span aria-hidden="true">▾</span>
-          <select aria-label="Control Panel view" value={view} onChange={switchView}>
-            <option value="category">Category View</option>
-            <option value="classic">Classic View</option>
-          </select>
-        </label>
+        <ToolbarDropdown label="Control Panel view" icon="/icons/explorer-view.png"
+          options={[
+            { label: 'Category View', checked: view === 'category', action: () => { if (view !== 'category') switchView() } },
+            { label: 'Classic View', checked: view === 'classic', action: () => { if (view !== 'classic') switchView() } },
+          ]} />
         <ChromeOverflow kind="toolbar" commands={[
           { label: 'Forward', icon: 'forward', disabled: !navigation.forward.length, action: () => travel(navigation.forward[0].index) },
           { label: 'Up', icon: 'up', disabled: location.kind === 'home', action: up },
           { label: 'Search', icon: 'explorer-search', action: toggleSearch },
-          { label: 'Folders', icon: 'explorer-folders', action: () => setShowFolders(!showFolders) },
+          ...(openFolder ? [{ label: 'Folders', icon: 'explorer-folders', action: () => setShowFolders(!showFolders) }] : []),
           { label: 'Views', icon: 'explorer-view', children: menus.View },
         ]} />
       </div>
@@ -147,7 +145,7 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, favori
       </form>
       <div className={item ? "control-panel-layout control-panel-layout--department" : "control-panel-layout"}>
         {!item && <TaskPane label="Control Panel tasks">
-          {!showFolders && <>
+          {(!showFolders || !openFolder) && <>
             <TaskSection title="Control Panel" icon="/icons/control-panel.png">
             <button onClick={switchView}>
               <img src="/icons/control-panel.png" alt="" width="16" height="16" /> {switchLabel}
@@ -159,7 +157,7 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, favori
               </button>
             </TaskSection>
             </>}
-          {showFolders && <TaskSection title="Folders">
+          {showFolders && openFolder && <TaskSection title="Folders">
             {explorerPlaces.map((id) => (
               <button key={id} type="button" onClick={() => openFolder(id)}>
                 <img src={`/icons/${locations[id].icon}.png`} alt="" width="16" height="16" /> {locations[id].name}

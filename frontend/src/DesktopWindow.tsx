@@ -1,3 +1,5 @@
+import WindowTitleBar from './WindowTitleBar'
+import WindowControls from './WindowControls'
 import { useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent, ReactNode, RefObject } from 'react'
 
@@ -116,7 +118,7 @@ export default function DesktopWindow({
   return (
     <article
       id={`window-${instance}`}
-      className={`app-window${active ? '' : ' app-window--inactive'}${maximized ? ' app-window--maximized' : ''}${id === 'about' && !bounds && !maximized ? ' app-window--fit-profile' : ''}`}
+      className={`window-frame app-window${active ? '' : ' app-window--inactive'}${maximized ? ' app-window--maximized' : ''}${id === 'about' && !bounds && !maximized ? ' app-window--fit-profile' : ''}`}
       data-window={id}
       aria-labelledby={`window-title-${instance}`}
       ref={panel}
@@ -136,16 +138,11 @@ export default function DesktopWindow({
         }),
       }}
     >
-      <div className="title-bar" onPointerDown={(event) => begin(event, 'move')}
-        onPointerMove={update} onLostPointerCapture={end}>
-        <span id={`window-title-${instance}`}><img className="window-icon" src={icon} alt="" />{title}</span>
-        <div className="window-controls">
-          <button aria-label={`Minimize ${title}`} onClick={onMinimize}><span className="window-glyph window-glyph--minimize" aria-hidden="true" /></button>
-          <button className="window-maximize" aria-label={`${maximized ? 'Restore' : 'Maximize'} ${title}`}
-            onClick={() => setMaximized(!maximized)}><span className="window-glyph" data-restore={maximized} aria-hidden="true" /></button>
-          <button aria-label={`Close ${title}`} onClick={onClose}><span className="window-glyph window-glyph--close" aria-hidden="true" /></button>
-        </div>
-      </div>
+      <WindowTitleBar title={title} titleId={`window-title-${instance}`} icon={icon}
+        onPointerDown={(event) => begin(event, 'move')} onPointerMove={update} onLostPointerCapture={end}>
+        <WindowControls title={title} maximized={maximized} onMinimize={onMinimize}
+          onToggleMaximize={() => setMaximized(!maximized)} onClose={onClose} />
+      </WindowTitleBar>
       <div className={`window-body${id === 'about' ? ' window-body--profile' : isExplorerWindow ? ' window-body--explorer' : id === 'help' ? ' window-body--help' : ''}`}>
         {children}
       </div>

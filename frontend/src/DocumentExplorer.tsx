@@ -6,21 +6,26 @@ import ExplorerDialog from './ExplorerDialog'
 import { getPublishedCopies, refreshPublishedCopies, subscribeToPublishedCopies } from './publishedComplaints'
 import AddressPicker from './AddressPicker'
 import NavigationHistory from './NavigationHistory'
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import ToolbarDropdown from './ToolbarDropdown'
+import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from 'react'
 import InsertDiskDialog from './InsertDiskDialog'
 import ExplorerItemDialog from './ExplorerItemDialog'
 import SearchCompanion, { type SearchCriteria } from './SearchCompanion'
 import ChromeOverflow from './ChromeOverflow'
 import ExplorerMenuBar from './ExplorerMenuBar'
 import TaskPane, { TaskSection } from './TaskPane'
-import { fixedLocationIds, locations, premadeModifiedAt, type FolderId, type SessionFolder } from './explorerLocations'
+import { canCreateFolder, fixedLocationIds, locations, premadeModifiedAt, type FolderId, type SessionFolder } from './explorerLocations'
 
 type Entry = { recyclable?: boolean; favoriteId?: string; modifiedAt?: number; id: string; name: string; icon: string; type: string; folder?: FolderId; open?: () => void }
+function isDrive(entry: Entry) {
+  return entry.id === 'disk' || entry.type === 'Removable Drive'
+}
+
 export type DesktopItem = Entry & { open: () => void; movable?: boolean }
 const modifiedDateFormat = new Intl.DateTimeFormat('en-US', { dateStyle: 'long' })
 const modifiedTimeFormat = new Intl.DateTimeFormat('en-US', { timeStyle: 'short' })
 
-const views = ['Tiles', 'Icons', 'List', 'Details', 'Thumbnails'] as const
+const views = ['Thumbnails', 'Tiles', 'Icons', 'List', 'Details'] as const
 type View = (typeof views)[number]
 
 function Icon({ icon, size = 16 }: { icon: string; size?: number }) {
@@ -28,10 +33,14 @@ function Icon({ icon, size = 16 }: { icon: string; size?: number }) {
 }
 
 export default function DocumentExplorer({
-  onCaptionChange, initialFolder, openHelp, openControlPanel, sessionFolders, sessionFiles, openFile, move, locationDates, addFolder, renameFolder, deleteFolder, desktopItems, recycleBin, favorites, drag,
+  onCaptionChange, initialFolder, initialSearch, active, selection, setSelection, openHelp, openControlPanel, sessionFolders, sessionFiles, openFile, move, locationDates, addFolder, renameFolder, deleteFolder, desktopItems, recycleBin, favorites, drag,
 }: {
-  onCaptionChange: (caption: string) => void
+  onCaptionChange: (caption: string, icon: string) => void
   initialFolder: FolderId
+  initialSearch?: boolean
+  active: boolean
+  selection: string | null
+  setSelection: (id: string | null) => void
   openHelp: () => void
   openControlPanel: () => void
   sessionFolders: SessionFolder[]
@@ -69,7 +78,6 @@ export default function DocumentExplorer({
   const [emptyDrive, setEmptyDrive] = useState<{ drive: string; icon: string } | null>(null)
   const [accessDenied, setAccessDenied] = useState(false)
   const [itemDialog, setItemDialog] = useState<{ deleteName: string; isFolder: boolean; folder?: string } | { deniedName: string; operation: 'rename' | 'delete' } | null>(null)
-  const [selection, setSelection] = useState<string | null>(null)
   const [editing, setEditing] = useState<FolderId | null>(null)
   useEffect(() => {
     if (!editing) return
@@ -78,7 +86,7 @@ export default function DocumentExplorer({
   }, [editing])
   const [nameError, setNameError] = useState('')
   const [showMobileTasks, setShowMobileTasks] = useState(false)
-  const [sidebar, setSidebar] = useState<'tasks' | 'folders' | 'search'>('tasks')
+  const [sidebar, setSidebar] = useState<'tasks' | 'folders' | 'search'>(initialSearch ? 'search' : 'tasks')
   const [search, setSearch] = useState<SearchCriteria | null>(null)
   const [folderView, setFolderView] = useState<View>('Icons')
   const [desktopView, setDesktopView] = useState<View>('Icons')
@@ -156,7 +164,7 @@ export default function DocumentExplorer({
 
   const isRecycleLocation = locationId === 'recycle' || locationId === 'published-complaints'
   const isFavorites = locationId === 'favorites'
-  const canCreate = !isFavorites && !isRecycleLocation && !isComputer && !hiddenContents && locationId !== 'network' && locationId !== 'birby'
+  const canCreate = canCreateFolder(locationId, hiddenContents)
 
   function folderEntry(id: FolderId): Entry {
     const folder = folders[id]
@@ -199,8 +207,11 @@ export default function DocumentExplorer({
     { title: 'Devices with Removable Storage', entries: removableDrives },
   ]
   const activeSearch = sidebar === 'search' ? search : null
-  const caption = activeSearch ? 'Search Results' : location.name
-  useEffect(() => onCaptionChange(caption), [caption, onCaptionChange])
+  const searchWelcome = initialSearch && locationId === initialFolder && sidebar === 'search' && !activeSearch
+  const showSearchResults = Boolean(activeSearch || searchWelcome)
+  const caption = showSearchResults ? 'Search Results' : location.name
+  const captionIcon = showSearchResults ? 'search-results' : location.icon
+  useEffect(() => onCaptionChange(caption, '/icons/' + captionIcon + '.png'), [caption, captionIcon, onCaptionChange])
   const entries = activeSearch ? searchEntries(activeSearch)
     : isComputer ? computerGroups.flatMap((group) => group.entries)
     : (isDesktop ? desktopItems : isFavorites ? favoriteEntries : [...folderEntries,
@@ -256,7 +267,7 @@ export default function DocumentExplorer({
     else recycleBin.restoreAll()
   }
 
-  const canManageSelection = !isRecycleLocation && selected && selected.id !== 'recycle' && selected.id !== 'published-complaints' && selected.type !== 'Removable Drive' && selected.id !== 'disk'
+  const canManageSelection = !isRecycleLocation && selected && selected.id !== 'recycle' && selected.id !== 'published-complaints' && !isDrive(selected)
   const copyId = !isRecycleLocation && selected
     ? selected.favoriteId ?? selected.folder ?? (selected.recyclable || sessionFiles.some((file) => file.id === selected.id) ? selected.id : undefined)
     : undefined
@@ -313,6 +324,47 @@ export default function DocumentExplorer({
     if (entry.folder) openLocation(entry.folder)
     else if (entry.open) entry.open()
   }
+
+  function focusFiles() {
+    requestAnimationFrame(() => files.current?.focus({ preventScroll: true }))
+  }
+
+  function dismissItemDialog() {
+    setItemDialog(null)
+    focusFiles()
+  }
+
+  const runItemShortcut = useEffectEvent((event: KeyboardEvent) => {
+    if (!selected || event.defaultPrevented || event.repeat || event.isComposing ||
+      event.ctrlKey || event.metaKey || event.altKey || event.shiftKey ||
+      (event.key !== 'Enter' && event.key !== 'Delete')) return
+
+    const target = event.target
+    const explorer = files.current?.closest('.app-window')
+    if (!(target instanceof HTMLElement) || !explorer ||
+      (target !== document.body && !explorer.contains(target)) ||
+      target.isContentEditable ||
+      target.closest('input, textarea, select, dialog, a, .explorer-menu-bar, [popover]') ||
+      document.querySelector('dialog[open], #start-menu, :popover-open')) return
+
+    const button = target.closest('button')
+    if (button && (event.key === 'Enter' || !button.matches('.explorer-item'))) return
+
+    if (event.key === 'Delete' && canManageSelection) {
+      event.preventDefault()
+      deleteSelection()
+    } else if (event.key === 'Enter') {
+      event.preventDefault()
+      openEntry(selected)
+    }
+  })
+
+  useEffect(() => {
+    if (!active) return
+    const onKeyDown = (event: KeyboardEvent) => runItemShortcut(event)
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [active])
 
   function createFolder() {
     if (!canCreate) return
@@ -379,6 +431,7 @@ export default function DocumentExplorer({
             }} />
           {view === 'Details' && <small>{entry.type}</small>}
         </form> : <button type="button" className="explorer-item" aria-pressed={selection === entry.id}
+          data-drive={isDrive(entry) || undefined}
           {...(!isRecycleLocation ? drag(entry.folder ?? entry.id) : {})}
           {...(entry.folder ? dropItem(entry.folder, move) : {})}
           onPointerDown={(event) => { lastPointer.current = event.pointerType }}
@@ -408,9 +461,6 @@ export default function DocumentExplorer({
           if (key === 'c') copySelection()
           else favorites.paste(Math.round(performance.timeOrigin + event.timeStamp))
         }
-      } else if (event.key === 'Delete' && canManageSelection) {
-        event.preventDefault()
-        deleteSelection()
       }
     }}>
       {accessDenied && <ExplorerDialog title="Birby" onClose={() => setAccessDenied(false)}>
@@ -428,9 +478,9 @@ export default function DocumentExplorer({
         <div className="published-complaint-message">{readingComplaint.message}</div>
       </ExplorerDialog>}
       {emptyDrive && <InsertDiskDialog {...emptyDrive} onClose={() => setEmptyDrive(null)} />}
-      {denied && <ExplorerItemDialog name={denied.deniedName} operation={denied.operation} onCancel={() => setItemDialog(null)} />}
+      {denied && <ExplorerItemDialog name={denied.deniedName} operation={denied.operation} onCancel={dismissItemDialog} />}
       {deleteTarget && <ExplorerItemDialog name={deleteTarget.deleteName} isFolder={deleteTarget.isFolder}
-        onCancel={() => setItemDialog(null)}
+        onCancel={dismissItemDialog}
         onConfirm={() => {
           if (!deleteTarget.folder) {
             setItemDialog({ deniedName: deleteTarget.deleteName, operation: 'delete' })
@@ -439,7 +489,7 @@ export default function DocumentExplorer({
           deleteFolder(deleteTarget.folder, Date.now())
           setItemDialog(null)
           setSelection(null)
-          requestAnimationFrame(() => files.current?.focus({ preventScroll: true }))
+          focusFiles()
         }} />}
       <ExplorerMenuBar label="Explorer menus" menus={menuActions} />
       <div className="explorer-toolbar" role="group" aria-label="Explorer navigation">
@@ -454,12 +504,8 @@ export default function DocumentExplorer({
           <Icon icon="explorer-folders" size={22} /> Folders
         </button>
         <span className="explorer-toolbar-divider" aria-hidden="true" />
-        <label className="explorer-view-picker" data-tooltip="View">
-          <Icon icon="explorer-view" size={22} /><span aria-hidden="true">▾</span>
-          <select aria-label="View" disabled={hiddenContents} value={view} onChange={(event) => setView(event.target.value as View)}>
-            {views.map((option) => <option key={option}>{option}</option>)}
-          </select>
-        </label>
+        <ToolbarDropdown label="View" icon="/icons/explorer-view.png" disabled={hiddenContents}
+          options={views.map((option) => ({ label: option, checked: view === option, action: () => setView(option) }))} />
         <ChromeOverflow kind="toolbar" commands={[
           { label: 'Forward', icon: 'forward', disabled: !forward.length, action: () => travel(forward[0].index) },
           { label: 'Up', icon: 'up', disabled: !location.parent, action: () => { if (location.parent) openLocation(location.parent) } },
@@ -475,11 +521,11 @@ export default function DocumentExplorer({
         <span>Address</span>
         <span className="explorer-address explorer-address--icon">
           <span className="explorer-address-parts">
-            <Icon icon={folders[addressId].icon} />
+            <Icon icon={showSearchResults ? captionIcon : folders[addressId].icon} />
             {addressParts.map((id, index) => (
               <span className="explorer-address-part" key={id}>
                 {index > 0 && <span aria-hidden="true">›</span>}
-                {id === addressId ? <span>{id === 'disk' ? folderPath(id) : folders[id].name}</span>
+                {id === addressId ? <span>{showSearchResults ? caption : id === 'disk' ? folderPath(id) : folders[id].name}</span>
                   : <button type="button" onClick={() => openLocation(id)}>{folders[id].name}</button>}
               </span>
             ))}
@@ -532,7 +578,7 @@ export default function DocumentExplorer({
               {!isComputer && !isRecycleLocation && (canCreate || selected) && <TaskSection title="File and Folder Tasks">
                 {selected ? <>
                   {!selected.type.startsWith('Deleted ') && <button type="button" onClick={() => openEntry(selected)}>
-                    <Icon icon={selected.icon} /> {selected.type === 'Shortcut' ? 'Open shortcut' : selected.type === 'Removable Drive' || selected.id === 'disk' ? 'Open drive' : selected.folder ? 'Open this folder' : selected.type === 'Published complaint' ? 'Open complaint' : selected.type === 'Text document' ? 'Open in Notepad' : 'Open this item'}
+                    <Icon icon={selected.icon} /> {selected.type === 'Shortcut' ? 'Open shortcut' : isDrive(selected) ? 'Open drive' : selected.folder ? 'Open this folder' : selected.type === 'Published complaint' ? 'Open complaint' : selected.type === 'Text document' ? 'Open in Notepad' : 'Open this item'}
                   </button>}
                   {canManageSelection && <>
                     {!selected.favoriteId && <button type="button" onClick={renameSelection}>
@@ -586,7 +632,7 @@ export default function DocumentExplorer({
           </TaskPane>}
         </div>
         <div className="explorer-file-pane" data-music={isMusic && !activeSearch} data-pictures={isPictures && !activeSearch}>
-        <section className="explorer-files" data-protected={hiddenContents} ref={files} tabIndex={-1} aria-label={location.name}
+        <section className="explorer-files" data-protected={hiddenContents} data-search-welcome={searchWelcome || undefined} ref={files} tabIndex={-1} aria-label={location.name}
           {...((canCreate || isFavorites || locationId === 'recycle') && !activeSearch ? dropItem(locationId, move) : {})}
           onClick={(event) => {
             if (!(event.target as HTMLElement).closest('li')) {
@@ -602,7 +648,8 @@ export default function DocumentExplorer({
               <p>This folder contains files that keep your system working properly. You should not modify its contents.</p>
               {isProtectedDisk && <button type="button" onClick={() => { setDriveRevealed(true); resetFolderState() }}>Show the contents of this drive</button>}
             </div>
-          ) : isComputer && !activeSearch ? computerGroups.map((group) => (
+          ) : searchWelcome ? <p className="explorer-empty">To start your search, choose an option in Search Companion.</p>
+          : isComputer && !activeSearch ? computerGroups.map((group) => (
             <section className="explorer-computer-group" key={group.title} aria-label={group.title}>
               <h2>{group.title}</h2>
               {renderEntries(group.entries)}

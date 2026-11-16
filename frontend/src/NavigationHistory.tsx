@@ -1,18 +1,4 @@
-function HistoryDropdown({ label, entries, onSelect }: {
-  label: string
-  entries: { name: string; index: number }[]
-  onSelect: (index: number) => void
-}) {
-  return (
-    <span className="explorer-history" data-disabled={entries.length === 0} data-tooltip={label}>
-      <select aria-label={label} disabled={entries.length === 0} value=""
-        onChange={(event) => { if (event.target.value) onSelect(Number(event.target.value)) }}>
-        <option value="" disabled>{label}</option>
-        {entries.map(({ name, index }) => <option key={index} value={index}>{name}</option>)}
-      </select>
-    </span>
-  )
-}
+import ToolbarDropdown from './ToolbarDropdown'
 
 type HistoryEntry = { name: string; index: number }
 
@@ -30,7 +16,8 @@ export default function NavigationHistory({ back, forward, onSelect }: {
         <img src={'/icons/' + icon + '.png'} alt="" width="22" height="22" />
         {icon === 'back' && 'Back'}
       </button>
-      <HistoryDropdown label={label + ' history'} entries={entries} onSelect={onSelect} />
+      <ToolbarDropdown label={label + ' history'}
+        options={entries.map(({ name, index }) => ({ label: name, action: () => onSelect(index) }))} />
     </div>
   )))
 }
