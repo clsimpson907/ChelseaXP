@@ -1,13 +1,14 @@
-import { useId, useRef } from 'react'
+import { useId, useRef, type RefObject } from 'react'
 
 import { positionToolbarPopup } from './positionToolbarPopup'
 
 type Option = { label: string; action: () => void; checked?: boolean }
 
-export default function ToolbarDropdown({ label, icon, options, disabled = false }: {
+export default function ToolbarDropdown({ label, icon, options, fieldAnchor, disabled = false }: {
   label: string
   icon?: string
   options: Option[]
+  fieldAnchor?: RefObject<HTMLElement | null>
   disabled?: boolean
 }) {
   const id = useId()
@@ -16,19 +17,21 @@ export default function ToolbarDropdown({ label, icon, options, disabled = false
   return (
     <div className={icon ? 'explorer-view-picker' : 'explorer-history'}>
       <button ref={trigger} type="button" aria-label={label} aria-haspopup="menu"
-        data-tooltip={label} popoverTarget={id} disabled={disabled || options.length === 0}>
+        data-tooltip={fieldAnchor ? undefined : label} popoverTarget={id} disabled={disabled || options.length === 0}>
         {icon && <img src={icon} alt="" width="22" height="22" />}
         <span className="toolbar-dropdown-arrow" aria-hidden="true" />
       </button>
-      <div id={id} className="xp-overflow-popup toolbar-dropdown-menu" popover="auto"
+      <div id={id} className={`xp-overflow-popup toolbar-dropdown-menu${fieldAnchor ? ' field-dropdown-menu' : ''}`} popover="auto"
         role="menu" aria-label={label}
         onToggle={(event) => {
           if (event.newState !== 'open' || !trigger.current) return
           const menu = event.currentTarget
-          positionToolbarPopup(menu, trigger.current)
+          const anchor = fieldAnchor?.current
+          if (anchor) menu.style.width = anchor.getBoundingClientRect().width + 'px'
+          positionToolbarPopup(menu, anchor ?? trigger.current)
           const initial = menu.querySelector<HTMLButtonElement>('[aria-checked="true"]') ??
             menu.querySelector<HTMLButtonElement>('button')
-          initial?.focus()
+          initial?.focus({ preventScroll: true })
         }}
         onKeyDown={(event) => {
           if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
@@ -44,7 +47,7 @@ export default function ToolbarDropdown({ label, icon, options, disabled = false
           <button key={index} type="button" role={checked === undefined ? 'menuitem' : 'menuitemradio'}
             aria-checked={checked} tabIndex={-1} onClick={(event) => {
               event.currentTarget.closest<HTMLElement>('[popover]')?.hidePopover()
-              trigger.current?.focus()
+              trigger.current?.focus({ preventScroll: true })
               action()
             }}>
             {checked !== undefined && <span className="toolbar-dropdown-dot" aria-hidden="true">{checked ? '●' : ''}</span>}

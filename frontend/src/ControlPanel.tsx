@@ -19,7 +19,7 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, favori
   onCaptionChange: (caption: string) => void
   initialPage?: 'complaints'
   openHelp: () => void
-  openFolder: (id: LocationId) => void
+  openFolder?: (id: LocationId) => void
 }) {
   const [view, setView] = useState<'category' | 'classic'>('category')
   const history = useNavigation<Location>(() => initialPage
@@ -87,7 +87,7 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, favori
     Edit: [{ label: 'Search', action: toggleSearch }],
     View: [{ label: switchLabel, action: switchView }],
     Favorites: favoriteCommands,
-    Tools: [{ label: 'Folders', action: () => setShowFolders(!showFolders) }],
+    Tools: openFolder ? [{ label: 'Folders', action: () => setShowFolders(!showFolders) }] : [],
     Help: [{ label: 'Help and Support', action: openHelp }],
   }
 
@@ -103,9 +103,9 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, favori
         <button type="button" aria-pressed={searchOpen} onClick={toggleSearch}>
           <img src="/icons/explorer-search.png" alt="" width="22" height="22" /> Search
         </button>
-        <button type="button" aria-pressed={showFolders} onClick={() => setShowFolders(!showFolders)}>
+        {openFolder && <button type="button" aria-pressed={showFolders} onClick={() => setShowFolders(!showFolders)}>
           <img src="/icons/explorer-folders.png" alt="" width="22" height="22" /> Folders
-        </button>
+        </button>}
         <span className="explorer-toolbar-divider" aria-hidden="true" />
         <ToolbarDropdown label="Control Panel view" icon="/icons/explorer-view.png"
           options={[
@@ -116,7 +116,7 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, favori
           { label: 'Forward', icon: 'forward', disabled: !navigation.forward.length, action: () => travel(navigation.forward[0].index) },
           { label: 'Up', icon: 'up', disabled: location.kind === 'home', action: up },
           { label: 'Search', icon: 'explorer-search', action: toggleSearch },
-          { label: 'Folders', icon: 'explorer-folders', action: () => setShowFolders(!showFolders) },
+          ...(openFolder ? [{ label: 'Folders', icon: 'explorer-folders', action: () => setShowFolders(!showFolders) }] : []),
           { label: 'Views', icon: 'explorer-view', children: menus.View },
         ]} />
       </div>
@@ -145,7 +145,7 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, favori
       </form>
       <div className={item ? "control-panel-layout control-panel-layout--department" : "control-panel-layout"}>
         {!item && <TaskPane label="Control Panel tasks">
-          {!showFolders && <>
+          {(!showFolders || !openFolder) && <>
             <TaskSection title="Control Panel" icon="/icons/control-panel.png">
             <button onClick={switchView}>
               <img src="/icons/control-panel.png" alt="" width="16" height="16" /> {switchLabel}
@@ -157,7 +157,7 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, favori
               </button>
             </TaskSection>
             </>}
-          {showFolders && <TaskSection title="Folders">
+          {showFolders && openFolder && <TaskSection title="Folders">
             {explorerPlaces.map((id) => (
               <button key={id} type="button" onClick={() => openFolder(id)}>
                 <img src={`/icons/${locations[id].icon}.png`} alt="" width="16" height="16" /> {locations[id].name}

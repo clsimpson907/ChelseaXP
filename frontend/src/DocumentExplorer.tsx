@@ -14,7 +14,7 @@ import SearchCompanion, { type SearchCriteria } from './SearchCompanion'
 import ChromeOverflow from './ChromeOverflow'
 import ExplorerMenuBar from './ExplorerMenuBar'
 import TaskPane, { TaskSection } from './TaskPane'
-import { fixedLocationIds, locations, premadeModifiedAt, type FolderId, type SessionFolder } from './explorerLocations'
+import { canCreateFolder, fixedLocationIds, locations, premadeModifiedAt, type FolderId, type SessionFolder } from './explorerLocations'
 
 type Entry = { recyclable?: boolean; favoriteId?: string; modifiedAt?: number; id: string; name: string; icon: string; type: string; folder?: FolderId; open?: () => void }
 function isDrive(entry: Entry) {
@@ -33,10 +33,11 @@ function Icon({ icon, size = 16 }: { icon: string; size?: number }) {
 }
 
 export default function DocumentExplorer({
-  onCaptionChange, initialFolder, active, selection, setSelection, openHelp, openControlPanel, sessionFolders, sessionFiles, openFile, move, locationDates, addFolder, renameFolder, deleteFolder, desktopItems, recycleBin, favorites, drag,
+  onCaptionChange, initialFolder, initialSearch, active, selection, setSelection, openHelp, openControlPanel, sessionFolders, sessionFiles, openFile, move, locationDates, addFolder, renameFolder, deleteFolder, desktopItems, recycleBin, favorites, drag,
 }: {
-  onCaptionChange: (caption: string) => void
+  onCaptionChange: (caption: string, icon: string) => void
   initialFolder: FolderId
+  initialSearch?: boolean
   active: boolean
   selection: string | null
   setSelection: (id: string | null) => void
@@ -85,7 +86,7 @@ export default function DocumentExplorer({
   }, [editing])
   const [nameError, setNameError] = useState('')
   const [showMobileTasks, setShowMobileTasks] = useState(false)
-  const [sidebar, setSidebar] = useState<'tasks' | 'folders' | 'search'>('tasks')
+  const [sidebar, setSidebar] = useState<'tasks' | 'folders' | 'search'>(initialSearch ? 'search' : 'tasks')
   const [search, setSearch] = useState<SearchCriteria | null>(null)
   const [folderView, setFolderView] = useState<View>('Icons')
   const [desktopView, setDesktopView] = useState<View>('Icons')
@@ -163,7 +164,7 @@ export default function DocumentExplorer({
 
   const isRecycleLocation = locationId === 'recycle' || locationId === 'published-complaints'
   const isFavorites = locationId === 'favorites'
-  const canCreate = !isFavorites && !isRecycleLocation && !isComputer && !hiddenContents && locationId !== 'network' && locationId !== 'birby'
+  const canCreate = canCreateFolder(locationId, hiddenContents)
 
   function folderEntry(id: FolderId): Entry {
     const folder = folders[id]
@@ -206,8 +207,11 @@ export default function DocumentExplorer({
     { title: 'Devices with Removable Storage', entries: removableDrives },
   ]
   const activeSearch = sidebar === 'search' ? search : null
-  const caption = activeSearch ? 'Search Results' : location.name
-  useEffect(() => onCaptionChange(caption), [caption, onCaptionChange])
+  const searchWelcome = initialSearch && locationId === initialFolder && sidebar === 'search' && !activeSearch
+  const showSearchResults = Boolean(activeSearch || searchWelcome)
+  const caption = showSearchResults ? 'Search Results' : location.name
+  const captionIcon = showSearchResults ? 'search-results' : location.icon
+  useEffect(() => onCaptionChange(caption, '/icons/' + captionIcon + '.png'), [caption, captionIcon, onCaptionChange])
   const entries = activeSearch ? searchEntries(activeSearch)
     : isComputer ? computerGroups.flatMap((group) => group.entries)
     : (isDesktop ? desktopItems : isFavorites ? favoriteEntries : [...folderEntries,
@@ -517,11 +521,11 @@ export default function DocumentExplorer({
         <span>Address</span>
         <span className="explorer-address explorer-address--icon">
           <span className="explorer-address-parts">
-            <Icon icon={folders[addressId].icon} />
+            <Icon icon={showSearchResults ? captionIcon : folders[addressId].icon} />
             {addressParts.map((id, index) => (
               <span className="explorer-address-part" key={id}>
                 {index > 0 && <span aria-hidden="true">›</span>}
-                {id === addressId ? <span>{id === 'disk' ? folderPath(id) : folders[id].name}</span>
+                {id === addressId ? <span>{showSearchResults ? caption : id === 'disk' ? folderPath(id) : folders[id].name}</span>
                   : <button type="button" onClick={() => openLocation(id)}>{folders[id].name}</button>}
               </span>
             ))}
@@ -628,7 +632,7 @@ export default function DocumentExplorer({
           </TaskPane>}
         </div>
         <div className="explorer-file-pane" data-music={isMusic && !activeSearch} data-pictures={isPictures && !activeSearch}>
-        <section className="explorer-files" data-protected={hiddenContents} ref={files} tabIndex={-1} aria-label={location.name}
+        <section className="explorer-files" data-protected={hiddenContents} data-search-welcome={searchWelcome || undefined} ref={files} tabIndex={-1} aria-label={location.name}
           {...((canCreate || isFavorites || locationId === 'recycle') && !activeSearch ? dropItem(locationId, move) : {})}
           onClick={(event) => {
             if (!(event.target as HTMLElement).closest('li')) {
@@ -644,7 +648,8 @@ export default function DocumentExplorer({
               <p>This folder contains files that keep your system working properly. You should not modify its contents.</p>
               {isProtectedDisk && <button type="button" onClick={() => { setDriveRevealed(true); resetFolderState() }}>Show the contents of this drive</button>}
             </div>
-          ) : isComputer && !activeSearch ? computerGroups.map((group) => (
+          ) : searchWelcome ? <p className="explorer-empty">To start your search, choose an option in Search Companion.</p>
+          : isComputer && !activeSearch ? computerGroups.map((group) => (
             <section className="explorer-computer-group" key={group.title} aria-label={group.title}>
               <h2>{group.title}</h2>
               {renderEntries(group.entries)}

@@ -1,3 +1,5 @@
+import RunDialog from './RunDialog'
+import { rememberRunEntry, type RunTarget } from './runEntries'
 import ExplorerItemDialog from './ExplorerItemDialog'
 import BlueScreen from './BlueScreen'
 import ForkBomb from './ForkBomb'
@@ -31,7 +33,11 @@ const apps = [
 ] as const
 
 type AppId = (typeof apps)[number]['id']
-type WindowEntry = { id: AppId; instance: number; caption?: string; minimized: boolean; folder?: FolderId; navigation?: number; controlPage?: 'complaints'; helpTopic?: string }
+
+function isExplorerApp(id: string) {
+  return id === 'computer' || id === 'documents'
+}
+type WindowEntry = { id: AppId; instance: number; caption?: string; icon?: string; minimized: boolean; folder?: FolderId; navigation?: number; controlPage?: 'complaints'; helpTopic?: string; search?: boolean }
 
 let nextWindowInstance = 2
 
@@ -77,14 +83,14 @@ function LinkedInShortcut({ onClick }: { onClick?: () => void }) {
   )
 }
 
-function AppContent({ entry, selection, setSelection, setCaption, open, close, active, desktopItems, sessionFolders, sessionFiles, openFile, move, locationDates, addFolder, renameFolder, deleteFolder, recycleBin, favorites, drag }: {
+function AppContent({ entry, selection, setSelection, setCaption, open, close, active, explorerAvailable, desktopItems, sessionFolders, sessionFiles, openFile, move, locationDates, addFolder, renameFolder, deleteFolder, recycleBin, favorites, drag }: {
   entry: WindowEntry
   selection: string | null
   setSelection: (id: string | null) => void
   desktopItems: DesktopItem[]
   drag: (id: string) => ReturnType<typeof dragItem>
   favorites: ExplorerFavorites
-  setCaption: (instance: number, caption: string) => void
+  setCaption: (instance: number, caption: string, icon?: string) => void
   sessionFolders: SessionFolder[]
   sessionFiles: SessionFile[]
   openFile: (id: SessionFile['id']) => void
@@ -103,9 +109,10 @@ function AppContent({ entry, selection, setSelection, setCaption, open, close, a
   open: (id: AppId, folder?: FolderId, controlPage?: 'complaints', helpTopic?: string) => void
   close: () => void
   active: boolean
+  explorerAvailable: boolean
 }) {
   const { id, folder, navigation, instance } = entry
-  const updateCaption = useCallback((caption: string) => setCaption(instance, caption), [instance, setCaption])
+  const updateCaption = useCallback((caption: string, icon?: string) => setCaption(instance, caption, icon), [instance, setCaption])
   switch (id) {
     case 'about':
       return (
@@ -127,24 +134,24 @@ function AppContent({ entry, selection, setSelection, setCaption, open, close, a
               </section>
             </div>
             <div className="profile-actions">
-              <button onClick={() => open('documents')}>Open My Documents →</button>
+              {explorerAvailable && <button onClick={() => open('documents')}>Open My Documents →</button>}
             </div>
           </div>
         </div>
       )
     case 'computer':
     case 'documents':
-      return <DocumentExplorer active={active} onCaptionChange={updateCaption} selection={selection} setSelection={setSelection} key={navigation} favorites={favorites} initialFolder={folder ?? id} desktopItems={desktopItems} drag={drag}
+      return <DocumentExplorer active={active} onCaptionChange={updateCaption} selection={selection} setSelection={setSelection} key={navigation} favorites={favorites} initialFolder={folder ?? id} initialSearch={entry.search} desktopItems={desktopItems} drag={drag}
         sessionFolders={sessionFolders} sessionFiles={sessionFiles} openFile={openFile} move={move} locationDates={locationDates} addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} recycleBin={recycleBin}
         openHelp={() => open('help')} openControlPanel={() => open('control')} />
     case 'notepad':
       return <pre className="notepad-text">{credits}</pre>
     case 'control':
       return <ControlPanel onClose={close} active={active} onCaptionChange={updateCaption} key={navigation} initialPage={entry.controlPage} openHelp={() => open('help')}
-        favoriteCommands={favorites.items.map((target) => ({
+        favoriteCommands={explorerAvailable ? favorites.items.map((target) => ({
           label: target.name, action: () => favorites.open(target, (folder) => open('computer', folder)),
-        }))}
-        openFolder={(destination) => open(destination === 'documents' ? 'documents' : 'computer', destination)} />
+        })) : []}
+        openFolder={explorerAvailable ? (destination) => open(destination === 'documents' ? 'documents' : 'computer', destination) : undefined} />
     case 'help':
       return <HelpCenter onCaptionChange={updateCaption} key={navigation} initialTopic={entry.helpTopic} openComplaints={() => open('complaints')} openDepartment={() => open('control', undefined, 'complaints')} />
     case 'complaints':
@@ -269,6 +276,9 @@ function DesktopSession({ crash }: { crash: () => void }) {
   const [phoneHome, setPhoneHome] = useState(!returningToReview)
   const [phonePage, setPhonePage] = useState<'today' | 'programs' | 'calendar'>('today')
   const [startOpen, setStartOpen] = useState(false)
+  const [runOpen, setRunOpen] = useState(false)
+  const [recentRunEntries, setRecentRunEntries] = useState<string[]>([])
+  const [recentRunDocuments, setRecentRunDocuments] = useState<string[]>([])
   const [forkBombOpen, setForkBombOpen] = useState(false)
   const [explorerSelection, setExplorerSelection] = useState<{ owner: string; id: string } | null>(null)
   const [selectedShortcut, setSelectedShortcut] = useState<string | null>(null)
@@ -278,7 +288,8 @@ function DesktopSession({ crash }: { crash: () => void }) {
   const startProfileButton = useRef<HTMLButtonElement>(null)
   const isPhone = useSyncExternalStore(subscribeToPhoneLayout, isPhoneLayout)
 
-  const active = windows.findLast((entry) => !entry.minimized)?.instance
+  const availableWindows = isPhone ? windows.filter(({ id }) => !isExplorerApp(id)) : windows
+  const active = availableWindows.findLast((entry) => !entry.minimized)?.instance
   const phoneApp = isPhone && !phoneHome ? active : undefined
 
   useEffect(() => {
@@ -363,15 +374,16 @@ function DesktopSession({ crash }: { crash: () => void }) {
     }
   }
 
-  function open(id: AppId, folder?: FolderId, controlPage?: 'complaints', helpTopic?: string) {
+  function open(id: AppId, folder?: FolderId, controlPage?: 'complaints', helpTopic?: string, search?: boolean) {
+    if (isPhone && isExplorerApp(id)) return
     const destinationId = folder ?? (id === 'documents' ? 'documents' : undefined)
     if (destinationId && !Object.hasOwn(fixedLocations, destinationId) &&
       !sessionFolders.some((item) => item.id === destinationId)) return
     const existing = isPhone ? windows.findLast((entry) => entry.id === id) : undefined
     const instance = existing?.instance ?? nextWindowInstance++
     const entry = { ...existing, id, instance, minimized: false }
-    const destination = folder || controlPage || helpTopic
-      ? { ...entry, folder, controlPage, helpTopic, caption: undefined, navigation: (entry.navigation ?? 0) + 1 }
+    const destination = folder || controlPage || helpTopic || search
+      ? { ...entry, folder, controlPage, helpTopic, search, caption: undefined, icon: undefined, navigation: (entry.navigation ?? 0) + 1 }
       : entry
     setWindows((entries) => [...entries.filter((item) => item.instance !== instance), destination])
     setPhoneHome(false)
@@ -400,8 +412,8 @@ function DesktopSession({ crash }: { crash: () => void }) {
     document.getElementById(`task-${instance}`)?.focus()
   }
 
-  const setCaption = useCallback((instance: number, caption: string) => {
-    setWindows((entries) => entries.map((entry) => entry.instance === instance ? { ...entry, caption } : entry))
+  const setCaption = useCallback((instance: number, caption: string, icon?: string) => {
+    setWindows((entries) => entries.map((entry) => entry.instance === instance ? { ...entry, caption, icon } : entry))
   }, [])
 
   function restore(entry: WindowEntry) {
@@ -420,6 +432,49 @@ function DesktopSession({ crash }: { crash: () => void }) {
     else if (id === 'forkbomb') setForkBombOpen(true)
     else launchShortcut(id)
   }
+
+  function openSearch() {
+    open('computer', 'computer', undefined, undefined, true)
+  }
+
+  function runTargets(): RunTarget[] {
+    const folders: Partial<Record<FolderId, { name: string; parent: FolderId | null; icon: string }>> = {
+      ...fixedLocations, ...Object.fromEntries(sessionFolders.map((folder) => [folder.id, folder])),
+    }
+    function pathTo(id: FolderId): string {
+      const folder = folders[id]
+      if (!folder) return ''
+      if (id === 'disk') return 'C:'
+      if (!folder.parent) return folder.name
+      return pathTo(folder.parent) + '\\' + folder.name
+    }
+
+    return [
+      ...apps.filter(({ id }) => id !== 'notepad' && id !== 'about' && id !== 'computer' && id !== 'documents')
+        .map(({ id, label, icon }) => ({ name: id === 'complaints' ? 'Complaints.exe' : label, kind: 'program' as const, icon, open: () => open(id) })),
+      ...Object.entries(folders).flatMap(([key, folder]) => {
+        const id = key as FolderId
+        if (!folder || id === 'birby' || id === 'chelseaxp-system') return []
+        return [{ name: folder.name, kind: 'folder' as const, path: pathTo(id), location: id, parent: folder.parent, icon: folder.icon, open: () => open('computer', id) }]
+      }),
+      ...sessionFiles.map(({ id, name, icon, parent, type }) => ({
+        name, kind: type === 'Application' ? 'program' as const : 'file' as const,
+        path: pathTo(parent) + '\\' + name, parent, icon, open: () => openFile(id),
+      })),
+    ]
+  }
+
+  const startSearchAndRun = <>
+    {!isPhone && <button type="button" onClick={openSearch}>
+      <img className="start-app-icon" src="/icons/start-search.png" alt="" /> Search
+    </button>}
+    <button type="button" onClick={() => {
+      setStartOpen(false)
+      setRunOpen(true)
+    }}>
+      <img className="start-app-icon" src="/icons/run.png" alt="" /> Run…
+    </button>
+  </>
 
   const desktopFiles = sessionFiles.filter(({ parent }) => parent === 'desktop').map((file) => ({
     ...file, movable: true, open: () => openFile(file.id),
@@ -443,6 +498,23 @@ function DesktopSession({ crash }: { crash: () => void }) {
         dismissStart()
       }
     }}>
+      {runOpen && <RunDialog targets={runTargets().filter(({ kind }) => !isPhone || kind === 'program')}
+        recent={recentRunEntries} recentDocuments={recentRunDocuments}
+        onCreateFolder={isPhone ? undefined : (parent) => addFolder(parent).id}
+        onClose={() => {
+          setRunOpen(false)
+          requestAnimationFrame(() => (isPhone ? phoneStartButton : startButton).current?.focus())
+        }}
+        onHelp={() => {
+          setRunOpen(false)
+          open('help', undefined, undefined, 'Using Run')
+        }}
+        onRun={(target, command) => {
+          if (target.kind === 'program') setRecentRunEntries((recent) => rememberRunEntry(recent, command))
+          else if (target.kind === 'file') setRecentRunDocuments((recent) => rememberRunEntry(recent, command))
+          setRunOpen(false)
+          target.open()
+        }} />}
       {forkBombOpen && <ForkBomb onContinue={() => setForkBombOpen(false)} />}
       {brokenShortcut && <BlueScreen
         message="An error has occurred. The shortcut could not be opened."
@@ -493,13 +565,13 @@ function DesktopSession({ crash }: { crash: () => void }) {
         )}
         <nav className={isPhone ? "phone-programs" : "shortcuts"} hidden={isPhone && (phoneApp !== undefined || phonePage !== 'programs')}
           aria-label={isPhone ? "Programs" : "Portfolio apps"}>
-          {isPhone && desktopShortcuts.map(({ id, label, icon }) => id === 'linkedin' ? <LinkedInShortcut key={id} /> : (
+          {isPhone && desktopShortcuts.filter(({ id }) => !isExplorerApp(id) && id !== 'network').map(({ id, label, icon }) => id === 'linkedin' ? <LinkedInShortcut key={id} /> : (
             <button key={id} data-app={id} {...shortcutActivation(id, () => launchShortcut(id))}>
               <img className="shortcut-icon" src={icon} alt="" />
               <span>{label}</span>
             </button>
           ))}
-          {desktopItems.filter(({ id }) => !isPhone || (id !== 'about' && id !== 'linkedin')).map((item) => (
+          {(!isPhone ? desktopItems : []).map((item) => (
             <button key={item.id} data-app={item.id} {...shortcutActivation(item.id, item.open)}
               {...drag(item.id)}
               {...(item.folder ? dropItem(item.folder, move) : {})}
@@ -520,7 +592,7 @@ function DesktopSession({ crash }: { crash: () => void }) {
           ))}
         </nav>
 
-        {windows.map((entry, index) => ({ entry, depth: index + 1 }))
+        {availableWindows.map((entry, index) => ({ entry, depth: index + 1 }))
           .sort((first, second) => first.entry.instance - second.entry.instance).map(({ entry, depth }) => {
           const app = apps.find(({ id }) => id === entry.id)!
           const { instance } = entry
@@ -529,10 +601,10 @@ function DesktopSession({ crash }: { crash: () => void }) {
           const selectionOwner = `${instance}:${entry.navigation ?? 0}`
 
           return (
-            <DesktopWindow key={instance} instance={instance} id={app.id} title={entry.caption ?? app.label} icon={app.icon}
+            <DesktopWindow key={instance} instance={instance} id={app.id} title={entry.caption ?? app.label} icon={entry.icon ?? app.icon}
               desktop={desktop} depth={depth} active={foreground} hidden={hidden}
               onActivate={() => activate(instance)} onMinimize={() => minimize(instance)} onClose={() => close(instance)}>
-              <AppContent entry={entry} selection={explorerSelection?.owner === selectionOwner ? explorerSelection.id : null}
+              <AppContent entry={entry} explorerAvailable={!isPhone} selection={explorerSelection?.owner === selectionOwner ? explorerSelection.id : null}
                 setSelection={(id) => setExplorerSelection((current) => {
                   if (id !== null) return { owner: selectionOwner, id }
                   return current?.owner === selectionOwner ? null : current
@@ -564,17 +636,18 @@ function DesktopSession({ crash }: { crash: () => void }) {
                 setPhoneHome(true)
                 setPhonePage('today')
                 dismissStart()
-              }}>Today</button>
+              }}>
+                <img src="/icons/desktop.png" alt="" /> Today
+              </button>
               <button type="button" onClick={() => {
                 setPhoneHome(true)
                 setPhonePage('calendar')
                 dismissStart()
-              }}>Calendar</button>
+              }}>
+                <img src="/icons/date-and-time.png" alt="" /> Calendar
+              </button>
               <button type="button" onClick={() => open('about')}>
                 <img src="/icons/user-accounts.png" alt="" /> About Me
-              </button>
-              <button type="button" onClick={() => open('documents', 'documents')}>
-                <img src="/icons/my-documents.png" alt="" /> My Documents
               </button>
               <LinkedInShortcut onClick={dismissStart} />
               <div className="handheld-start-system">
@@ -582,13 +655,16 @@ function DesktopSession({ crash }: { crash: () => void }) {
                   setPhoneHome(true)
                   setPhonePage('programs')
                   dismissStart()
-                }}>Programs</button>
+                }}>
+                  <img src="/icons/start-menu-programs.png" alt="" /> Programs
+                </button>
                 <button type="button" onClick={() => open('control')}>
                   <img src="/icons/control-panel.png" alt="" /> Control Panel
                 </button>
                 <button type="button" onClick={() => open('help')}>
                   <img src="/icons/help-and-support.png" alt="" /> Help and Support
                 </button>
+                {startSearchAndRun}
               </div>
             </nav>
           ) : (
@@ -623,6 +699,7 @@ function DesktopSession({ crash }: { crash: () => void }) {
                     <img className="start-app-icon" src="/icons/help-and-support.png" alt="" />
                     Help and Support
                   </button>
+                  {startSearchAndRun}
                 </div>
               </div>
             </div>
@@ -653,7 +730,7 @@ function DesktopSession({ crash }: { crash: () => void }) {
             <button key={instance} id={`task-${instance}`} className="task-button"
               aria-pressed={active === instance} aria-controls={`window-${instance}`}
               onClick={() => active === instance ? minimize(instance) : restore(entry)}>
-              <img className="window-icon" src={app.icon} alt="" /><span>{entry.caption ?? app.label}</span>
+              <img className="window-icon" src={entry.icon ?? app.icon} alt="" /><span>{entry.caption ?? app.label}</span>
             </button>
           )
         })}

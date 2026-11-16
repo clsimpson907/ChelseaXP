@@ -1,3 +1,4 @@
+import WindowTitleBar from './WindowTitleBar'
 import WindowControls from './WindowControls'
 import { useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent, ReactNode, RefObject } from 'react'
@@ -137,12 +138,11 @@ export default function DesktopWindow({
         }),
       }}
     >
-      <div className="title-bar" onPointerDown={(event) => begin(event, 'move')}
-        onPointerMove={update} onLostPointerCapture={end}>
-        <span id={`window-title-${instance}`}><img className="window-icon" src={icon} alt="" />{title}</span>
+      <WindowTitleBar title={title} titleId={`window-title-${instance}`} icon={icon}
+        onPointerDown={(event) => begin(event, 'move')} onPointerMove={update} onLostPointerCapture={end}>
         <WindowControls title={title} maximized={maximized} onMinimize={onMinimize}
           onToggleMaximize={() => setMaximized(!maximized)} onClose={onClose} />
-      </div>
+      </WindowTitleBar>
       <div className={`window-body${id === 'about' ? ' window-body--profile' : isExplorerWindow ? ' window-body--explorer' : id === 'help' ? ' window-body--help' : ''}`}>
         {children}
       </div>

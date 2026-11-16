@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react'
 import BlueScreen from './BlueScreen'
 import WindowControls from './WindowControls'
+import WindowTitleBar from './WindowTitleBar'
 import meme from './forkbomb-meme.png'
 import './forkbomb.css'
 
@@ -162,8 +163,7 @@ export default function ForkBomb({ onContinue }: { onContinue: () => void }) {
       {game.popups.filter(({ minimized }) => !minimized).map(({ id, slot, maximized }) => (
         <div className="window-frame forkbomb-popup" data-popup={id} data-maximized={maximized || undefined}
           key={id} style={maximized ? undefined : positions[slot]}>
-          <div className="title-bar">
-            <span>forkbomb.exe</span>
+          <WindowTitleBar title="forkbomb.exe">
             <WindowControls title={`forkbomb.exe window ${id + 1}`} maximized={Boolean(maximized)}
               onMinimize={() => {
                 focusTarget.current = `[data-restore-popup="${id}"]`
@@ -179,7 +179,7 @@ export default function ForkBomb({ onContinue }: { onContinue: () => void }) {
                 }
                 dispatch({ type: 'close', id })
               }} />
-          </div>
+          </WindowTitleBar>
           <img src={meme} alt="I don’t know what I expected." width="500" height="288" />
         </div>
       ))}

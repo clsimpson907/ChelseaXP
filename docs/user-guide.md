@@ -14,7 +14,7 @@ I built ChelseaXP, my portfolio, to feel like a computer from 2006. On a desktop
 ## Using a phone
 
 - Tap **Owner: Chelsea Simpson** on Today to open **About Me**.
-- Tap **Start → Programs** to see the app grid. Tap an icon to open it.
+- Tap **Start → Programs** to see the app grid. Tap an icon to open it. File Explorer is available on desktop.
 - Tap **Calendar** at the bottom of Today to open a month view. Use the arrows to browse months. Today and Calendar show dates as they fall in **2006**, and the clock shows your current local time.
 - Tap **Today** at the bottom of an open app to return home. The **No unread messages** row is currently a placeholder.
 
@@ -22,13 +22,19 @@ I built ChelseaXP, my portfolio, to feel like a computer from 2006. On a desktop
 
 Start in **My Documents** for project notes and credits, or **My Computer** for an overview of the virtual computer.
 
-- On desktop, single-click an item to select it. Double-click or press **Enter** to open it. On a phone, tap an item once to open it.
+- On desktop, single-click an item to select it. Double-click or press **Enter** to open it.
 - Use **Back** to return to a previous location and **Up** to open the parent folder. Click a parent name in the address bar to jump there, or choose a destination from the dropdown and click **Go**.
-- **Other Places** links to nearby folders and common destinations. **Details** shows information about the current folder or selected item. On mobile, tap **Folder tasks** to show the sidebar.
+- **Other Places** links to nearby folders and common destinations. **Details** shows information about the current folder or selected item.
 - To search with Birby, click **Search**, pick a category, enter part of a name, choose where to look, and click **Search** again.
 - Open **Credits.txt** in My Documents to read it in a separate Notepad window.
 - **Local Disk (C:)** has a hidden-files screen. The floppy and CD drives ask you to insert a disk.
 - **My Documents → Downloads** contains `forkbomb.exe`, a pop-up game. Close every window before it fills the screen. If you get the blue screen, press a key, click, or tap to return to Explorer.
+
+## Using Run
+
+On desktop, open **Start → Search** to go straight to Birby’s Search Companion. Choose a category and enter what you want to find.
+
+Open **Start → Run…** to launch a ChelseaXP program by name. Use the arrow next to **Open** to select a program you launched through Run during this visit. On desktop, you can also open folders and documents by name or use **Browse…** to pick a virtual file.
 
 ## Making a mess in Explorer
 
