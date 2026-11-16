@@ -1,5 +1,6 @@
 import ExplorerItemDialog from './ExplorerItemDialog'
 import BlueScreen from './BlueScreen'
+import ForkBomb from './ForkBomb'
 import { dragItem, dropItem } from './explorerDrag'
 import { deleteConfirmationIcon, favoriteShortcutId, favoriteTargetId, getDragActions, getFavoriteTarget, moveItem, recycleFolder, restoreFolder, touchFolderPath, type ExplorerFavorites, type FolderState, type SessionFile } from './recycleFolders'
 import { reviewReturnKey } from './ComplaintReview'
@@ -43,6 +44,7 @@ const desktopShortcuts = [
 type DesktopShortcutId = (typeof desktopShortcuts)[number]['id']
 
 const initialFiles: SessionFile[] = [
+  { id: 'forkbomb', name: 'forkbomb.exe', icon: 'application-window', parent: 'downloads', type: 'Application', modifiedAt: premadeModifiedAt },
   { id: 'about', name: shortcuts[0].label, icon: shortcuts[0].icon, parent: 'desktop', type: 'Application', modifiedAt: premadeModifiedAt },
   { id: 'linkedin', name: 'LinkedIn', icon: '/icons/linkedin.png', parent: 'desktop', type: 'Internet link', modifiedAt: premadeModifiedAt },
   { id: 'credits', name: 'Credits.txt', icon: 'document', parent: 'documents', type: 'Text document', modifiedAt: premadeModifiedAt },
@@ -265,6 +267,7 @@ function DesktopSession({ crash }: { crash: () => void }) {
   const [phoneHome, setPhoneHome] = useState(!returningToReview)
   const [phonePage, setPhonePage] = useState<'today' | 'programs' | 'calendar'>('today')
   const [startOpen, setStartOpen] = useState(false)
+  const [forkBombOpen, setForkBombOpen] = useState(false)
   const [selectedShortcut, setSelectedShortcut] = useState<string | null>(null)
   const desktop = useRef<HTMLElement>(null)
   const startButton = useRef<HTMLButtonElement>(null)
@@ -411,6 +414,7 @@ function DesktopSession({ crash }: { crash: () => void }) {
 
   function openFile(id: SessionFile['id']) {
     if (id === 'credits') open('notepad')
+    else if (id === 'forkbomb') setForkBombOpen(true)
     else launchShortcut(id)
   }
 
@@ -436,6 +440,7 @@ function DesktopSession({ crash }: { crash: () => void }) {
         dismissStart()
       }
     }}>
+      {forkBombOpen && <ForkBomb onContinue={() => setForkBombOpen(false)} />}
       {brokenShortcut && <BlueScreen
         message="An error has occurred. The shortcut could not be opened."
         explanation={`“${brokenShortcut}” points to an item that is no longer available.`}

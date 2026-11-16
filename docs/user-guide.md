@@ -28,6 +28,7 @@ Start in **My Documents** for project notes and credits, or **My Computer** for 
 - To search with Birby, click **Search**, pick a category, enter part of a name, choose where to look, and click **Search** again.
 - Open **Credits.txt** in My Documents to read it in a separate Notepad window.
 - **Local Disk (C:)** has a hidden-files screen. The floppy and CD drives ask you to insert a disk.
+- **My Documents → Downloads** contains `forkbomb.exe`, a pop-up game. Close every window before it fills the screen. If you get the blue screen, press a key, click, or tap to return to Explorer.
 
 ## Making a mess in Explorer
 
@@ -35,7 +36,13 @@ Start in **My Documents** for project notes and credits, or **My Computer** for 
 2. Type a name and press **Enter**. Open the new folder to create folders inside it.
 3. On desktop, select a folder you made and choose **Rename this folder** or **Delete this folder**. You can also press **Delete** with an item selected. Explorer asks before deleting the folder and everything inside it.
 
-Temporary folders are shared across open Explorer windows. A folder created in Explorer’s **Desktop** folder also appears on the visible desktop. Reloading resets all visitor-created folders. Renaming a built-in file or folder shows **Access is denied**. Deleting a built-in item asks for confirmation first. Choose **Yes** to see the error naming the item, or **No** to cancel.
+Temporary folders and file changes are shared across open Explorer windows. A folder created in Explorer’s **Desktop** folder also appears on the visible desktop. On desktop, drag a movable item to another folder, or drop it on **Recycle Bin** to delete it after confirmation. Drag an eligible item to **Favorites** to create a shortcut. ChelseaXP protects certain system items with an **Access is denied** message. Reloading resets your folder, file, and Favorites changes.
+
+## Using the Recycle Bin
+
+Open **Recycle Bin** on the desktop. Select a deleted item and choose **Restore this item**, or clear the selection and choose **Restore all items**. Choose **Empty the Recycle Bin** and confirm to discard deleted items for this session.
+
+Open **Complaints** inside the Recycle Bin to read public copies of complaints that have been reviewed and published. Emptying the Recycle Bin leaves those copies available when the folder reappears.
 
 ## Using Control Panel
 
@@ -47,7 +54,7 @@ Open **Help and Support Center** from Start or tap its row on Today. Choose a gu
 
 ## Sending a complaint
 
-Open **Help and Support Center** and choose **Submit a complaint**. Enter your email address, subject, and message, then select **Send complaint**. Your name is optional. Your message goes privately to me by email. I’ll use your address if I need to reply.
+Open **Help and Support Center** and choose **Submit a complaint**. Enter your email address, subject, and message, then select **Send complaint**. Your name is optional. ChelseaXP saves your complaint for private review and attempts to email me a notification. I’ll use your address if I need to reply.
 
 A slow check or send may make the progress bar lose ground and start filling again. If a **ChelseaXP** blue screen appears, read the explanation and press a key or click or tap the screen to continue. A blue screen during the initial check closes Complaints. A quota blue screen during submission returns you to your draft.
 
@@ -67,7 +74,7 @@ Open **About Me** to read about my background and interests. Use **LinkedIn** to
 
 ## Complaint privacy notice
 
-When you submit a complaint, Resend delivers your subject, message, email address, and any name you enter to my inbox. I use your message to investigate what you reported and your email address to reply if needed. The complaint is saved for private review. I may publish its subject and message in the Recycle Bin after reviewing them for private details. Your contact details and IP address are kept out of the public complaint record.
+When you submit a complaint, ChelseaXP asks Resend to send me a notification with your subject, message, email address, and any name you enter. I use your message to investigate what you reported and your email address to reply if needed. The complaint is saved for private review. I or an invited moderator may publish an edited copy of the subject and message in the Recycle Bin after reviewing them for private details. Only the administrator can see your email address and IP address in the review app. Your contact details and IP address are kept out of the public complaint record.
 
 When the site checks whether you can submit a complaint or accepts one for sending, the server uses your IP address to check submission limits. For a submission that reserves a slot, the complaints database stores a timestamp and a code derived from your IP address using a secret key. The raw IP address is stored with the private complaint for investigation and is kept out of the complaint email and quota records. Quota records older than two days are cleared when a new slot is reserved.
 

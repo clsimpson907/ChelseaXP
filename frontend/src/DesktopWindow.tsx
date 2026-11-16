@@ -1,3 +1,4 @@
+import WindowControls from './WindowControls'
 import { useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent, ReactNode, RefObject } from 'react'
 
@@ -139,12 +140,8 @@ export default function DesktopWindow({
       <div className="title-bar" onPointerDown={(event) => begin(event, 'move')}
         onPointerMove={update} onLostPointerCapture={end}>
         <span id={`window-title-${instance}`}><img className="window-icon" src={icon} alt="" />{title}</span>
-        <div className="window-controls">
-          <button aria-label={`Minimize ${title}`} onClick={onMinimize}><span className="window-glyph window-glyph--minimize" aria-hidden="true" /></button>
-          <button className="window-maximize" aria-label={`${maximized ? 'Restore' : 'Maximize'} ${title}`}
-            onClick={() => setMaximized(!maximized)}><span className="window-glyph" data-restore={maximized} aria-hidden="true" /></button>
-          <button aria-label={`Close ${title}`} onClick={onClose}><span className="window-glyph window-glyph--close" aria-hidden="true" /></button>
-        </div>
+        <WindowControls title={title} maximized={maximized} onMinimize={onMinimize}
+          onToggleMaximize={() => setMaximized(!maximized)} onClose={onClose} />
       </div>
       <div className={`window-body${id === 'about' ? ' window-body--profile' : isExplorerWindow ? ' window-body--explorer' : id === 'help' ? ' window-body--help' : ''}`}>
         {children}
