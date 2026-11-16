@@ -77,8 +77,10 @@ function LinkedInShortcut({ onClick }: { onClick?: () => void }) {
   )
 }
 
-function AppContent({ entry, setCaption, open, close, active, desktopItems, sessionFolders, sessionFiles, openFile, move, locationDates, addFolder, renameFolder, deleteFolder, recycleBin, favorites, drag }: {
+function AppContent({ entry, selection, setSelection, setCaption, open, close, active, desktopItems, sessionFolders, sessionFiles, openFile, move, locationDates, addFolder, renameFolder, deleteFolder, recycleBin, favorites, drag }: {
   entry: WindowEntry
+  selection: string | null
+  setSelection: (id: string | null) => void
   desktopItems: DesktopItem[]
   drag: (id: string) => ReturnType<typeof dragItem>
   favorites: ExplorerFavorites
@@ -132,7 +134,7 @@ function AppContent({ entry, setCaption, open, close, active, desktopItems, sess
       )
     case 'computer':
     case 'documents':
-      return <DocumentExplorer onCaptionChange={updateCaption} key={navigation} favorites={favorites} initialFolder={folder ?? id} desktopItems={desktopItems} drag={drag}
+      return <DocumentExplorer active={active} onCaptionChange={updateCaption} selection={selection} setSelection={setSelection} key={navigation} favorites={favorites} initialFolder={folder ?? id} desktopItems={desktopItems} drag={drag}
         sessionFolders={sessionFolders} sessionFiles={sessionFiles} openFile={openFile} move={move} locationDates={locationDates} addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} recycleBin={recycleBin}
         openHelp={() => open('help')} openControlPanel={() => open('control')} />
     case 'notepad':
@@ -268,6 +270,7 @@ function DesktopSession({ crash }: { crash: () => void }) {
   const [phonePage, setPhonePage] = useState<'today' | 'programs' | 'calendar'>('today')
   const [startOpen, setStartOpen] = useState(false)
   const [forkBombOpen, setForkBombOpen] = useState(false)
+  const [explorerSelection, setExplorerSelection] = useState<{ owner: string; id: string } | null>(null)
   const [selectedShortcut, setSelectedShortcut] = useState<string | null>(null)
   const desktop = useRef<HTMLElement>(null)
   const startButton = useRef<HTMLButtonElement>(null)
@@ -523,12 +526,17 @@ function DesktopSession({ crash }: { crash: () => void }) {
           const { instance } = entry
           const hidden = entry.minimized || (isPhone && phoneApp !== instance)
           const foreground = !hidden && active === instance
+          const selectionOwner = `${instance}:${entry.navigation ?? 0}`
 
           return (
             <DesktopWindow key={instance} instance={instance} id={app.id} title={entry.caption ?? app.label} icon={app.icon}
               desktop={desktop} depth={depth} active={foreground} hidden={hidden}
               onActivate={() => activate(instance)} onMinimize={() => minimize(instance)} onClose={() => close(instance)}>
-              <AppContent entry={entry} favorites={favorites} drag={drag} desktopItems={desktopItems} sessionFolders={sessionFolders} sessionFiles={sessionFiles} openFile={openFile} move={move} locationDates={locationDates}
+              <AppContent entry={entry} selection={explorerSelection?.owner === selectionOwner ? explorerSelection.id : null}
+                setSelection={(id) => setExplorerSelection((current) => {
+                  if (id !== null) return { owner: selectionOwner, id }
+                  return current?.owner === selectionOwner ? null : current
+                })} favorites={favorites} drag={drag} desktopItems={desktopItems} sessionFolders={sessionFolders} sessionFiles={sessionFiles} openFile={openFile} move={move} locationDates={locationDates}
                 setCaption={setCaption}
                 addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} recycleBin={recycleBin} open={open} close={() => close(instance)} active={foreground} />
             </DesktopWindow>

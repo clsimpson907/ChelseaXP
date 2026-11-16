@@ -19,16 +19,7 @@
   clip-path: inset(50%);
 }
 
-.forkbomb-popup {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  border: 2px solid #783b85;
-  border-radius: 9px 9px 3px 3px;
-  background: var(--paper);
-  box-shadow: 0 8px 20px #43224766, 0 0 0 1px #f8c9eb;
-  overflow: hidden;
-}
+.forkbomb-popup { position: absolute; }
 
 .forkbomb-popup .title-bar {
   min-height: 0;

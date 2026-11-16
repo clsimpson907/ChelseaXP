@@ -117,7 +117,7 @@ export default function DesktopWindow({
   return (
     <article
       id={`window-${instance}`}
-      className={`app-window${active ? '' : ' app-window--inactive'}${maximized ? ' app-window--maximized' : ''}${id === 'about' && !bounds && !maximized ? ' app-window--fit-profile' : ''}`}
+      className={`window-frame app-window${active ? '' : ' app-window--inactive'}${maximized ? ' app-window--maximized' : ''}${id === 'about' && !bounds && !maximized ? ' app-window--fit-profile' : ''}`}
       data-window={id}
       aria-labelledby={`window-title-${instance}`}
       ref={panel}

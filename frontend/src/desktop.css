@@ -54,6 +54,16 @@ a { color: #642989; }
 
 .shortcut-icon { width: 36px; height: 36px; }
 
+.window-frame {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 2px solid #783b85;
+  border-radius: 9px 9px 3px 3px;
+  background: var(--paper);
+  box-shadow: 0 8px 20px #43224766, 0 0 0 1px #f8c9eb;
+}
+
 .app-window {
   --window-width: 800px;
   --window-height: 620px;
@@ -63,15 +73,8 @@ a { color: #642989; }
   position: absolute;
   top: clamp(0px, calc(50% - var(--window-height) / 2 + var(--window-offset)), calc(100% - var(--initial-height)));
   left: min(max(118px, calc(50% - 350px + var(--window-offset))), calc(100% - var(--initial-width)));
-  display: flex;
-  flex-direction: column;
   width: var(--initial-width);
   height: var(--initial-height);
-  overflow: hidden;
-  border: 2px solid #783b85;
-  border-radius: 9px 9px 3px 3px;
-  background: var(--paper);
-  box-shadow: 0 8px 20px #43224766, 0 0 0 1px #f8c9eb;
 }
 
 .app-window[data-window="about"] { --window-width: 740px; }
@@ -1023,6 +1026,17 @@ a { color: #642989; }
   color: white;
   background: #785b75;
 }
+.app-window--inactive .explorer-item[aria-pressed="true"] > img {
+  filter: none;
+  outline: 2px solid #e4dcc7;
+  outline-offset: 2px;
+}
+
+.app-window--inactive .explorer-item[aria-pressed="true"] > .explorer-item-label {
+  color: inherit;
+  background: var(--manila-gloss);
+}
+
 .xp-file-explorer .explorer-items[data-view="Icons"] { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
 .xp-file-explorer :is([data-view="Icons"], [data-view="Thumbnails"]) .explorer-item { flex-direction: column; text-align: center; }
 .xp-file-explorer .explorer-items:is([data-view="List"], [data-view="Details"]) { grid-template-columns: 1fr; }
@@ -1155,13 +1169,8 @@ a { color: #642989; }
   font-size: .86rem;
   font-weight: bold;
 }
-.folder-delete-dialog header button {
-  border: 1px solid #fff9;
-  border-radius: 3px;
-  background: linear-gradient(#ed9b8b, #b44c4c);
-  color: white;
-  font: inherit;
-}
+.folder-delete-dialog .window-controls { display: flex; }
+.folder-delete-dialog .window-close { width: 24px; height: 22px; }
 .folder-delete-content { padding: 12px; font-size: .85rem; }
 .folder-delete-content p { margin: 0; overflow-wrap: anywhere; }
 .folder-delete-actions { display: flex; justify-content: end; gap: 8px; margin-top: 22px; }
@@ -1173,6 +1182,18 @@ a { color: #642989; }
   background: var(--lavender-gloss);
   color: inherit;
   font: inherit;
+}
+
+:is(.folder-delete-actions button:focus, .xp-progress > button:focus-visible) {
+  border-color: #7741a0;
+  outline: none;
+  background: linear-gradient(#fae8ff, #dab5ed);
+  box-shadow: inset 0 0 0 1px #ae79c8;
+}
+
+:is(.folder-delete-actions button, .xp-progress > button):hover {
+  background: linear-gradient(#fff5ef, #f0c6cf);
+  box-shadow: inset 0 0 0 1px #dfa366;
 }
 
 .folder-delete-error { display: flex; align-items: center; gap: 12px; }
@@ -1233,6 +1254,7 @@ a { color: #642989; }
   font-weight: bold;
   cursor: default;
 }
+.explorer-protected-disk button:is(:hover, :focus-visible) { text-decoration: underline; }
 .xp-file-explorer .task-pane-actions button:disabled { opacity: .65; cursor: default; }
 
 .explorer-file-pane[data-music="true"]::before {

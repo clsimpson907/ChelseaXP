@@ -6,7 +6,7 @@ import ExplorerDialog from './ExplorerDialog'
 import { getPublishedCopies, refreshPublishedCopies, subscribeToPublishedCopies } from './publishedComplaints'
 import AddressPicker from './AddressPicker'
 import NavigationHistory from './NavigationHistory'
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from 'react'
 import InsertDiskDialog from './InsertDiskDialog'
 import ExplorerItemDialog from './ExplorerItemDialog'
 import SearchCompanion, { type SearchCriteria } from './SearchCompanion'
@@ -28,10 +28,13 @@ function Icon({ icon, size = 16 }: { icon: string; size?: number }) {
 }
 
 export default function DocumentExplorer({
-  onCaptionChange, initialFolder, openHelp, openControlPanel, sessionFolders, sessionFiles, openFile, move, locationDates, addFolder, renameFolder, deleteFolder, desktopItems, recycleBin, favorites, drag,
+  onCaptionChange, initialFolder, active, selection, setSelection, openHelp, openControlPanel, sessionFolders, sessionFiles, openFile, move, locationDates, addFolder, renameFolder, deleteFolder, desktopItems, recycleBin, favorites, drag,
 }: {
   onCaptionChange: (caption: string) => void
   initialFolder: FolderId
+  active: boolean
+  selection: string | null
+  setSelection: (id: string | null) => void
   openHelp: () => void
   openControlPanel: () => void
   sessionFolders: SessionFolder[]
@@ -69,7 +72,6 @@ export default function DocumentExplorer({
   const [emptyDrive, setEmptyDrive] = useState<{ drive: string; icon: string } | null>(null)
   const [accessDenied, setAccessDenied] = useState(false)
   const [itemDialog, setItemDialog] = useState<{ deleteName: string; isFolder: boolean; folder?: string } | { deniedName: string; operation: 'rename' | 'delete' } | null>(null)
-  const [selection, setSelection] = useState<string | null>(null)
   const [editing, setEditing] = useState<FolderId | null>(null)
   useEffect(() => {
     if (!editing) return
@@ -314,6 +316,47 @@ export default function DocumentExplorer({
     else if (entry.open) entry.open()
   }
 
+  function focusFiles() {
+    requestAnimationFrame(() => files.current?.focus({ preventScroll: true }))
+  }
+
+  function dismissItemDialog() {
+    setItemDialog(null)
+    focusFiles()
+  }
+
+  const runItemShortcut = useEffectEvent((event: KeyboardEvent) => {
+    if (!selected || event.defaultPrevented || event.repeat || event.isComposing ||
+      event.ctrlKey || event.metaKey || event.altKey || event.shiftKey ||
+      (event.key !== 'Enter' && event.key !== 'Delete')) return
+
+    const target = event.target
+    const explorer = files.current?.closest('.app-window')
+    if (!(target instanceof HTMLElement) || !explorer ||
+      (target !== document.body && !explorer.contains(target)) ||
+      target.isContentEditable ||
+      target.closest('input, textarea, select, dialog, a, .explorer-menu-bar, [popover]') ||
+      document.querySelector('dialog[open], #start-menu, :popover-open')) return
+
+    const button = target.closest('button')
+    if (button && (event.key === 'Enter' || !button.matches('.explorer-item'))) return
+
+    if (event.key === 'Delete' && canManageSelection) {
+      event.preventDefault()
+      deleteSelection()
+    } else if (event.key === 'Enter') {
+      event.preventDefault()
+      openEntry(selected)
+    }
+  })
+
+  useEffect(() => {
+    if (!active) return
+    const onKeyDown = (event: KeyboardEvent) => runItemShortcut(event)
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [active])
+
   function createFolder() {
     if (!canCreate) return
     setSidebar('tasks')
@@ -408,9 +451,6 @@ export default function DocumentExplorer({
           if (key === 'c') copySelection()
           else favorites.paste(Math.round(performance.timeOrigin + event.timeStamp))
         }
-      } else if (event.key === 'Delete' && canManageSelection) {
-        event.preventDefault()
-        deleteSelection()
       }
     }}>
       {accessDenied && <ExplorerDialog title="Birby" onClose={() => setAccessDenied(false)}>
@@ -428,9 +468,9 @@ export default function DocumentExplorer({
         <div className="published-complaint-message">{readingComplaint.message}</div>
       </ExplorerDialog>}
       {emptyDrive && <InsertDiskDialog {...emptyDrive} onClose={() => setEmptyDrive(null)} />}
-      {denied && <ExplorerItemDialog name={denied.deniedName} operation={denied.operation} onCancel={() => setItemDialog(null)} />}
+      {denied && <ExplorerItemDialog name={denied.deniedName} operation={denied.operation} onCancel={dismissItemDialog} />}
       {deleteTarget && <ExplorerItemDialog name={deleteTarget.deleteName} isFolder={deleteTarget.isFolder}
-        onCancel={() => setItemDialog(null)}
+        onCancel={dismissItemDialog}
         onConfirm={() => {
           if (!deleteTarget.folder) {
             setItemDialog({ deniedName: deleteTarget.deleteName, operation: 'delete' })
@@ -439,7 +479,7 @@ export default function DocumentExplorer({
           deleteFolder(deleteTarget.folder, Date.now())
           setItemDialog(null)
           setSelection(null)
-          requestAnimationFrame(() => files.current?.focus({ preventScroll: true }))
+          focusFiles()
         }} />}
       <ExplorerMenuBar label="Explorer menus" menus={menuActions} />
       <div className="explorer-toolbar" role="group" aria-label="Explorer navigation">

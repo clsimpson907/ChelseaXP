@@ -160,7 +160,7 @@ export default function ForkBomb({ onContinue }: { onContinue: () => void }) {
       }}>
       <p className="forkbomb-caption" id="forkbomb-instructions">Close all windows before they fill the desktop.</p>
       {game.popups.filter(({ minimized }) => !minimized).map(({ id, slot, maximized }) => (
-        <div className="forkbomb-popup" data-popup={id} data-maximized={maximized || undefined}
+        <div className="window-frame forkbomb-popup" data-popup={id} data-maximized={maximized || undefined}
           key={id} style={maximized ? undefined : positions[slot]}>
           <div className="title-bar">
             <span>forkbomb.exe</span>
