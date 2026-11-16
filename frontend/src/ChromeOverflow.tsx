@@ -1,4 +1,5 @@
 import { useId, useRef, useState } from 'react'
+import { positionToolbarPopup } from './positionToolbarPopup'
 
 export type OverflowCommand = {
   label: string
@@ -23,20 +24,6 @@ export default function ChromeOverflow({ kind, commands }: {
     trigger.current?.focus()
   }
 
-  function position() {
-    const panel = popup.current
-    const button = trigger.current
-    if (!panel || !button || !panel.matches(':popover-open')) return
-    // The native popover escapes the window clip, so position it in viewport coordinates.
-    const anchor = button.getBoundingClientRect()
-    const width = panel.offsetWidth
-    const height = panel.offsetHeight
-    const x = anchor.left + width <= window.innerWidth - 4 ? anchor.left : anchor.right - width
-    panel.style.left = Math.max(4, x) + 'px'
-    panel.style.top = Math.max(4, Math.min(anchor.bottom, window.innerHeight - height - 4)) + 'px'
-    setLeft(x + width * 2 > window.innerWidth - 4)
-  }
-
   return (
     <div className={`chrome-overflow ${kind}-overflow`}>
       <button className="overflow-trigger" ref={trigger} type="button" popoverTarget={id}
@@ -44,7 +31,9 @@ export default function ChromeOverflow({ kind, commands }: {
         data-tooltip={kind === 'toolbar' ? 'More navigation controls' : undefined}>»</button>
       <div className="xp-overflow-popup" id={id} popover="auto" ref={popup} data-left={left}
         onToggle={(event) => {
-          if (event.newState === 'open') position()
+          if (event.newState === 'open' && trigger.current) {
+            setLeft(positionToolbarPopup(event.currentTarget, trigger.current))
+          }
           else setSubmenu(null)
         }}>
         {commands.map((command) => (

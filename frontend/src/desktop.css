@@ -539,31 +539,29 @@ a { color: #642989; }
 .explorer-toolbar button:disabled { color: #76687c; cursor: default; }
 .explorer-toolbar button:disabled img { filter: grayscale(1); opacity: .55; }
 
-.explorer-history {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  width: 14px;
-  height: var(--control-height);
-  color: #5f4068;
+.explorer-history { width: 14px; }
+.explorer-toolbar .explorer-history > button {
+  min-width: 0;
+  width: 100%;
+  justify-content: center;
+  padding-inline: 0;
 }
-.explorer-history::after {
-  content: "";
+
+.toolbar-dropdown-arrow {
   border: 3px solid transparent;
   border-bottom: 0;
   border-top-color: currentColor;
-  pointer-events: none;
 }
-.explorer-history[data-disabled="true"]::after { opacity: .4; }
-.explorer-history:focus-within { outline: 2px solid #56287d; outline-offset: -2px; }
-.explorer-history select {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  opacity: 0;
-  cursor: pointer;
+.explorer-toolbar :is(.explorer-history, .explorer-view-picker) > button:disabled .toolbar-dropdown-arrow {
+  opacity: .4;
 }
-.explorer-history select:disabled { cursor: default; }
+.explorer-toolbar :is(.explorer-history, .explorer-view-picker) > button:focus-visible,
+.explorer-toolbar :is(.explorer-history, .explorer-view-picker):has(:popover-open) > button {
+  border-color: #a47bb2;
+  background: #ecdaed;
+  outline: none;
+}
+
 .explorer-toolbar-divider { align-self: stretch; width: 1px; margin: 4px; background: #ceb7cd; }
 
 .explorer-address-row {
@@ -980,9 +978,6 @@ a { color: #642989; }
   box-shadow: 2px 3px 5px #42254d44;
 }
 .explorer-menu-options button { display: block; width: 100%; }
-.explorer-view-picker { position: relative; display: flex; align-items: center; gap: 2px; }
-.explorer-view-picker select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
-.explorer-view-picker:focus-within { outline: 2px solid #7d4c90; }
 .xp-file-explorer .task-pane-section { border-color: #fff8; background: #f2e3f6; }
 .xp-file-explorer .task-pane-section h2 button { background: linear-gradient(100deg, #fff, #e5c9ec); }
 .xp-file-explorer .task-pane-toggle { font-size: 0; }
@@ -1494,6 +1489,13 @@ a { color: #642989; }
   font: .75rem Tahoma, sans-serif;
 }
 .xp-overflow-popup { position: fixed; inset: auto; margin: 0; overflow: visible; }
+.toolbar-dropdown-menu .toolbar-dropdown-dot {
+  width: 7px;
+  flex: none;
+  text-align: center;
+  font-size: 8px;
+}
+
 .xp-overflow-entry { position: relative; }
 .xp-overflow-popup button {
   display: flex;
@@ -2060,8 +2062,7 @@ a { color: #642989; }
 }
 
 .taskbar-date-tooltip,
-[data-tooltip]:not(.explorer-history)::after,
-.explorer-history[data-tooltip]::before {
+[data-tooltip]::after {
   position: absolute;
   visibility: hidden;
   padding: 3px 5px;
@@ -2078,27 +2079,20 @@ a { color: #642989; }
   bottom: calc(100% + 4px);
 }
 [data-tooltip] { position: relative; }
-[data-tooltip]:not(.explorer-history)::after {
+[data-tooltip]::after {
   content: attr(data-tooltip);
   inset-block-start: calc(100% + 4px);
   inset-inline-start: 0;
   z-index: 1;
 }
-[data-tooltip]:not(.explorer-history, :disabled, :has(:disabled)):is(:hover, :focus-visible, :focus-within)::after {
+[data-tooltip]:not(:disabled, :has(:disabled)):is(:hover, :focus-visible, :focus-within)::after {
   visibility: visible;
   transition: visibility 0s 400ms;
 }
-.explorer-history[data-tooltip]::before {
-  content: attr(data-tooltip);
-  position: absolute;
-  inset-block-start: calc(100% + 4px);
-  inset-inline-end: 0;
-  z-index: 1;
+:is(.explorer-history, .explorer-view-picker):has(:popover-open) > [data-tooltip]::after {
+  visibility: hidden;
 }
-.explorer-history[data-tooltip]:not([data-disabled="true"]):is(:hover, :focus-within)::before {
-  visibility: visible;
-  transition: visibility 0s 400ms;
-}
+
 .overflow-trigger[data-tooltip]::after {
   inset-inline-start: auto;
   inset-inline-end: 0;

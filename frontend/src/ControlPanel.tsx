@@ -6,6 +6,7 @@ import { explorerPlaces, locations, type LocationId } from './explorerLocations'
 import ChromeOverflow from './ChromeOverflow'
 import ExplorerMenuBar, { type MenuAction } from './ExplorerMenuBar'
 import NavigationHistory from './NavigationHistory'
+import ToolbarDropdown from './ToolbarDropdown'
 import TaskPane, { TaskSection } from './TaskPane'
 
 const department = { id: 'complaints', label: 'Complaints Department', icon: '/icons/event-viewer.png' } as const
@@ -106,14 +107,11 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, favori
           <img src="/icons/explorer-folders.png" alt="" width="22" height="22" /> Folders
         </button>
         <span className="explorer-toolbar-divider" aria-hidden="true" />
-        <label className="explorer-view-picker" data-tooltip="Control Panel view">
-          <img src="/icons/explorer-view.png" alt="" width="22" height="22" />
-          <span aria-hidden="true">▾</span>
-          <select aria-label="Control Panel view" value={view} onChange={switchView}>
-            <option value="category">Category View</option>
-            <option value="classic">Classic View</option>
-          </select>
-        </label>
+        <ToolbarDropdown label="Control Panel view" icon="/icons/explorer-view.png"
+          options={[
+            { label: 'Category View', checked: view === 'category', action: () => { if (view !== 'category') switchView() } },
+            { label: 'Classic View', checked: view === 'classic', action: () => { if (view !== 'classic') switchView() } },
+          ]} />
         <ChromeOverflow kind="toolbar" commands={[
           { label: 'Forward', icon: 'forward', disabled: !navigation.forward.length, action: () => travel(navigation.forward[0].index) },
           { label: 'Up', icon: 'up', disabled: location.kind === 'home', action: up },

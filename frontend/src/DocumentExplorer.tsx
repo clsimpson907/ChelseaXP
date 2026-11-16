@@ -6,6 +6,7 @@ import ExplorerDialog from './ExplorerDialog'
 import { getPublishedCopies, refreshPublishedCopies, subscribeToPublishedCopies } from './publishedComplaints'
 import AddressPicker from './AddressPicker'
 import NavigationHistory from './NavigationHistory'
+import ToolbarDropdown from './ToolbarDropdown'
 import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from 'react'
 import InsertDiskDialog from './InsertDiskDialog'
 import ExplorerItemDialog from './ExplorerItemDialog'
@@ -24,7 +25,7 @@ export type DesktopItem = Entry & { open: () => void; movable?: boolean }
 const modifiedDateFormat = new Intl.DateTimeFormat('en-US', { dateStyle: 'long' })
 const modifiedTimeFormat = new Intl.DateTimeFormat('en-US', { timeStyle: 'short' })
 
-const views = ['Tiles', 'Icons', 'List', 'Details', 'Thumbnails'] as const
+const views = ['Thumbnails', 'Tiles', 'Icons', 'List', 'Details'] as const
 type View = (typeof views)[number]
 
 function Icon({ icon, size = 16 }: { icon: string; size?: number }) {
@@ -499,12 +500,8 @@ export default function DocumentExplorer({
           <Icon icon="explorer-folders" size={22} /> Folders
         </button>
         <span className="explorer-toolbar-divider" aria-hidden="true" />
-        <label className="explorer-view-picker" data-tooltip="View">
-          <Icon icon="explorer-view" size={22} /><span aria-hidden="true">▾</span>
-          <select aria-label="View" disabled={hiddenContents} value={view} onChange={(event) => setView(event.target.value as View)}>
-            {views.map((option) => <option key={option}>{option}</option>)}
-          </select>
-        </label>
+        <ToolbarDropdown label="View" icon="/icons/explorer-view.png" disabled={hiddenContents}
+          options={views.map((option) => ({ label: option, checked: view === option, action: () => setView(option) }))} />
         <ChromeOverflow kind="toolbar" commands={[
           { label: 'Forward', icon: 'forward', disabled: !forward.length, action: () => travel(forward[0].index) },
           { label: 'Up', icon: 'up', disabled: !location.parent, action: () => { if (location.parent) openLocation(location.parent) } },

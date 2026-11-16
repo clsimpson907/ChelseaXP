@@ -205,7 +205,7 @@ function DesktopSession({ crash }: { crash: () => void }) {
     locationDates: {},
     favorites: [
       { id: 'documents', folder: 'documents', name: locations.documents.name, icon: locations.documents.icon },
-      ...initialFiles.filter(({ id }) => id !== 'linkedin').map(({ id, name, icon }) => ({ id, name, icon })),
+      ...initialFiles.filter(({ id }) => id === 'about' || id === 'credits').map(({ id, name, icon }) => ({ id, name, icon })),
     ],
   }))
   const { folders: sessionFolders, files: sessionFiles, trash, locationDates } = folderState
