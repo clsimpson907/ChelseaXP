@@ -60,7 +60,7 @@ public static class ComplaintReviewEndpoints
             var copies = await PublishedCopies(db.Complaints.AsNoTracking())
                 .Skip((int)(offset ?? 0)).Take(50).ToListAsync(ct);
             return Results.Ok(copies);
-        }).RequireRateLimiting("complaints-status");
+        }).RequireRateLimiting("complaints-published");
     }
 
     public static IQueryable<ComplaintCopy> PublishedCopies(IQueryable<Complaint> complaints) =>
