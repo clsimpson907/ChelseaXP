@@ -85,7 +85,6 @@ export default function DocumentExplorer({
     renameInput.current?.select()
   }, [editing])
   const [nameError, setNameError] = useState('')
-  const [showMobileTasks, setShowMobileTasks] = useState(false)
   const [sidebar, setSidebar] = useState<'tasks' | 'folders' | 'search'>(initialSearch ? 'search' : 'tasks')
   const [search, setSearch] = useState<SearchCriteria | null>(null)
   const [folderView, setFolderView] = useState<View>('Icons')
@@ -524,13 +523,7 @@ export default function DocumentExplorer({
         </span>
         <button className="explorer-go" type="submit"><Icon icon="go" size={18} /> Go</button>
       </form>
-      <button type="button" className="mobile-explorer-tasks" aria-expanded={showMobileTasks && sidebar === 'tasks'}
-        onClick={() => {
-          setShowMobileTasks(sidebar !== 'tasks' || !showMobileTasks)
-          setSidebar('tasks')
-          setSearch(null)
-        }}>Folder tasks</button>
-      <div className="explorer-layout" data-mobile-tasks={showMobileTasks} data-sidebar={sidebar}>
+      <div className="explorer-layout" data-sidebar={sidebar}>
         <div className="explorer-folders">
           {sidebar === 'search' ? <SearchCompanion
             folders={folderIds.map((id) => ({ id, name: folderPath(id) }))}
