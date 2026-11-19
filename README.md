@@ -152,13 +152,13 @@ Private complaint rows retain the supplied name/email, IP address, subject, mess
 | `POST /api/complaints/review/{id}/draft` | Save valid subject/message draft with the detail version, returning the new version on success |
 | `POST /api/complaints/review/{id}/publish` | Atomically publish the supplied approved subject/message with the detail version, 204 on success |
 
-Review routes require the ComplaintReviewer policy. Missing records return 404. Published items reject further draft edits. Competing updates can return 409. The public list and review responses use `Cache-Control: no-store`. The process has additional fixed-window throttles for status/public-list and submission requests.
+Review routes require the ComplaintReviewer policy. Missing records return 404. Published items reject further draft edits. Competing updates can return 409. The public list and review responses use `Cache-Control: no-store`. The process has separate fixed-window throttles: 20 status checks, 120 public-list requests, and 60 submission requests per minute. Public reads cannot consume the status-check allowance.
 
 ### Quiet public loading
 
 Production fetches published copies on site startup and when Recycle Bin or Complaints is entered. Concurrent refreshes share one promise. A post-publication request during a refresh queues a follow-up refresh.
 
-Each page request has a 20-second timeout and at most three attempts. Network failures, timeouts, and HTTP 408/502/503/504 can retry after one and then three seconds. Other HTTP failures stop the attempt. Pages accumulate before replacing the cache, so a failed refresh retains earlier copies.
+Each page request has a 20-second timeout and at most three attempts. Network failures, timeouts, and HTTP 408/502/503/504 can retry after one and then three seconds. HTTP 429 retries the current page up to the same three-attempt limit, respecting Retry-After up to 60 seconds (60 seconds if absent). Longer waits stop the refresh. Other HTTP failures stop the attempt. Pages accumulate before replacing the cache, so a failed refresh retains earlier copies.
 
 The folder stays visually quiet. Initial failure can leave it empty. There is no public loading screen or error banner. A new folder visit can retry after the failed refresh finishes.
 

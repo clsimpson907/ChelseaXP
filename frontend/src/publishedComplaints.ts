@@ -49,10 +49,18 @@ async function fetchPublishedPage(url: URL) {
       if (attempt >= 2) throw error
     }
     if (response?.ok) return response
-    if (response && (attempt >= 2 || ![408, 502, 503, 504].includes(response.status))) {
+    if (response && (attempt >= 2 || ![408, 429, 502, 503, 504].includes(response.status))) {
       throw new Error('Could not load published complaints')
     }
-    await new Promise((resolve) => globalThis.setTimeout(resolve, attempt === 0 ? 1000 : 3000))
+    let delay = attempt === 0 ? 1000 : 3000
+    if (response?.status === 429) {
+      const retryAfter = response.headers.get('Retry-After')
+      const seconds = retryAfter === null ? NaN : Number(retryAfter)
+      const requested = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(retryAfter ?? '') - Date.now()
+      if (requested > 60000) throw new Error('Public refresh retry exceeds its wait limit')
+      delay = Number.isFinite(requested) ? Math.max(1000, requested) : 60000
+    }
+    await new Promise((resolve) => globalThis.setTimeout(resolve, delay))
   }
 }
 
