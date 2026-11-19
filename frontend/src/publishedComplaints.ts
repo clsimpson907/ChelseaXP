@@ -37,6 +37,25 @@ export function refreshPublishedCopies(afterPublish = false) {
   return loading ??= loadCopies().finally(() => { loading = undefined })
 }
 
+async function fetchPublishedPage(url: URL) {
+  for (let attempt = 0; ; attempt++) {
+    let response: Response | undefined
+    try {
+      response = await fetch(url, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(20000),
+      })
+    } catch (error) {
+      if (attempt >= 2) throw error
+    }
+    if (response?.ok) return response
+    if (response && (attempt >= 2 || ![408, 502, 503, 504].includes(response.status))) {
+      throw new Error('Could not load published complaints')
+    }
+    await new Promise((resolve) => globalThis.setTimeout(resolve, attempt === 0 ? 1000 : 3000))
+  }
+}
+
 async function loadCopies() {
   do {
     refreshRequested = false
@@ -44,8 +63,7 @@ async function loadCopies() {
     for (;;) {
       const url = new URL('/api/complaints/published', complaintApiOrigin)
       url.searchParams.set('offset', String(copies.length))
-      const response = await fetch(url, { cache: 'no-store' })
-      if (!response.ok) throw new Error('Could not load published complaints')
+      const response = await fetchPublishedPage(url)
       const page: PublicCopy[] = await response.json()
       copies.push(...page)
       if (page.length < 50) break

@@ -1,3 +1,4 @@
+import { refreshPublishedCopies } from './publishedComplaints'
 import RunDialog from './RunDialog'
 import { rememberRunEntry, type RunTarget } from './runEntries'
 import ExplorerItemDialog from './ExplorerItemDialog'
@@ -189,6 +190,10 @@ function LocalClock({ showDate = false, compact = false }: { showDate?: boolean;
 }
 
 export default function App() {
+  useEffect(() => {
+    void refreshPublishedCopies().catch(() => {})
+  }, [])
+
   const [crashed, setCrashed] = useState(false)
 
   if (crashed) return <BlueScreen
