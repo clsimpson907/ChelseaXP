@@ -20,6 +20,11 @@ builder.Services.AddRateLimiter(options =>
         limiter.PermitLimit = 20;
         limiter.Window = TimeSpan.FromMinutes(1);
     });
+    options.AddFixedWindowLimiter("complaints-published", limiter =>
+    {
+        limiter.PermitLimit = 20;
+        limiter.Window = TimeSpan.FromMinutes(1);
+    });
     options.AddFixedWindowLimiter("complaints", limiter =>
     {
         limiter.PermitLimit = 60;
