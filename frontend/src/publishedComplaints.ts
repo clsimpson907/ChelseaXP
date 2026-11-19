@@ -45,11 +45,14 @@ async function fetchPublishedPage(url: URL) {
         cache: 'no-store',
         signal: AbortSignal.timeout(20000),
       })
+      if (response.ok) return {
+        body: await response.text(),
+        nextCursor: response.headers.get('X-Next-Cursor'),
+      }
     } catch (error) {
       if (attempt >= 2) throw error
     }
-    if (response?.ok) return response
-    if (response && (attempt >= 2 || ![408, 429, 502, 503, 504].includes(response.status))) {
+    if (response && !response.ok && (attempt >= 2 || ![408, 429, 502, 503, 504].includes(response.status))) {
       throw new Error('Could not load published complaints')
     }
     let delay = attempt === 0 ? 1000 : 3000
@@ -74,9 +77,9 @@ async function loadCopies() {
       const url = new URL('/api/complaints/published', complaintApiOrigin)
       if (cursor) url.searchParams.set('cursor', cursor)
       const response = await fetchPublishedPage(url)
-      const page: PublicCopy[] = await response.json()
+      const page: PublicCopy[] = JSON.parse(response.body)
       copies.push(...page)
-      cursor = response.headers.get('X-Next-Cursor')
+      cursor = response.nextCursor
       if (!cursor) break
       if (seen.has(cursor)) throw new Error('Repeated publication cursor')
       seen.add(cursor)

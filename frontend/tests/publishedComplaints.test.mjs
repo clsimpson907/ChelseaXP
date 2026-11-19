@@ -11,7 +11,7 @@ function cache(fetch) {
     {}, fetch, { setTimeout: (callback, delay) => { delays.push(delay); queueMicrotask(callback) } })
   return { ...api, delays }
 }
-const ok = (rows, cursor) => ({ ok: true, headers: new Headers(cursor ? { 'X-Next-Cursor': cursor } : {}), json: async () => rows })
+const ok = (rows, cursor) => ({ ok: true, headers: new Headers(cursor ? { 'X-Next-Cursor': cursor } : {}), text: async () => JSON.stringify(rows) })
 const limited = seconds => ({ ok: false, status: 429, headers: new Headers({ 'Retry-After': seconds }) })
 
 test('429 retries the same page and retains earlier pages', async () => {
@@ -42,4 +42,38 @@ test('excessive Retry-After does not retry early', async () => {
   const api = cache(async () => limited('120'))
   await assert.rejects(api.refreshPublishedCopies())
   assert.deepEqual(api.delays, [])
+})
+
+test('interrupted body downloads retry the current cursor without losing prior pages', async () => {
+  const cursors = []
+  const first = [{ subject: 'first', message: 'body' }]
+  const second = [{ subject: 'second', message: 'body' }]
+  const api = cache(async url => {
+    cursors.push(url.searchParams.get('cursor'))
+    if (cursors.length === 1) return ok(first, 'next-page')
+    if (cursors.length === 2) return {
+      ...ok([]), text: async () => { throw new TypeError('Body download interrupted') },
+    }
+    return ok(second)
+  })
+  await api.refreshPublishedCopies()
+  assert.deepEqual(cursors, [null, 'next-page', 'next-page'])
+  assert.deepEqual(api.delays, [1000])
+  assert.deepEqual(Object.values(api.getPublishedCopies()), [...first, ...second])
+})
+
+test('repeated interrupted bodies stop after three attempts and preserve cached copies', async () => {
+  let fail = false
+  let attempts = 0
+  const api = cache(async () => {
+    attempts++
+    return fail ? { ...ok([]), text: async () => { throw new TypeError('Interrupted') } }
+      : ok([{ subject: 'saved', message: 'body' }])
+  })
+  await api.refreshPublishedCopies()
+  fail = true
+  await assert.rejects(api.refreshPublishedCopies(), /Interrupted/)
+  assert.equal(attempts, 4)
+  assert.deepEqual(api.delays, [1000, 3000])
+  assert.equal(api.getPublishedCopies()[0].subject, 'saved')
 })
