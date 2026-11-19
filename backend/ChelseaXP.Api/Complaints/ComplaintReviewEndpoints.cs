@@ -57,21 +57,34 @@ public static class ComplaintReviewEndpoints
             return await Save(db, ct);
         });
 
-        app.MapGet("/api/complaints/published", async (ComplaintDb db, HttpContext context, long? offset, CancellationToken ct) =>
+        app.MapGet("/api/complaints/published", async (ComplaintDb db, HttpContext context, long? offset, string? cursor, CancellationToken ct) =>
         {
             context.Response.Headers.CacheControl = "no-store";
             if (!databaseConfigured) return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
             if (offset is < 0 or > int.MaxValue) return Results.BadRequest();
-            var copies = await PublishedCopies(db.Complaints.AsNoTracking())
-                .Skip((int)(offset ?? 0)).Take(50).ToListAsync(ct);
+            PublishedCursor? boundary = null;
+            if (cursor is not null && (!PublishedCursor.TryParse(cursor, out boundary) || offset is > 0))
+                return Results.BadRequest();
+            var rows = await PublishedRows(db.Complaints.AsNoTracking(), boundary)
+                .Skip((int)(offset ?? 0)).Take(51).ToListAsync(ct);
+            if (rows.Count > 50)
+            {
+                rows.RemoveAt(50);
+                var last = rows[^1];
+                context.Response.Headers["X-Next-Cursor"] = new PublishedCursor(last.PublishedAt!.Value, last.Id).Encode();
+            }
+            var copies = rows.Select(row => new ComplaintCopy(row.PublishedSubject, row.PublishedMessage));
             return Results.Ok(copies);
         }).RequireRateLimiting("complaints-published");
     }
 
+    public static IOrderedQueryable<Complaint> PublishedRows(IQueryable<Complaint> complaints, PublishedCursor? cursor = null) =>
+        complaints.Where(row => row.PublishedAt != null && (cursor == null ||
+                row.PublishedAt < cursor.PublishedAt || (row.PublishedAt == cursor.PublishedAt && row.Id < cursor.Id)))
+            .OrderByDescending(row => row.PublishedAt).ThenByDescending(row => row.Id);
+
     public static IQueryable<ComplaintCopy> PublishedCopies(IQueryable<Complaint> complaints) =>
-        complaints.Where(row => row.PublishedAt != null)
-            .OrderByDescending(row => row.PublishedAt).ThenByDescending(row => row.Id)
-            .Select(row => new ComplaintCopy(row.PublishedSubject, row.PublishedMessage));
+        PublishedRows(complaints).Select(row => new ComplaintCopy(row.PublishedSubject, row.PublishedMessage));
 
     private static async Task<IResult> Save(ComplaintDb db, CancellationToken ct)
     {
@@ -104,4 +117,24 @@ public sealed record ComplaintReviewWrite(string? Subject, string? Message, stri
     public ComplaintCopy Copy => new(Subject, Message);
     public bool Matches(Complaint complaint) =>
         complaint.Version.Length > 0 && Version == Convert.ToBase64String(complaint.Version);
+}
+
+public sealed record PublishedCursor(DateTimeOffset PublishedAt, long Id)
+{
+    public string Encode() => Convert.ToBase64String(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(this));
+
+    public static bool TryParse(string value, out PublishedCursor? cursor)
+    {
+        cursor = null;
+        if (value.Length > 256) return false;
+        try
+        {
+            cursor = System.Text.Json.JsonSerializer.Deserialize<PublishedCursor>(Convert.FromBase64String(value));
+            return cursor is { Id: > 0 } && cursor.PublishedAt != default;
+        }
+        catch (Exception error) when (error is FormatException or System.Text.Json.JsonException)
+        {
+            return false;
+        }
+    }
 }

@@ -19,6 +19,29 @@ public sealed class ComplaintTests
     };
 
     [Fact]
+    public void PublicationCursorDoesNotRepeatRowsWhenANewCopyArrives()
+    {
+        Complaint Published(long id)
+        {
+            var row = CreateComplaint();
+            typeof(Complaint).GetProperty(nameof(Complaint.Id))!.SetValue(row, id);
+            row.TryPublish(DateTimeOffset.UnixEpoch);
+            return row;
+        }
+        var rows = Enumerable.Range(1, 51).Select(id => Published(id)).ToList();
+        var first = ComplaintReviewEndpoints.PublishedRows(rows.AsQueryable()).Take(50).ToList();
+        var last = first[^1];
+        var encoded = new PublishedCursor(last.PublishedAt!.Value, last.Id).Encode();
+        Assert.True(PublishedCursor.TryParse(encoded, out var cursor));
+        rows.Add(Published(52));
+        var second = ComplaintReviewEndpoints.PublishedRows(rows.AsQueryable(), cursor).ToList();
+        Assert.Equal(1, Assert.Single(second).Id);
+        Assert.Equal(51, first.Concat(second).Select(row => row.Id).Distinct().Count());
+        Assert.False(PublishedCursor.TryParse("invalid", out _));
+        Assert.False(PublishedCursor.TryParse(Convert.ToBase64String("{}"u8.ToArray()), out _));
+    }
+
+    [Fact]
     public void WritesRequireTheVersionTheReviewerRead()
     {
         var complaint = CreateComplaint();

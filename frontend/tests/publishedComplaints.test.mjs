@@ -11,18 +11,18 @@ function cache(fetch) {
     {}, fetch, { setTimeout: (callback, delay) => { delays.push(delay); queueMicrotask(callback) } })
   return { ...api, delays }
 }
-const ok = rows => ({ ok: true, json: async () => rows })
+const ok = (rows, cursor) => ({ ok: true, headers: new Headers(cursor ? { 'X-Next-Cursor': cursor } : {}), json: async () => rows })
 const limited = seconds => ({ ok: false, status: 429, headers: new Headers({ 'Retry-After': seconds }) })
 
 test('429 retries the same page and retains earlier pages', async () => {
   const offsets = []
   const first = Array.from({ length: 50 }, (_, i) => ({ subject: String(i), message: 'body' }))
   const api = cache(async url => {
-    offsets.push(url.searchParams.get('offset'))
-    return offsets.length === 1 ? ok(first) : offsets.length === 2 ? limited('2') : ok([])
+    offsets.push(url.searchParams.get('cursor'))
+    return offsets.length === 1 ? ok(first, 'page-two') : offsets.length === 2 ? limited('2') : ok([])
   })
   await api.refreshPublishedCopies()
-  assert.deepEqual(offsets, ['0', '50', '50'])
+  assert.deepEqual(offsets, [null, 'page-two', 'page-two'])
   assert.deepEqual(api.delays, [2000])
   assert.equal(Object.keys(api.getPublishedCopies()).length, 50)
 })

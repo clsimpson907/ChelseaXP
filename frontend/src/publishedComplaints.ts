@@ -68,13 +68,18 @@ async function loadCopies() {
   do {
     refreshRequested = false
     const copies: PublicCopy[] = []
+    let cursor: string | null = null
+    const seen = new Set<string>()
     for (;;) {
       const url = new URL('/api/complaints/published', complaintApiOrigin)
-      url.searchParams.set('offset', String(copies.length))
+      if (cursor) url.searchParams.set('cursor', cursor)
       const response = await fetchPublishedPage(url)
       const page: PublicCopy[] = await response.json()
       copies.push(...page)
-      if (page.length < 50) break
+      cursor = response.headers.get('X-Next-Cursor')
+      if (!cursor) break
+      if (seen.has(cursor)) throw new Error('Repeated publication cursor')
+      seen.add(cursor)
     }
     updateCopies(Object.fromEntries(copies.map((copy, index) => [index, copy])))
   } while (refreshRequested)

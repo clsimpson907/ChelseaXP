@@ -145,7 +145,7 @@ Private complaint rows retain the supplied name/email, IP address, subject, mess
 | `GET /api/health` | Anonymous process liveness check |
 | `GET /api/complaints/status` | Anonymous availability and quota check, with state and optional resetAt |
 | `POST /api/complaints` | Anonymous submission of name, email, message, and subject. Returns 202 when saved, 400 for invalid input, 429 for quotas, or 503 for paused/unavailable service |
-| `GET /api/complaints/published?offset=0` | Anonymous published subject/message copies, newest publication first, up to 50 per page |
+| `GET /api/complaints/published?cursor=...` | Anonymous published subject/message copies, newest publication first, up to 50 per page |
 | `GET /api/complaints/review/session` | Assigned reviewer’s role |
 | `GET /api/complaints/review/inbox?beforeId=...` | Reviewer inbox, newest IDs first, up to 50 per page |
 | `GET /api/complaints/review/{id}` | Private review detail, with email/IP supplied only to Admin |
@@ -233,3 +233,5 @@ The folder, mail, document, toolbar, drive, Run, and other XP icons come from th
 See [Credits.txt](frontend/src/credits.txt) for the in-site credits, including the Start paw and Birby artwork.
 
 Review writes require the `version` returned with private details. Stale or missing versions cannot publish or overwrite drafts. Deploy the API and frontend together for this contract change; older review clients must reload.
+
+Public pagination returns subject/message arrays and an optional `X-Next-Cursor` response header. Send that opaque value as `cursor` for the next page. New publications do not shift an in-progress traversal. Legacy offset requests remain supported; deploy the cursor-aware API before the updated frontend.
