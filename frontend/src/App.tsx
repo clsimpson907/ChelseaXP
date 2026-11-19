@@ -129,6 +129,7 @@ function AppContent({ entry, selection, setSelection, setCaption, open, close, a
               <section>
                 <h2>About ChelseaXP</h2>
                 <p>I don't know what you're doing on my computer from 2006, but please try not to make a mess or break anything! Just kidding, this is my Windows XP tribute/parody site. I'm very fond of the Windows XP/98 era of tech. The internet felt like it was so full of possibilities, and personal computers felt like their own magical micro-universe. I'm trying to capture some of that feeling bit by bit. Please take a look around and make yourself at home.</p>
+                <p>Anything that looks dangerous here, including forkbomb.exe and the blue screens, is part of the joke. These are simulated effects inside this webpage. They don’t run system commands or change files on your computer.</p>
               </section>
               <section>
                 <h2>About me</h2>
