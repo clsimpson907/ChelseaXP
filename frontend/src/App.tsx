@@ -1,3 +1,4 @@
+import { createVirtualFileSystem, type VirtualFileSystem, type VirtualEntry } from './virtualFileSystem'
 import { refreshPublishedCopies } from './publishedComplaints'
 import RunDialog from './RunDialog'
 import { rememberRunEntry, type RunTarget } from './runEntries'
@@ -52,7 +53,7 @@ type DesktopShortcutId = (typeof desktopShortcuts)[number]['id']
 
 const initialFiles: SessionFile[] = [
   { id: 'forkbomb', name: 'forkbomb.exe', icon: 'application-window', parent: 'downloads', type: 'Application', modifiedAt: premadeModifiedAt },
-  { id: 'about', name: shortcuts[0].label, icon: shortcuts[0].icon, parent: 'desktop', type: 'Application', modifiedAt: premadeModifiedAt },
+  { id: 'about', name: shortcuts[0].label, icon: shortcuts[0].icon, parent: 'desktop', type: 'Portfolio page', modifiedAt: premadeModifiedAt },
   { id: 'linkedin', name: 'LinkedIn', icon: '/icons/linkedin.png', parent: 'desktop', type: 'Internet link', modifiedAt: premadeModifiedAt },
   { id: 'credits', name: 'Credits.txt', icon: 'document', parent: 'documents', type: 'Text document', modifiedAt: premadeModifiedAt },
 ]
@@ -84,10 +85,11 @@ function LinkedInShortcut({ onClick }: { onClick?: () => void }) {
   )
 }
 
-function AppContent({ entry, selection, setSelection, setCaption, open, close, active, explorerAvailable, desktopItems, sessionFolders, sessionFiles, openFile, move, locationDates, addFolder, renameFolder, deleteFolder, recycleBin, favorites, drag }: {
+function AppContent({ entry, selection, setSelection, setCaption, open, close, active, explorerAvailable, fileSystem, desktopItems, sessionFolders, sessionFiles, openFile, move, addFolder, renameFolder, deleteFolder, recycleBin, favorites, drag }: {
   entry: WindowEntry
   selection: string | null
   setSelection: (id: string | null) => void
+  fileSystem: VirtualFileSystem
   desktopItems: DesktopItem[]
   drag: (id: string) => ReturnType<typeof dragItem>
   favorites: ExplorerFavorites
@@ -96,7 +98,6 @@ function AppContent({ entry, selection, setSelection, setCaption, open, close, a
   sessionFiles: SessionFile[]
   openFile: (id: SessionFile['id']) => void
   move: (id: string, parent: FolderId, now: number) => void
-  locationDates: FolderState['locationDates']
   addFolder: (parent: FolderId) => SessionFolder
   renameFolder: (id: FolderId, name: string) => string | undefined
   deleteFolder: (id: string, now: number) => void
@@ -142,8 +143,8 @@ function AppContent({ entry, selection, setSelection, setCaption, open, close, a
       )
     case 'computer':
     case 'documents':
-      return <DocumentExplorer active={active} onCaptionChange={updateCaption} selection={selection} setSelection={setSelection} key={navigation} favorites={favorites} initialFolder={folder ?? id} initialSearch={entry.search} desktopItems={desktopItems} drag={drag}
-        sessionFolders={sessionFolders} sessionFiles={sessionFiles} openFile={openFile} move={move} locationDates={locationDates} addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} recycleBin={recycleBin}
+      return <DocumentExplorer fileSystem={fileSystem} active={active} onCaptionChange={updateCaption} selection={selection} setSelection={setSelection} key={navigation} favorites={favorites} initialFolder={folder ?? id} initialSearch={entry.search} desktopItems={desktopItems} drag={drag}
+        sessionFolders={sessionFolders} sessionFiles={sessionFiles} openFile={openFile} move={move} addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} recycleBin={recycleBin}
         openHelp={() => open('help')} openControlPanel={() => open('control')} />
     case 'notepad':
       return <pre className="notepad-text">{credits}</pre>
@@ -220,7 +221,7 @@ function DesktopSession({ crash }: { crash: () => void }) {
       ...initialFiles.filter(({ id }) => id === 'about' || id === 'credits').map(({ id, name, icon }) => ({ id, name, icon })),
     ],
   }))
-  const { folders: sessionFolders, files: sessionFiles, trash, locationDates } = folderState
+  const { folders: sessionFolders, files: sessionFiles, trash } = folderState
   const [pendingRecycle, setPendingRecycle] = useState<string | null>(null)
   const [brokenShortcut, setBrokenShortcut] = useState<string | null>(null)
   const [copiedItem, setCopiedItem] = useState<string | null>(null)
@@ -442,29 +443,21 @@ function DesktopSession({ crash }: { crash: () => void }) {
     open('computer', 'computer', undefined, undefined, true)
   }
 
-  function runTargets(): RunTarget[] {
-    const folders: Partial<Record<FolderId, { name: string; parent: FolderId | null; icon: string }>> = {
-      ...fixedLocations, ...Object.fromEntries(sessionFolders.map((folder) => [folder.id, folder])),
-    }
-    function pathTo(id: FolderId): string {
-      const folder = folders[id]
-      if (!folder) return ''
-      if (id === 'disk') return 'C:'
-      if (!folder.parent) return folder.name
-      return pathTo(folder.parent) + '\\' + folder.name
-    }
+  const fileSystem = createVirtualFileSystem(folderState)
 
+  function openVirtualEntry(entry: VirtualEntry) {
+    if (entry.file) openFile(entry.file)
+    else if (entry.folder) open('computer', entry.folder)
+  }
+
+  function runTargets(): RunTarget[] {
     return [
       ...apps.filter(({ id }) => id !== 'notepad' && id !== 'about' && id !== 'computer' && id !== 'documents')
-        .map(({ id, label, icon }) => ({ name: id === 'complaints' ? 'Complaints.exe' : label, kind: 'program' as const, icon, open: () => open(id) })),
-      ...Object.entries(folders).flatMap(([key, folder]) => {
-        const id = key as FolderId
-        if (!folder || id === 'birby' || id === 'chelseaxp-system') return []
-        return [{ name: folder.name, kind: 'folder' as const, path: pathTo(id), location: id, parent: folder.parent, icon: folder.icon, open: () => open('computer', id) }]
-      }),
-      ...sessionFiles.map(({ id, name, icon, parent, type }) => ({
-        name, kind: type === 'Application' ? 'program' as const : 'file' as const,
-        path: pathTo(parent) + '\\' + name, parent, icon, open: () => openFile(id),
+        .map(({ id, label, icon }) => ({ name: id === 'complaints' ? 'Complaints.exe' : label, kind: id === 'complaints' ? 'program' as const : 'file' as const, icon, open: () => open(id) })),
+      ...fileSystem.entries.filter(({ id }) => !['birby', 'chelseaxp-system', 'recycle', 'published-complaints'].includes(id)).map((entry) => ({
+        name: entry.name, path: entry.path, location: entry.folder, parent: fileSystem.listedParent(entry),
+        kind: entry.folder ? 'folder' as const : entry.type === 'Application' ? 'program' as const : 'file' as const,
+        icon: entry.icon, open: () => openVirtualEntry(entry),
       })),
     ]
   }
@@ -481,19 +474,10 @@ function DesktopSession({ crash }: { crash: () => void }) {
     </button>
   </>
 
-  const desktopFiles = sessionFiles.filter(({ parent }) => parent === 'desktop').map((file) => ({
-    ...file, movable: true, open: () => openFile(file.id),
+  const desktopItems: DesktopItem[] = fileSystem.desktop.map((entry) => ({
+    ...entry, icon: entry.icon.startsWith('/') ? entry.icon : '/icons/' + entry.icon + '.png',
+    open: () => openVirtualEntry(entry),
   }))
-  const desktopItems: DesktopItem[] = [
-    ...desktopFiles.filter(({ id }) => id !== 'credits'),
-    { id: 'recycle', name: locations.recycle.name, icon: '/icons/recycle-bin.png',
-      type: 'System Folder', folder: 'recycle', open: () => launchShortcut('recycle') },
-    ...desktopFiles.filter(({ id }) => id === 'credits'),
-    ...sessionFolders.filter(({ parent }) => parent === 'desktop').map((folder) => ({
-      ...folder, type: 'File Folder', movable: true, folder: folder.id,
-      open: () => open('computer', folder.id),
-    })),
-  ]
 
   return (
     <div className={`shell${phoneApp !== undefined ? ' shell--app-open' : ''}`} onPointerDown={(event) => {
@@ -609,11 +593,11 @@ function DesktopSession({ crash }: { crash: () => void }) {
             <DesktopWindow key={instance} instance={instance} id={app.id} title={entry.caption ?? app.label} icon={entry.icon ?? app.icon}
               desktop={desktop} depth={depth} active={foreground} hidden={hidden}
               onActivate={() => activate(instance)} onMinimize={() => minimize(instance)} onClose={() => close(instance)}>
-              <AppContent entry={entry} explorerAvailable={!isPhone} selection={explorerSelection?.owner === selectionOwner ? explorerSelection.id : null}
+              <AppContent entry={entry} explorerAvailable={!isPhone} fileSystem={fileSystem} selection={explorerSelection?.owner === selectionOwner ? explorerSelection.id : null}
                 setSelection={(id) => setExplorerSelection((current) => {
                   if (id !== null) return { owner: selectionOwner, id }
                   return current?.owner === selectionOwner ? null : current
-                })} favorites={favorites} drag={drag} desktopItems={desktopItems} sessionFolders={sessionFolders} sessionFiles={sessionFiles} openFile={openFile} move={move} locationDates={locationDates}
+                })} favorites={favorites} drag={drag} desktopItems={desktopItems} sessionFolders={sessionFolders} sessionFiles={sessionFiles} openFile={openFile} move={move}
                 setCaption={setCaption}
                 addFolder={addFolder} renameFolder={renameFolder} deleteFolder={deleteFolder} recycleBin={recycleBin} open={open} close={() => close(instance)} active={foreground} />
             </DesktopWindow>

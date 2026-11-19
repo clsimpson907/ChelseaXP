@@ -1992,7 +1992,7 @@ a { color: #642989; }
   .shortcuts { grid-auto-columns: 88px; gap: 5px; padding: 8px 4px; }
   .shortcuts :is(button, a) { padding: 4px 2px; gap: 3px; font-size: 12px; }
   .shortcuts :is(.shortcut-icon, .linkedin-icon) { width: 32px; height: 32px; }
-  .app-window .title-bar { min-height: 30px; padding: 2px 4px 2px 5px; font-size: 13px; }
+  .window-frame > .title-bar { min-height: 30px; padding: 2px 4px 2px 5px; font-size: 13px; }
   .window-controls { gap: 2px; }
   .window-controls button { width: 20px; height: 20px; border-radius: 3px; font-size: 14px; }
   .title-bar .window-icon, .task-button .window-icon { width: 16px; height: 16px; }

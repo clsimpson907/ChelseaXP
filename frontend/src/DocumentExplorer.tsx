@@ -1,7 +1,8 @@
+import type { VirtualFileSystem } from './virtualFileSystem'
 import { favoriteShortcutId } from './recycleFolders'
 import { useNavigation } from './useNavigation'
 import { dropItem, type dragItem } from './explorerDrag'
-import type { DeletedFolder, ExplorerFavorites, FolderState, SessionFile } from './recycleFolders'
+import type { DeletedFolder, ExplorerFavorites, SessionFile } from './recycleFolders'
 import ExplorerDialog from './ExplorerDialog'
 import { getPublishedCopies, refreshPublishedCopies, subscribeToPublishedCopies } from './publishedComplaints'
 import AddressPicker from './AddressPicker'
@@ -14,7 +15,7 @@ import SearchCompanion, { type SearchCriteria } from './SearchCompanion'
 import ChromeOverflow from './ChromeOverflow'
 import ExplorerMenuBar from './ExplorerMenuBar'
 import TaskPane, { TaskSection } from './TaskPane'
-import { canCreateFolder, fixedLocationIds, locations, premadeModifiedAt, type FolderId, type SessionFolder } from './explorerLocations'
+import { canCreateFolder, type FolderId, type SessionFolder } from './explorerLocations'
 
 type Entry = { recyclable?: boolean; favoriteId?: string; modifiedAt?: number; id: string; name: string; icon: string; type: string; folder?: FolderId; open?: () => void }
 function isDrive(entry: Entry) {
@@ -33,9 +34,10 @@ function Icon({ icon, size = 16 }: { icon: string; size?: number }) {
 }
 
 export default function DocumentExplorer({
-  onCaptionChange, initialFolder, initialSearch, active, selection, setSelection, openHelp, openControlPanel, sessionFolders, sessionFiles, openFile, move, locationDates, addFolder, renameFolder, deleteFolder, desktopItems, recycleBin, favorites, drag,
+  onCaptionChange, initialFolder, initialSearch, fileSystem, active, selection, setSelection, openHelp, openControlPanel, sessionFolders, sessionFiles, openFile, move, addFolder, renameFolder, deleteFolder, desktopItems, recycleBin, favorites, drag,
 }: {
   onCaptionChange: (caption: string, icon: string) => void
+  fileSystem: VirtualFileSystem
   initialFolder: FolderId
   initialSearch?: boolean
   active: boolean
@@ -47,7 +49,6 @@ export default function DocumentExplorer({
   sessionFiles: SessionFile[]
   openFile: (id: SessionFile['id']) => void
   move: (id: string, parent: FolderId, now: number) => void
-  locationDates: FolderState['locationDates']
   desktopItems: DesktopItem[]
   drag: (id: string) => ReturnType<typeof dragItem>
   favorites: ExplorerFavorites
@@ -64,8 +65,7 @@ export default function DocumentExplorer({
 }) {
   const history = useNavigation<FolderId[]>(() => {
     const path = [initialFolder]
-    const getParent = (id: FolderId) => sessionFolders.find((folder) => folder.id === id)?.parent ??
-      (Object.hasOwn(locations, id) ? locations[id as keyof typeof locations].parent : undefined)
+    const getParent = (id: FolderId) => fileSystem.folders[id]?.parent
     let parent = getParent(initialFolder)
     while (parent) {
       path.push(parent)
@@ -94,11 +94,7 @@ export default function DocumentExplorer({
   const files = useRef<HTMLElement>(null)
   const lastPointer = useRef('')
   const renameInput = useRef<HTMLInputElement>(null)
-  const folders: Record<FolderId, { name: string; parent: FolderId | null; icon: string; renamed?: boolean; modifiedAt?: number }> = Object.fromEntries([
-    ...fixedLocationIds.map((id) => [id, { ...locations[id], modifiedAt: locationDates[id] ?? premadeModifiedAt }]),
-    ...sessionFolders.map((folder) => [folder.id, folder]),
-  ])
-  const folderIds: FolderId[] = [...fixedLocationIds, ...sessionFolders.map((folder) => folder.id)]
+  const { folders, folderIds } = fileSystem
   // A history entry retains its ancestors so deletion can fall back to a surviving folder.
   const locationId = history.current.find((id) => folders[id]) ?? 'desktop'
   useEffect(() => { files.current?.scrollTo(0, 0) }, [locationId])
@@ -172,15 +168,10 @@ export default function DocumentExplorer({
     return folder.parent ? folderPath(folder.parent) + ' › ' + folder.name : folder.name
   }
 
-  const folderEntries = folderIds.filter((id) => folders[id].parent === locationId).map(folderEntry)
-  if (locationId === 'chelsea') {
-    folderEntries.push({ ...folderEntry('desktop'), id: 'profile-desktop', icon: 'folder' })
-    if (folders.documents && folders.documents.parent !== 'chelsea') {
-      folderEntries.push({ ...folderEntry('documents'), id: 'profile-documents', icon: 'folder' })
-    }
-    folderEntries.sort((first, second) => first.name.localeCompare(second.name))
-  }
-  const documentEntries: (Entry & { parent: FolderId })[] = sessionFiles.map((file) => ({ ...file, open: () => openFile(file.id) }))
+  const folderEntries: Entry[] = fileSystem.children(locationId).filter(({ folder }) => folder)
+  const documentEntries: (Entry & { parent: FolderId | null })[] = fileSystem.fileEntries.map((file) => ({
+    ...file, open: () => { if (file.file) openFile(file.file) },
+  }))
   const favoriteEntries: Entry[] = favorites.items.map((target) => ({
     id: favoriteShortcutId(target.id), recyclable: true, name: target.name, icon: target.icon, type: 'Shortcut',
     favoriteId: target.id, open: () => favorites.open(target, openLocation),
