@@ -4,6 +4,7 @@ import { positionToolbarPopup } from './positionToolbarPopup'
 export type OverflowCommand = {
   label: string
   action?: () => void
+  checked?: boolean
   disabled?: boolean
   icon?: string
   children?: OverflowCommand[]
@@ -53,10 +54,11 @@ export default function ChromeOverflow({ kind, commands }: {
             </button>
             {command.children && submenu === command.label && <div className="xp-overflow-submenu">
               {command.children.map((child) => (
-                <button key={child.label} type="button" disabled={child.disabled} onClick={() => {
+                <button key={child.label} type="button" disabled={child.disabled}
+                  role={child.checked === undefined ? undefined : 'menuitemradio'} aria-checked={child.checked} onClick={() => {
                   close()
                   child.action?.()
-                }}>{child.label}</button>
+                }}>{child.checked !== undefined && <span className="toolbar-dropdown-dot" aria-hidden="true">{child.checked ? '●' : ''}</span>}{child.label}</button>
               ))}
             </div>}
           </div>

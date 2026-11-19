@@ -2,7 +2,7 @@ import { useId, useRef, type RefObject } from 'react'
 
 import { positionToolbarPopup } from './positionToolbarPopup'
 
-type Option = { label: string; action: () => void; checked?: boolean }
+type Option = { label: string; action: () => void; checked?: boolean; disabled?: boolean }
 
 export default function ToolbarDropdown({ label, icon, options, fieldAnchor, disabled = false }: {
   label: string
@@ -43,9 +43,9 @@ export default function ToolbarDropdown({ label, icon, options, fieldAnchor, dis
             : (current + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length
           buttons[next]?.focus()
         }}>
-        {options.map(({ label: option, checked, action }, index) => (
+        {options.map(({ label: option, checked, action, disabled }, index) => (
           <button key={index} type="button" role={checked === undefined ? 'menuitem' : 'menuitemradio'}
-            aria-checked={checked} tabIndex={-1} onClick={(event) => {
+            aria-checked={checked} disabled={disabled} tabIndex={-1} onClick={(event) => {
               event.currentTarget.closest<HTMLElement>('[popover]')?.hidePopover()
               trigger.current?.focus({ preventScroll: true })
               action()

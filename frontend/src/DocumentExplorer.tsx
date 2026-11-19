@@ -376,7 +376,10 @@ export default function DocumentExplorer({
     setSelection(null)
   }
 
-  const menuActions: Record<string, { label: string; action: () => void; disabled?: boolean }[]> = {
+  const viewCommands = views.map((option) => ({
+    label: option, checked: view === option, disabled: hiddenContents, action: () => setView(option),
+  }))
+  const menuActions: Record<string, { label: string; action: () => void; disabled?: boolean; checked?: boolean }[]> = {
     File: [
       { label: 'Open', action: () => { if (selected) openEntry(selected) }, disabled: !selected || selected.type.startsWith('Deleted ') },
       ...(isRecycleLocation ? [{ label: 'Empty the Recycle Bin', action: () => setConfirmEmpty(true), disabled: recycleBin.hidingComplaints }] : []),
@@ -389,7 +392,7 @@ export default function DocumentExplorer({
       { label: 'Rename', action: renameSelection, disabled: !canManageSelection || Boolean(selected?.favoriteId) },
       { label: 'Clear selection', action: () => setSelection(null), disabled: !selected },
     ],
-    View: views.map((option) => ({ label: option, action: () => setView(option), disabled: hiddenContents })),
+    View: viewCommands,
     Favorites: favorites.items.map((target) => ({ label: target.name, action: () => favorites.open(target, openLocation) })),
     Tools: [
       { label: 'Search', action: () => toggleSidebar('search') },
@@ -491,7 +494,7 @@ export default function DocumentExplorer({
         </button>
         <span className="explorer-toolbar-divider" aria-hidden="true" />
         <ToolbarDropdown label="View" icon="/icons/explorer-view.png" disabled={hiddenContents}
-          options={views.map((option) => ({ label: option, checked: view === option, action: () => setView(option) }))} />
+          options={viewCommands} />
         <ChromeOverflow kind="toolbar" commands={[
           { label: 'Forward', icon: 'forward', disabled: !forward.length, action: () => travel(forward[0].index) },
           { label: 'Up', icon: 'up', disabled: !location.parent, action: () => { if (location.parent) openLocation(location.parent) } },
