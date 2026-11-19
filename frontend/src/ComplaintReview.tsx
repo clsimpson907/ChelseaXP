@@ -144,14 +144,16 @@ function EntraReview(props: ReviewProps) {
     }
   }
 
+  const request = useCallback<ReviewRequest>(async (path, options) => {
+    if (!account) throw new Error('No reviewer account')
+    const auth = await signInClient()
+    const token = await auth.acquireTokenSilent({ scopes, account })
+    const headers = new Headers(options?.headers)
+    headers.set('Authorization', 'Bearer ' + token.accessToken)
+    return fetch(new URL('/api/complaints/review' + path, apiOrigin), { ...options, headers, cache: 'no-store' })
+  }, [account])
+
   if (role && account) {
-    const request: ReviewRequest = async (path, options) => {
-      const auth = await signInClient()
-      const token = await auth.acquireTokenSilent({ scopes, account })
-      const headers = new Headers(options?.headers)
-      headers.set('Authorization', 'Bearer ' + token.accessToken)
-      return fetch(new URL('/api/complaints/review' + path, apiOrigin), { ...options, headers, cache: 'no-store' })
-    }
     return <ComplaintWorkspace {...props} live={{ role, request, signOut }} />
   }
   return <>
