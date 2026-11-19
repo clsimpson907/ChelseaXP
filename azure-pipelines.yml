@@ -32,6 +32,7 @@ stages:
               set -e
               npm ci
               npm run lint
+              node --test tests/*.test.mjs
               npm run build
             workingDirectory: frontend
             displayName: Check and build the React app
@@ -42,6 +43,8 @@ stages:
               packageType: sdk
               version: '11.0.x'
             displayName: Use .NET 11 SDK
+          - script: dotnet test backend/ChelseaXP.Api.Tests --configuration Release
+            displayName: Run backend regression tests
           - script: dotnet publish backend/ChelseaXP.Api/ChelseaXP.Api.csproj --configuration Release --output "$(Build.ArtifactStagingDirectory)/api"
             displayName: Build and publish the ASP.NET Core API
           - bash: |

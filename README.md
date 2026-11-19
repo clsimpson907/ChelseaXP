@@ -83,9 +83,9 @@ dotnet build backend/ChelseaXP.Api --configuration Release
 dotnet test backend/ChelseaXP.Api.Tests
 ```
 
-The frontend has lint and build scripts. It currently has no dedicated frontend test-runner script. Verify affected desktop and touch-phone journeys in a browser.
+The frontend has lint and build scripts. Run the focused frontend cache regressions with `node --test frontend/tests/*.test.mjs`; CI also runs them. Verify affected desktop and touch-phone journeys in a browser.
 
-Azure Pipelines runs frontend lint/build, publishes the API, smoke-tests its health endpoint, and saves both outputs as artifacts. The pipeline currently does not invoke the backend unit-test command above. The separate GitHub image workflow also smoke-tests the built container.
+Azure Pipelines runs frontend lint/build, publishes the API, smoke-tests its health endpoint, and saves both outputs as artifacts. The pipeline runs the backend regression suite before publishing artifacts; test failures prevent deployment. The separate GitHub image workflow also smoke-tests the built container.
 
 The guide is imported by `HelpCenter.tsx`. Keep its `##` topic headings usable for navigation and preserve exact titles used by existing help links, including **Using Run** and **Complaint privacy notice**. Its renderer supports paragraphs, simple lists, bold text, inline code, and two-column tables.
 
