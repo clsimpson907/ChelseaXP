@@ -19,6 +19,20 @@ public sealed class ComplaintTests
     };
 
     [Fact]
+    public void WritesRequireTheVersionTheReviewerRead()
+    {
+        var complaint = CreateComplaint();
+        typeof(Complaint).GetProperty(nameof(Complaint.Version))!.SetValue(complaint, new byte[] { 1 });
+        var detail = ComplaintReviewDetail.From(complaint, true);
+        var approved = new ComplaintReviewWrite("Reviewed", "Redacted", detail.Version);
+        Assert.True(approved.Matches(complaint));
+        Assert.False(new ComplaintReviewWrite("Reviewed", "Redacted", null).Matches(complaint));
+        typeof(Complaint).GetProperty(nameof(Complaint.Version))!.SetValue(complaint, new byte[] { 2 });
+        Assert.False(approved.Matches(complaint));
+        Assert.Null(complaint.PublishedAt);
+    }
+
+    [Fact]
     public async Task PublishUsesTheSharedReviewerPolicy()
     {
         var builder = WebApplication.CreateBuilder();

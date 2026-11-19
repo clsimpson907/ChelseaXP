@@ -149,8 +149,8 @@ Private complaint rows retain the supplied name/email, IP address, subject, mess
 | `GET /api/complaints/review/session` | Assigned reviewer’s role |
 | `GET /api/complaints/review/inbox?beforeId=...` | Reviewer inbox, newest IDs first, up to 50 per page |
 | `GET /api/complaints/review/{id}` | Private review detail, with email/IP supplied only to Admin |
-| `POST /api/complaints/review/{id}/draft` | Save valid subject/message draft, 204 on success |
-| `POST /api/complaints/review/{id}/publish` | Publish the saved draft or original copy, 204 on success |
+| `POST /api/complaints/review/{id}/draft` | Save valid subject/message draft with the detail version, returning the new version on success |
+| `POST /api/complaints/review/{id}/publish` | Atomically publish the supplied approved subject/message with the detail version, 204 on success |
 
 Review routes require the ComplaintReviewer policy. Missing records return 404. Published items reject further draft edits. Competing updates can return 409. The public list and review responses use `Cache-Control: no-store`. The process has additional fixed-window throttles for status/public-list and submission requests.
 
@@ -231,3 +231,5 @@ Maintain the free-first cost target. The approved database direction is Azure SQ
 The folder, mail, document, toolbar, drive, Run, and other XP icons come from the Windows XP High Resolution Icon Pack by the creator of [GUI Archive](https://guiarchive.blogspot.com/). LinkedIn branding belongs to LinkedIn. The sunset wallpaper is Chelsea’s original Bryce artwork. The forkbomb meme was supplied by Chelsea.
 
 See [Credits.txt](frontend/src/credits.txt) for the in-site credits, including the Start paw and Birby artwork.
+
+Review writes require the `version` returned with private details. Stale or missing versions cannot publish or overwrite drafts. Deploy the API and frontend together for this contract change; older review clients must reload.

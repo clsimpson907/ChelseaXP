@@ -33,22 +33,27 @@ public static class ComplaintReviewEndpoints
             return complaint is null ? Results.NotFound() : Results.Ok(ComplaintReviewDetail.From(complaint, owner.IsAdmin(context.User)));
         });
 
-        review.MapPost("/{id:long}/draft", async (long id, ComplaintCopy draft, ComplaintDb db, CancellationToken ct) =>
+        review.MapPost("/{id:long}/draft", async (long id, ComplaintReviewWrite draft, ComplaintDb db, CancellationToken ct) =>
         {
             var complaint = await db.Complaints.FindAsync([id], ct);
             if (complaint is null) return Results.NotFound();
-            if (complaint.PublishedAt is not null) return Results.Conflict();
-            if (!complaint.TrySaveDraft(draft))
+            if (complaint.PublishedAt is not null || !draft.Matches(complaint)) return Results.Conflict();
+            if (!complaint.TrySaveDraft(draft.Copy))
                 return Results.BadRequest(new { message = "Enter a single-line subject and a valid message." });
 
-            return await Save(db, ct);
+            var result = await Save(db, ct);
+            return result is Microsoft.AspNetCore.Http.HttpResults.NoContent
+                ? Results.Ok(new { version = Convert.ToBase64String(complaint.Version) }) : result;
         });
 
-        review.MapPost("/{id:long}/publish", async (long id, ComplaintDb db, CancellationToken ct) =>
+        review.MapPost("/{id:long}/publish", async (long id, ComplaintReviewWrite approved, ComplaintDb db, CancellationToken ct) =>
         {
             var complaint = await db.Complaints.FindAsync([id], ct);
             if (complaint is null) return Results.NotFound();
-            if (!complaint.TryPublish(DateTimeOffset.UtcNow)) return Results.Conflict();
+            if (!approved.Matches(complaint) || complaint.PublishedAt is not null) return Results.Conflict();
+            // Save the exact approved copy and publication in one concurrency-checked write.
+            if (!complaint.TrySaveDraft(approved.Copy)) return Results.BadRequest();
+            complaint.TryPublish(DateTimeOffset.UtcNow);
             return await Save(db, ct);
         });
 
@@ -84,11 +89,19 @@ public static class ComplaintReviewEndpoints
 
 public sealed record ComplaintReviewDetail(
     long Id, DateTimeOffset SubmittedAt, string? Name, string? Email, string? IpAddress,
-    string Subject, string Message, ComplaintCopy? Draft, ComplaintCopy? Published)
+    string Subject, string Message, ComplaintCopy? Draft, ComplaintCopy? Published, string Version)
 {
     public static ComplaintReviewDetail From(Complaint complaint, bool isAdmin) =>
         new(complaint.Id, complaint.SubmittedAt, complaint.Name, isAdmin ? complaint.Email : null,
             isAdmin ? complaint.IpAddress : null, complaint.Subject, complaint.Message,
             complaint.DraftSubject is null ? null : new ComplaintCopy(complaint.DraftSubject, complaint.DraftMessage),
-            complaint.PublishedAt is null ? null : new ComplaintCopy(complaint.PublishedSubject, complaint.PublishedMessage));
+            complaint.PublishedAt is null ? null : new ComplaintCopy(complaint.PublishedSubject, complaint.PublishedMessage),
+            Convert.ToBase64String(complaint.Version));
+}
+
+public sealed record ComplaintReviewWrite(string? Subject, string? Message, string? Version)
+{
+    public ComplaintCopy Copy => new(Subject, Message);
+    public bool Matches(Complaint complaint) =>
+        complaint.Version.Length > 0 && Version == Convert.ToBase64String(complaint.Version);
 }
