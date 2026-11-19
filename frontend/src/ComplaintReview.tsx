@@ -46,7 +46,7 @@ type ReviewProps = { active: boolean; onClose: () => void; help: MenuAction[]; n
 type InboxItem = { id: number; subject: string; submittedAt: string; publishedAt: string | null }
 type ComplaintDetail = PublicCopy & {
   id: number; submittedAt: string; name: string | null; email: string | null; ipAddress: string | null
-  draft: PublicCopy | null; published: PublicCopy | null
+  draft: PublicCopy | null; published: PublicCopy | null; version: string
 }
 type ReviewRequest = (path: string, options?: RequestInit) => Promise<Response>
 
@@ -144,14 +144,16 @@ function EntraReview(props: ReviewProps) {
     }
   }
 
+  const request = useCallback<ReviewRequest>(async (path, options) => {
+    if (!account) throw new Error('No reviewer account')
+    const auth = await signInClient()
+    const token = await auth.acquireTokenSilent({ scopes, account })
+    const headers = new Headers(options?.headers)
+    headers.set('Authorization', 'Bearer ' + token.accessToken)
+    return fetch(new URL('/api/complaints/review' + path, apiOrigin), { ...options, headers, cache: 'no-store' })
+  }, [account])
+
   if (role && account) {
-    const request: ReviewRequest = async (path, options) => {
-      const auth = await signInClient()
-      const token = await auth.acquireTokenSilent({ scopes, account })
-      const headers = new Headers(options?.headers)
-      headers.set('Authorization', 'Bearer ' + token.accessToken)
-      return fetch(new URL('/api/complaints/review' + path, apiOrigin), { ...options, headers, cache: 'no-store' })
-    }
     return <ComplaintWorkspace {...props} live={{ role, request, signOut }} />
   }
   return <>
@@ -186,7 +188,7 @@ const sampleInbox: InboxItem[] = sampleComplaints.map((complaint, id) => ({
   id, subject: complaint.title, submittedAt: complaint.submittedAt, publishedAt: null,
 }))
 const sampleDetails: ComplaintDetail[] = sampleComplaints.map((complaint, id) => ({
-  ...complaint, id, subject: complaint.title, ipAddress: complaint.ip, draft: null, published: null,
+  ...complaint, id, subject: complaint.title, ipAddress: complaint.ip, draft: null, published: null, version: 'preview',
 }))
 
 const loadingComplaintMessages = ['Loading complaints…'] as const
@@ -353,15 +355,16 @@ function ComplaintWorkspace({ active, help, navigation, onClose, live }: ReviewP
     setFailure(null)
     try {
       const path = '/' + selected
-      if (!publish || drafts[selected]) {
-        const response = await request(path + '/draft', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(publicCopy),
-        })
-        if (!response.ok) throw new Error()
+      const response = await request(path + (publish ? '/publish' : '/draft'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...publicCopy, version: complaint?.version }),
+      })
+      if (!response.ok) throw new Error()
+      if (!publish) {
+        const { version } = await response.json()
+        setDetail((current) => current?.id === selected ? { ...current, version, draft: publicCopy } : current)
       }
       if (publish) {
-        const response = await request(path + '/publish', { method: 'POST' })
-        if (!response.ok) throw new Error()
         setInbox((current) => current.map((row) => row.id === selected
           ? { ...row, publishedAt: new Date().toISOString() } : row))
         void refreshPublishedCopies(true).catch(() => {})

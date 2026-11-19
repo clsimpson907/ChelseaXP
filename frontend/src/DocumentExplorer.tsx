@@ -85,7 +85,6 @@ export default function DocumentExplorer({
     renameInput.current?.select()
   }, [editing])
   const [nameError, setNameError] = useState('')
-  const [showMobileTasks, setShowMobileTasks] = useState(false)
   const [sidebar, setSidebar] = useState<'tasks' | 'folders' | 'search'>(initialSearch ? 'search' : 'tasks')
   const [search, setSearch] = useState<SearchCriteria | null>(null)
   const [folderView, setFolderView] = useState<View>('Icons')
@@ -376,7 +375,10 @@ export default function DocumentExplorer({
     setSelection(null)
   }
 
-  const menuActions: Record<string, { label: string; action: () => void; disabled?: boolean }[]> = {
+  const viewCommands = views.map((option) => ({
+    label: option, checked: view === option, disabled: hiddenContents, action: () => setView(option),
+  }))
+  const menuActions: Record<string, { label: string; action: () => void; disabled?: boolean; checked?: boolean }[]> = {
     File: [
       { label: 'Open', action: () => { if (selected) openEntry(selected) }, disabled: !selected || selected.type.startsWith('Deleted ') },
       ...(isRecycleLocation ? [{ label: 'Empty the Recycle Bin', action: () => setConfirmEmpty(true), disabled: recycleBin.hidingComplaints }] : []),
@@ -389,7 +391,7 @@ export default function DocumentExplorer({
       { label: 'Rename', action: renameSelection, disabled: !canManageSelection || Boolean(selected?.favoriteId) },
       { label: 'Clear selection', action: () => setSelection(null), disabled: !selected },
     ],
-    View: views.map((option) => ({ label: option, action: () => setView(option), disabled: hiddenContents })),
+    View: viewCommands,
     Favorites: favorites.items.map((target) => ({ label: target.name, action: () => favorites.open(target, openLocation) })),
     Tools: [
       { label: 'Search', action: () => toggleSidebar('search') },
@@ -491,7 +493,7 @@ export default function DocumentExplorer({
         </button>
         <span className="explorer-toolbar-divider" aria-hidden="true" />
         <ToolbarDropdown label="View" icon="/icons/explorer-view.png" disabled={hiddenContents}
-          options={views.map((option) => ({ label: option, checked: view === option, action: () => setView(option) }))} />
+          options={viewCommands} />
         <ChromeOverflow kind="toolbar" commands={[
           { label: 'Forward', icon: 'forward', disabled: !forward.length, action: () => travel(forward[0].index) },
           { label: 'Up', icon: 'up', disabled: !location.parent, action: () => { if (location.parent) openLocation(location.parent) } },
@@ -521,13 +523,7 @@ export default function DocumentExplorer({
         </span>
         <button className="explorer-go" type="submit"><Icon icon="go" size={18} /> Go</button>
       </form>
-      <button type="button" className="mobile-explorer-tasks" aria-expanded={showMobileTasks && sidebar === 'tasks'}
-        onClick={() => {
-          setShowMobileTasks(sidebar !== 'tasks' || !showMobileTasks)
-          setSidebar('tasks')
-          setSearch(null)
-        }}>Folder tasks</button>
-      <div className="explorer-layout" data-mobile-tasks={showMobileTasks} data-sidebar={sidebar}>
+      <div className="explorer-layout" data-sidebar={sidebar}>
         <div className="explorer-folders">
           {sidebar === 'search' ? <SearchCompanion
             folders={folderIds.map((id) => ({ id, name: folderPath(id) }))}

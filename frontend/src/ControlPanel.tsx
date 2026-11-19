@@ -82,10 +82,14 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, favori
     setQuery('')
   }
 
+  const viewCommands = [
+    { label: 'Category View', checked: view === 'category', action: () => { if (view !== 'category') switchView() } },
+    { label: 'Classic View', checked: view === 'classic', action: () => { if (view !== 'classic') switchView() } },
+  ]
   const menus = {
     File: [{ label: 'Control Panel Home', action: () => navigate({ kind: 'home' }) }],
     Edit: [{ label: 'Search', action: toggleSearch }],
-    View: [{ label: switchLabel, action: switchView }],
+    View: viewCommands,
     Favorites: favoriteCommands,
     Tools: openFolder ? [{ label: 'Folders', action: () => setShowFolders(!showFolders) }] : [],
     Help: [{ label: 'Help and Support', action: openHelp }],
@@ -108,10 +112,7 @@ export default function ControlPanel({ initialPage, openHelp, openFolder, favori
         </button>}
         <span className="explorer-toolbar-divider" aria-hidden="true" />
         <ToolbarDropdown label="Control Panel view" icon="/icons/explorer-view.png"
-          options={[
-            { label: 'Category View', checked: view === 'category', action: () => { if (view !== 'category') switchView() } },
-            { label: 'Classic View', checked: view === 'classic', action: () => { if (view !== 'classic') switchView() } },
-          ]} />
+          options={viewCommands} />
         <ChromeOverflow kind="toolbar" commands={[
           { label: 'Forward', icon: 'forward', disabled: !navigation.forward.length, action: () => travel(navigation.forward[0].index) },
           { label: 'Up', icon: 'up', disabled: location.kind === 'home', action: up },

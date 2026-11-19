@@ -1,4 +1,5 @@
 using ChelseaXP.Api.Complaints;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,16 +12,23 @@ var allowedOrigins = complaintSettings.AllowedOrigins;
 builder.Services.AddSingleton(complaintSettings);
 builder.Services.AddDbContext<ComplaintDb>(options => options.UseSqlServer(connectionString));
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
-    policy.WithOrigins(allowedOrigins).WithMethods("GET", "POST").WithHeaders("Content-Type", "Authorization")));
+    policy.WithOrigins(allowedOrigins).WithMethods("GET", "POST").WithHeaders("Content-Type", "Authorization").WithExposedHeaders("Retry-After", "X-Next-Cursor")));
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.AddFixedWindowLimiter("complaints-status", limiter =>
+    options.OnRejected = (context, _) =>
     {
-        limiter.PermitLimit = 20;
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+            context.HttpContext.Response.Headers.RetryAfter = Math.Ceiling(retryAfter.TotalSeconds)
+                .ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return ValueTask.CompletedTask;
+    };
+    options.AddFixedWindowLimiter("complaints-published", limiter =>
+    {
+        limiter.PermitLimit = 120;
         limiter.Window = TimeSpan.FromMinutes(1);
     });
-    options.AddFixedWindowLimiter("complaints-published", limiter =>
+    options.AddFixedWindowLimiter("complaints-status", limiter =>
     {
         limiter.PermitLimit = 20;
         limiter.Window = TimeSpan.FromMinutes(1);

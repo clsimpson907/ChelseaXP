@@ -45,14 +45,25 @@ async function fetchPublishedPage(url: URL) {
         cache: 'no-store',
         signal: AbortSignal.timeout(20000),
       })
-      if (response.ok) return await response.text()
+      if (response.ok) return {
+        body: await response.text(),
+        nextCursor: response.headers.get('X-Next-Cursor'),
+      }
     } catch (error) {
       if (attempt >= 2) throw error
     }
-    if (response && !response.ok && (attempt >= 2 || ![408, 502, 503, 504].includes(response.status))) {
+    if (response && !response.ok && (attempt >= 2 || ![408, 429, 502, 503, 504].includes(response.status))) {
       throw new Error('Could not load published complaints')
     }
-    await new Promise((resolve) => globalThis.setTimeout(resolve, attempt === 0 ? 1000 : 3000))
+    let delay = attempt === 0 ? 1000 : 3000
+    if (response?.status === 429) {
+      const retryAfter = response.headers.get('Retry-After')
+      const seconds = retryAfter === null ? NaN : Number(retryAfter)
+      const requested = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(retryAfter ?? '') - Date.now()
+      if (requested > 60000) throw new Error('Public refresh retry exceeds its wait limit')
+      delay = Number.isFinite(requested) ? Math.max(1000, requested) : 60000
+    }
+    await new Promise((resolve) => globalThis.setTimeout(resolve, delay))
   }
 }
 
@@ -60,13 +71,18 @@ async function loadCopies() {
   do {
     refreshRequested = false
     const copies: PublicCopy[] = []
+    let cursor: string | null = null
+    const seen = new Set<string>()
     for (;;) {
       const url = new URL('/api/complaints/published', complaintApiOrigin)
-      url.searchParams.set('offset', String(copies.length))
-      const body = await fetchPublishedPage(url)
-      const page: PublicCopy[] = JSON.parse(body)
+      if (cursor) url.searchParams.set('cursor', cursor)
+      const response = await fetchPublishedPage(url)
+      const page: PublicCopy[] = JSON.parse(response.body)
       copies.push(...page)
-      if (page.length < 50) break
+      cursor = response.nextCursor
+      if (!cursor) break
+      if (seen.has(cursor)) throw new Error('Repeated publication cursor')
+      seen.add(cursor)
     }
     updateCopies(Object.fromEntries(copies.map((copy, index) => [index, copy])))
   } while (refreshRequested)

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import ChromeOverflow from './ChromeOverflow'
 
-export type MenuAction = { label: string; action: () => void; disabled?: boolean }
+export type MenuAction = { label: string; action: () => void; disabled?: boolean; checked?: boolean }
 
 export default function ExplorerMenuBar({ label, menus }: {
   label: string
@@ -21,9 +21,10 @@ export default function ExplorerMenuBar({ label, menus }: {
           <button type="button" disabled={!actions.length} aria-expanded={openMenu === name}
             onClick={() => setOpenMenu(openMenu === name ? null : name)}>{name}</button>
           {openMenu === name && <div className="explorer-menu-options">
-            {actions.map(({ label, action, disabled }) => (
+            {actions.map(({ label, action, disabled, checked }) => (
               <button key={label} type="button" disabled={disabled}
-                onClick={() => { action(); setOpenMenu(null) }}>{label}</button>
+                role={checked === undefined ? undefined : 'menuitemradio'} aria-checked={checked}
+                onClick={() => { action(); setOpenMenu(null) }}>{checked !== undefined && <span className="toolbar-dropdown-dot" aria-hidden="true">{checked ? '●' : ''}</span>}{label}</button>
             ))}
           </div>}
         </div>

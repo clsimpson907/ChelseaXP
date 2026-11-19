@@ -83,9 +83,9 @@ dotnet build backend/ChelseaXP.Api --configuration Release
 dotnet test backend/ChelseaXP.Api.Tests
 ```
 
-The frontend has lint and build scripts. It currently has no dedicated frontend test-runner script. Verify affected desktop and touch-phone journeys in a browser.
+The frontend has lint and build scripts. Run the focused frontend cache regressions with `node --test frontend/tests/*.test.mjs`; CI also runs them. Verify affected desktop and touch-phone journeys in a browser.
 
-Azure Pipelines runs frontend lint/build, publishes the API, smoke-tests its health endpoint, and saves both outputs as artifacts. The pipeline currently does not invoke the backend unit-test command above. The separate GitHub image workflow also smoke-tests the built container.
+Azure Pipelines runs frontend lint/build, publishes the API, smoke-tests its health endpoint, and saves both outputs as artifacts. The pipeline runs the backend regression suite before publishing artifacts; test failures prevent deployment. The separate GitHub image workflow also smoke-tests the built container.
 
 The guide is imported by `HelpCenter.tsx`. Keep its `##` topic headings usable for navigation and preserve exact titles used by existing help links, including **Using Run** and **Complaint privacy notice**. Its renderer supports paragraphs, simple lists, bold text, inline code, and two-column tables.
 
@@ -145,20 +145,20 @@ Private complaint rows retain the supplied name/email, IP address, subject, mess
 | `GET /api/health` | Anonymous process liveness check |
 | `GET /api/complaints/status` | Anonymous availability and quota check, with state and optional resetAt |
 | `POST /api/complaints` | Anonymous submission of name, email, message, and subject. Returns 202 when saved, 400 for invalid input, 429 for quotas, or 503 for paused/unavailable service |
-| `GET /api/complaints/published?offset=0` | Anonymous published subject/message copies, newest publication first, up to 50 per page |
+| `GET /api/complaints/published?cursor=...` | Anonymous published subject/message copies, newest publication first, up to 50 per page |
 | `GET /api/complaints/review/session` | Assigned reviewer’s role |
 | `GET /api/complaints/review/inbox?beforeId=...` | Reviewer inbox, newest IDs first, up to 50 per page |
 | `GET /api/complaints/review/{id}` | Private review detail, with email/IP supplied only to Admin |
-| `POST /api/complaints/review/{id}/draft` | Save valid subject/message draft, 204 on success |
-| `POST /api/complaints/review/{id}/publish` | Publish the saved draft or original copy, 204 on success |
+| `POST /api/complaints/review/{id}/draft` | Save valid subject/message draft with the detail version, returning the new version on success |
+| `POST /api/complaints/review/{id}/publish` | Atomically publish the supplied approved subject/message with the detail version, 204 on success |
 
-Review routes require the ComplaintReviewer policy. Missing records return 404. Published items reject further draft edits. Competing updates can return 409. The public list and review responses use `Cache-Control: no-store`. The process has additional fixed-window throttles for status/public-list and submission requests.
+Review routes require the ComplaintReviewer policy. Missing records return 404. Published items reject further draft edits. Competing updates can return 409. The public list and review responses use `Cache-Control: no-store`. The process has separate fixed-window throttles: 20 status checks, 120 public-list requests, and 60 submission requests per minute. Public reads cannot consume the status-check allowance.
 
 ### Quiet public loading
 
 Production fetches published copies on site startup and when Recycle Bin or Complaints is entered. Concurrent refreshes share one promise. A post-publication request during a refresh queues a follow-up refresh.
 
-Each page request has a 20-second timeout and at most three attempts. Network failures, timeouts, and HTTP 408/502/503/504 can retry after one and then three seconds. Other HTTP failures stop the attempt. Pages accumulate before replacing the cache, so a failed refresh retains earlier copies.
+Each page request has a 20-second timeout and at most three attempts. Network failures, timeouts, and HTTP 408/502/503/504 can retry after one and then three seconds. HTTP 429 retries the current page up to the same three-attempt limit, respecting Retry-After up to 60 seconds (60 seconds if absent). Longer waits stop the refresh. Other HTTP failures stop the attempt. Pages accumulate before replacing the cache, so a failed refresh retains earlier copies.
 
 The folder stays visually quiet. Initial failure can leave it empty. There is no public loading screen or error banner. A new folder visit can retry after the failed refresh finishes.
 
@@ -231,3 +231,7 @@ Maintain the free-first cost target. The approved database direction is Azure SQ
 The folder, mail, document, toolbar, drive, Run, and other XP icons come from the Windows XP High Resolution Icon Pack by the creator of [GUI Archive](https://guiarchive.blogspot.com/). LinkedIn branding belongs to LinkedIn. The sunset wallpaper is Chelsea’s original Bryce artwork. The forkbomb meme was supplied by Chelsea.
 
 See [Credits.txt](frontend/src/credits.txt) for the in-site credits, including the Start paw and Birby artwork.
+
+Review writes require the `version` returned with private details. Stale or missing versions cannot publish or overwrite drafts. Deploy the API and frontend together for this contract change; older review clients must reload.
+
+Public pagination returns subject/message arrays and an optional `X-Next-Cursor` response header. Send that opaque value as `cursor` for the next page. New publications do not shift an in-progress traversal. Legacy offset requests remain supported; deploy the cursor-aware API before the updated frontend.
