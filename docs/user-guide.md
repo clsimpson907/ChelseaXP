@@ -120,7 +120,7 @@ The pop-ups live inside the page. Their count is capped. The operating system ha
 
 ## Using Control Panel
 
-Open **Control Panel** from Start or the phone’s Programs grid. Use its sidebar to switch between **Category View** and **Classic View**.
+Open **Control Panel** from Start or the phone’s Programs grid. Use its sidebar to switch between **Category View** and **Classic View**. The **View** menu and the toolbar’s view button list both choices, with a dot beside the current one. In a narrow window, the same choices appear under **» → Views**.
 
 Choose **Complaints Department** from either view. To open the Help and Support Center, choose **Help and Support** under **See Also**. Desktop Control Panel also has Explorer-style navigation and folder links.
 
@@ -161,8 +161,10 @@ The Complaints Department is for Chelsea and invited reviewers. Public submissio
 1. Open **Control Panel → Complaints Department**, or use its task link in Help and Support. Sign in with your assigned reviewer account.
 2. Select a complaint from the inbox. Its current public copy appears in the reading pane.
 3. Select private text in the subject or message, then choose **Redact**. Use **Undo** or **Redo** to revise the redaction.
-4. Use **File → Save as draft** to save an unfinished public copy, or **Publish** when it is ready.
+4. Use **File → Save as draft** to save an unfinished public copy, or **Publish** when it is ready. Publish uses the copy on screen, so you don’t need to save a draft first.
 5. Choose **Sign out** when you finish.
+
+If another reviewer changed the complaint after you opened it, Save as draft or Publish shows a blue screen instead of overwriting their work. Close and reopen the Complaints Department to load the latest copy before you retry. A draft-save blue screen leaves your edits open until then.
 
 Admins and moderators can save drafts and publish. The admin can see the submitter’s email and IP address. Both roles can see the submitted name and complaint text. Published copies are locked against further editing in the current review interface.
 

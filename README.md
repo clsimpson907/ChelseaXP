@@ -6,7 +6,9 @@ ChelseaXP is my developer portfolio, built as a Windows XP-inspired desktop with
 
 ## Current baseline
 
-This document describes source commit `42d882a` on `fix/bugfixes`, reviewed on November 19, 2026. The Happy Fun Pack was merged to main in PR #39. The branch adds quiet published-complaint loading, shared virtual file-system data, corrected Run filtering, and consistent dialog title sizing. Production deployment of these branch fixes has not been verified.
+This document describes `main` at `bd5f796`, reviewed on November 20, 2026. The Happy Fun Pack was merged in PR #39. PR #40 added quiet published-complaint loading, shared virtual file-system data, corrected Run filtering, and consistent dialog title sizing. PR #41 added version-checked review writes, cursor pagination for published complaints, a separate public-list throttle, backend tests in CI, shared toolbar view commands, and removal of obsolete phone Explorer controls.
+
+Anonymous production checks on November 20, 2026 found the PR #41 API and frontend deployed. Reviewer sign-in, email delivery, and billing settings were not checked in that pass.
 
 The planning folder contains the project steering document and product specification. The steering document records collaboration and design decisions. The specification describes the implemented product and its verification criteria. This README owns engineering setup, configuration, API contracts, and deployment instructions. The user guide owns visitor instructions and is also rendered inside Help and Support.
 
@@ -152,7 +154,11 @@ Private complaint rows retain the supplied name/email, IP address, subject, mess
 | `POST /api/complaints/review/{id}/draft` | Save valid subject/message draft with the detail version, returning the new version on success |
 | `POST /api/complaints/review/{id}/publish` | Atomically publish the supplied approved subject/message with the detail version, 204 on success |
 
-Review routes require the ComplaintReviewer policy. Missing records return 404. Published items reject further draft edits. Competing updates can return 409. The public list and review responses use `Cache-Control: no-store`. The process has separate fixed-window throttles: 20 status checks, 120 public-list requests, and 60 submission requests per minute. Public reads cannot consume the status-check allowance.
+Review routes require the ComplaintReviewer policy. Missing records return 404. Published items reject further draft edits. Competing updates can return 409. The public list and review responses use `Cache-Control: no-store`. The process has separate fixed-window throttles: 20 status checks, 120 public-list requests, and 60 submission requests per minute. Public reads cannot consume the status-check allowance. Throttled responses include `Retry-After`, and CORS exposes `Retry-After` and `X-Next-Cursor` to the browser.
+
+Review writes require the `version` returned with private details. A draft save returns the new version, and the client uses it for the next write. Publish saves the supplied approved copy and the publication in one concurrency-checked write. Stale or missing versions return 409 and cannot publish or overwrite drafts.
+
+Public pagination returns subject/message arrays and an optional `X-Next-Cursor` response header. Send that opaque value as `cursor` for the next page. New publications do not shift an in-progress traversal. An invalid cursor, or a cursor combined with a nonzero offset, returns 400. Legacy offset requests remain supported.
 
 ### Quiet public loading
 
@@ -162,7 +168,9 @@ Each page request has a 20-second timeout and at most three attempts. Network fa
 
 The folder stays visually quiet. Initial failure can leave it empty. There is no public loading screen or error banner. A new folder visit can retry after the failed refresh finishes.
 
-This first request can give the API and SQL a head start, but the branch contains no Azure keep-alive job or minimum-replica change. Actual container cold-start and SQL wake-up behavior still needs production verification. Local review preview bypasses the remote public-list fetch.
+This first request can give the API and SQL a head start, but main contains no Azure keep-alive job or minimum-replica change. Local review preview bypasses the remote public-list fetch.
+
+An anonymous production check on November 20, 2026 observed cold-start behavior after an idle period. The first two published-list requests returned HTTP 500, the second after 14.7 seconds. The third returned 200 after 11.6 seconds and the fourth after 0.36 seconds. The client does not retry HTTP 500, so a visitor arriving during a cold start can see an empty Complaints folder until a later visit refreshes it. The cause is unconfirmed; check API logs to distinguish container startup from SQL resume before choosing a fix.
 
 ## Complaints Department sign-in
 
@@ -213,6 +221,10 @@ From GitHub **Actions**, manually run **Publish API image** on main. It builds a
 
 For configuration-only changes, the existing documented Azure Portal route is **chelseaxp-api → Revisions and replicas → Create new revision**. Edit the container’s environment variables and create the revision using its current image. Verify the labels in the current portal before using the walkthrough.
 
+### Contract changes
+
+A successful merge to main deploys the frontend automatically, while the API image is published manually. When a change alters an API contract, deploy the compatible API revision before merging the frontend that depends on it. For example, the PR #41 frontend sends the approved copy and version with Publish. An older API ignores that body and publishes its stored draft or original text. Older review clients must reload after a contract change.
+
 ## Troubleshooting and release verification
 
 - If the public complaints folder is empty, inspect its anonymous published-list request and API logs. The UI intentionally hides refresh failures.
@@ -231,7 +243,3 @@ Maintain the free-first cost target. The approved database direction is Azure SQ
 The folder, mail, document, toolbar, drive, Run, and other XP icons come from the Windows XP High Resolution Icon Pack by the creator of [GUI Archive](https://guiarchive.blogspot.com/). LinkedIn branding belongs to LinkedIn. The sunset wallpaper is Chelsea’s original Bryce artwork. The forkbomb meme was supplied by Chelsea.
 
 See [Credits.txt](frontend/src/credits.txt) for the in-site credits, including the Start paw and Birby artwork.
-
-Review writes require the `version` returned with private details. Stale or missing versions cannot publish or overwrite drafts. Deploy the API and frontend together for this contract change; older review clients must reload.
-
-Public pagination returns subject/message arrays and an optional `X-Next-Cursor` response header. Send that opaque value as `cursor` for the next page. New publications do not shift an in-progress traversal. Legacy offset requests remain supported; deploy the cursor-aware API before the updated frontend.
